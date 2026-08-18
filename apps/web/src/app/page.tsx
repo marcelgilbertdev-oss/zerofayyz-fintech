@@ -1,3 +1,39 @@
+type ApiHealth = {
+  operational: boolean;
+  detail: string;
+};
+
+async function getApiHealth(): Promise<ApiHealth> {
+  const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
+
+  try {
+    const response = await fetch(`${apiUrl}/api/v1/health`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(1500),
+    });
+
+    if (!response.ok) {
+      return { operational: false, detail: `HTTP ${response.status}` };
+    }
+
+    const payload = (await response.json()) as {
+      status?: unknown;
+      version?: unknown;
+    };
+
+    if (payload.status !== "operational") {
+      return { operational: false, detail: "Unhealthy response" };
+    }
+
+    return {
+      operational: true,
+      detail: typeof payload.version === "string" ? `v${payload.version}` : "Connected",
+    };
+  } catch {
+    return { operational: false, detail: "Unavailable" };
+  }
+}
+
 const navItems = [
   { label: "Overview", glyph: "⌂", active: true },
   { label: "Payments", glyph: "↗" },
@@ -28,13 +64,6 @@ const transactions = [
   { customer: "Yousef Karim", email: "yousef@example.test", amount: "$92.40", method: "Visa •••• 0091", status: "Review", time: "1 hr ago", initials: "YK" },
 ];
 
-const systemChecks = [
-  { label: "API service", detail: "42 ms", status: "Operational" },
-  { label: "PostgreSQL", detail: "Connected", status: "Operational" },
-  { label: "Stripe sandbox", detail: "Test mode", status: "Operational" },
-  { label: "Webhook queue", detail: "0 pending", status: "Operational" },
-];
-
 function BrandMark() {
   return (
     <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10 text-sm font-bold tracking-tight text-emerald-200 shadow-[0_0_30px_rgba(52,211,153,0.08)]">
@@ -58,7 +87,20 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const apiHealth = await getApiHealth();
+  const systemChecks = [
+    {
+      label: "API service",
+      detail: apiHealth.detail,
+      status: apiHealth.operational ? "Operational" : "Unavailable",
+      healthy: apiHealth.operational,
+    },
+    { label: "PostgreSQL", detail: "Next milestone", status: "Not connected", healthy: false },
+    { label: "Stripe sandbox", detail: "Awaiting test keys", status: "Not connected", healthy: false },
+    { label: "Webhook queue", detail: "Not configured", status: "Not connected", healthy: false },
+  ];
+
   return (
     <div className="min-h-screen bg-[#07110f] text-[#edf5f1]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_-10%,rgba(52,211,153,0.11),transparent_35%),radial-gradient(circle_at_10%_90%,rgba(45,212,191,0.06),transparent_28%)]" />
@@ -133,8 +175,8 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-2.5 sm:gap-3">
               <span className="hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-xs text-white/50 md:flex">
-                <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" />
-                All systems operational
+                <span className={`size-1.5 rounded-full ${apiHealth.operational ? "bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" : "bg-amber-300"}`} />
+                {apiHealth.operational ? "API connected" : "API unavailable"}
               </span>
               <button type="button" className="rounded-xl bg-emerald-300 px-4 py-2.5 text-xs font-semibold text-[#062018] shadow-[0_10px_30px_rgba(52,211,153,0.12)] transition hover:bg-emerald-200">+ Test payment</button>
               <div className="grid size-9 place-items-center rounded-full border border-white/10 bg-[#16241f] text-xs font-semibold text-emerald-100">MF</div>
@@ -204,28 +246,28 @@ export default function Home() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-white/88">System health</p>
-                  <p className="mt-1 text-xs text-white/34">Live readiness indicators</p>
+                  <p className="mt-1 text-xs text-white/34">Real integration status</p>
                 </div>
-                <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">Healthy</span>
+                <span className="rounded-full border border-amber-300/15 bg-amber-300/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200">1 of 4 live</span>
               </div>
               <div className="mt-5 divide-y divide-white/[0.06]">
                 {systemChecks.map((check) => (
                   <div key={check.label} className="flex items-center justify-between gap-4 py-3.5 first:pt-0">
                     <div className="flex items-center gap-3">
-                      <span className="size-2 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.65)]" />
+                      <span className={`size-2 rounded-full ${check.healthy ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.65)]" : "bg-white/20"}`} />
                       <div>
                         <p className="text-xs font-medium text-white/72">{check.label}</p>
                         <p className="mt-0.5 text-[10px] text-white/28">{check.detail}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] text-emerald-300/70">{check.status}</span>
+                    <span className={`text-[10px] ${check.healthy ? "text-emerald-300/70" : "text-white/30"}`}>{check.status}</span>
                   </div>
                 ))}
               </div>
               <div className="mt-1 rounded-xl border border-white/[0.06] bg-black/10 p-3">
-                <div className="flex items-center justify-between text-[10px] text-white/35"><span>30-day uptime</span><span className="font-medium text-white/70">99.98%</span></div>
-                <div className="mt-2 flex gap-0.5">
-                  {Array.from({ length: 24 }).map((_, index) => <span key={index} className="h-5 flex-1 rounded-sm bg-emerald-400/60" />)}
+                <div className="flex items-center justify-between gap-3 text-[10px] text-white/35">
+                  <span>API response source</span>
+                  <span className={`font-medium ${apiHealth.operational ? "text-emerald-300/75" : "text-amber-200/75"}`}>{apiHealth.operational ? "Live endpoint" : "Fallback state"}</span>
                 </div>
               </div>
             </article>

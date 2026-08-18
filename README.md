@@ -89,4 +89,4 @@ docs/
 
 ## Current Status
 
-The project skeleton is complete. The Next.js frontend scaffold is installed and verified; backend and application feature development have not started yet.
+The project skeleton and recruiter-facing Next.js dashboard are complete. A real Fastify API now serves `GET /api/v1/health`, and the dashboard reads that live response. PostgreSQL, Stripe sandbox payments, and verified webhooks remain the next implementation milestones.
