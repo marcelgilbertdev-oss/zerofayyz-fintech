@@ -1,6 +1,8 @@
 type ApiHealth = {
   operational: boolean;
   detail: string;
+  databaseOperational: boolean;
+  databaseDetail: string;
 };
 
 async function getApiHealth(): Promise<ApiHealth> {
@@ -13,24 +15,45 @@ async function getApiHealth(): Promise<ApiHealth> {
     });
 
     if (!response.ok) {
-      return { operational: false, detail: `HTTP ${response.status}` };
+      return {
+        operational: false,
+        detail: `HTTP ${response.status}`,
+        databaseOperational: false,
+        databaseDetail: "Unavailable",
+      };
     }
 
     const payload = (await response.json()) as {
       status?: unknown;
       version?: unknown;
+      checks?: {
+        database?: {
+          status?: unknown;
+          latencyMs?: unknown;
+        };
+      };
     };
 
-    if (payload.status !== "operational") {
-      return { operational: false, detail: "Unhealthy response" };
-    }
+    const apiOperational = payload.status === "operational" || payload.status === "degraded";
+    const databaseOperational = payload.checks?.database?.status === "operational";
+    const databaseLatency = payload.checks?.database?.latencyMs;
 
     return {
-      operational: true,
+      operational: apiOperational,
       detail: typeof payload.version === "string" ? `v${payload.version}` : "Connected",
+      databaseOperational,
+      databaseDetail:
+        databaseOperational && typeof databaseLatency === "number"
+          ? `${databaseLatency} ms`
+          : "Unavailable",
     };
   } catch {
-    return { operational: false, detail: "Unavailable" };
+    return {
+      operational: false,
+      detail: "Unavailable",
+      databaseOperational: false,
+      databaseDetail: "Unavailable",
+    };
   }
 }
 
@@ -96,7 +119,12 @@ export default async function Home() {
       status: apiHealth.operational ? "Operational" : "Unavailable",
       healthy: apiHealth.operational,
     },
-    { label: "PostgreSQL", detail: "Next milestone", status: "Not connected", healthy: false },
+    {
+      label: "PostgreSQL",
+      detail: apiHealth.databaseDetail,
+      status: apiHealth.databaseOperational ? "Operational" : "Unavailable",
+      healthy: apiHealth.databaseOperational,
+    },
     { label: "Stripe sandbox", detail: "Awaiting test keys", status: "Not connected", healthy: false },
     { label: "Webhook queue", detail: "Not configured", status: "Not connected", healthy: false },
   ];
@@ -248,7 +276,9 @@ export default async function Home() {
                   <p className="text-sm font-medium text-white/88">System health</p>
                   <p className="mt-1 text-xs text-white/34">Real integration status</p>
                 </div>
-                <span className="rounded-full border border-amber-300/15 bg-amber-300/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200">1 of 4 live</span>
+                <span className="rounded-full border border-amber-300/15 bg-amber-300/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+                  {apiHealth.databaseOperational ? "2 of 4 live" : "1 of 4 live"}
+                </span>
               </div>
               <div className="mt-5 divide-y divide-white/[0.06]">
                 {systemChecks.map((check) => (

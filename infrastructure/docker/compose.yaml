@@ -1,0 +1,27 @@
+name: zerofayyz-fintech
+
+services:
+  postgres:
+    image: postgres:18.4
+    container_name: zerofayyz-fintech-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: zerofayyz_fintech
+      POSTGRES_USER: zerofayyz_fintech
+      POSTGRES_PASSWORD: zerofayyz_fintech
+    ports:
+      - "5432:5432"
+    volumes:
+      - zerofayyz_postgres_data:/var/lib/postgresql
+      - ../../database/postgres/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U zerofayyz_fintech -d zerofayyz_fintech
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  zerofayyz_postgres_data:
