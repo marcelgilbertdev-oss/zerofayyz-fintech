@@ -5,6 +5,21 @@ type ApiHealth = {
   databaseDetail: string;
 };
 
+type DashboardTransaction = {
+  customer: string;
+  email: string;
+  amount: string;
+  method: string;
+  status: string;
+  time: string;
+  initials: string;
+};
+
+type TransactionResult = {
+  data: DashboardTransaction[];
+  source: "postgresql" | "unavailable";
+};
+
 async function getApiHealth(): Promise<ApiHealth> {
   const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
 
@@ -57,6 +72,91 @@ async function getApiHealth(): Promise<ApiHealth> {
   }
 }
 
+async function getRecentTransactions(): Promise<TransactionResult> {
+  const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
+
+  try {
+    const response = await fetch(`${apiUrl}/api/v1/transactions`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(1500),
+    });
+
+    if (!response.ok) {
+      return { data: [], source: "unavailable" };
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{
+        customer?: { displayName?: unknown; email?: unknown };
+        amountMinor?: unknown;
+        currency?: unknown;
+        status?: unknown;
+        methodLabel?: unknown;
+        createdAt?: unknown;
+      }>;
+      meta?: { source?: unknown };
+    };
+
+    if (!Array.isArray(payload.data) || payload.meta?.source !== "postgresql") {
+      return { data: [], source: "unavailable" };
+    }
+
+    const data = payload.data.flatMap((transaction) => {
+      const displayName = transaction.customer?.displayName;
+      const email = transaction.customer?.email;
+      const amountMinor = transaction.amountMinor;
+      const currency = transaction.currency;
+      const status = transaction.status;
+      const methodLabel = transaction.methodLabel;
+      const createdAt = transaction.createdAt;
+
+      if (
+        typeof displayName !== "string" ||
+        typeof email !== "string" ||
+        typeof amountMinor !== "number" ||
+        typeof currency !== "string" ||
+        typeof status !== "string" ||
+        typeof methodLabel !== "string" ||
+        typeof createdAt !== "string"
+      ) {
+        return [];
+      }
+
+      const initials = displayName
+        .split(" ")
+        .map((part) => part[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+      const minutesAgo = Math.max(
+        0,
+        Math.round((Date.now() - new Date(createdAt).getTime()) / 60_000),
+      );
+      const readableStatus = status.charAt(0).toUpperCase() + status.slice(1);
+
+      return [
+        {
+          customer: displayName,
+          email,
+          amount: new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency,
+          }).format(amountMinor / 100),
+          method: methodLabel,
+          status: readableStatus,
+          time: minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.round(minutesAgo / 60)} hr ago`,
+          initials,
+        },
+      ];
+    });
+
+    return { data, source: "postgresql" };
+  } catch {
+    return { data: [], source: "unavailable" };
+  }
+}
+
 const navItems = [
   { label: "Overview", glyph: "⌂", active: true },
   { label: "Payments", glyph: "↗" },
@@ -79,13 +179,6 @@ const metrics = [
 ];
 
 const chartBars = [42, 58, 49, 72, 66, 83, 61, 78, 91, 76, 86, 96];
-
-const transactions = [
-  { customer: "Nadia Al-Sabah", email: "nadia@example.test", amount: "$420.00", method: "Visa •••• 4242", status: "Succeeded", time: "2 min ago", initials: "NA" },
-  { customer: "Omar Rahman", email: "omar@example.test", amount: "$185.50", method: "Mastercard •••• 8210", status: "Processing", time: "18 min ago", initials: "OR" },
-  { customer: "Leila Haddad", email: "leila@example.test", amount: "$760.00", method: "Visa •••• 1044", status: "Succeeded", time: "42 min ago", initials: "LH" },
-  { customer: "Yousef Karim", email: "yousef@example.test", amount: "$92.40", method: "Visa •••• 0091", status: "Review", time: "1 hr ago", initials: "YK" },
-];
 
 function BrandMark() {
   return (
@@ -111,7 +204,11 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function Home() {
-  const apiHealth = await getApiHealth();
+  const [apiHealth, transactionResult] = await Promise.all([
+    getApiHealth(),
+    getRecentTransactions(),
+  ]);
+  const transactions = transactionResult.data;
   const systemChecks = [
     {
       label: "API service",
@@ -307,7 +404,11 @@ export default async function Home() {
             <div className="flex flex-col justify-between gap-3 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:px-6">
               <div>
                 <h2 className="text-sm font-medium text-white/88">Recent transactions</h2>
-                <p className="mt-1 text-xs text-white/34">Sandbox payment activity across test customers</p>
+                <p className="mt-1 text-xs text-white/34">
+                  {transactionResult.source === "postgresql"
+                    ? "Live sandbox records from PostgreSQL"
+                    : "Transaction service unavailable"}
+                </p>
               </div>
               <button type="button" className="w-fit text-xs font-medium text-emerald-300 hover:text-emerald-200">View all transactions →</button>
             </div>
@@ -333,6 +434,13 @@ export default async function Home() {
                       <td className="px-6 py-4 text-right text-xs text-white/32">{transaction.time}</td>
                     </tr>
                   ))}
+                  {transactions.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-xs text-white/35">
+                        Transaction data is currently unavailable.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

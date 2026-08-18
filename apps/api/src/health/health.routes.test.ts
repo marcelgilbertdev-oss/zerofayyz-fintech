@@ -11,6 +11,9 @@ function createDatabaseStub(operational: boolean): Database {
         ? { operational: true, latencyMs: 3, name: "zerofayyz_fintech" }
         : { operational: false, latencyMs: null, name: null };
     },
+    async query() {
+      throw new Error("Unexpected database query in health test");
+    },
     async close() {},
   };
 }

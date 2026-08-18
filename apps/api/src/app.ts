@@ -5,6 +5,7 @@ import {
   type Database,
 } from "./database/database.js";
 import { healthRoutes } from "./health/health.routes.js";
+import { transactionRoutes } from "./transactions/transactions.routes.js";
 
 type BuildAppOptions = {
   database?: Database;
@@ -23,6 +24,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.register(healthRoutes, {
+    prefix: "/api/v1",
+    database,
+  });
+  app.register(transactionRoutes, {
     prefix: "/api/v1",
     database,
   });

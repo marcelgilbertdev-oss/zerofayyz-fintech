@@ -89,4 +89,4 @@ docs/
 
 ## Current Status
 
-The project skeleton and recruiter-facing Next.js dashboard are complete. A real Fastify API serves `GET /api/v1/health`, PostgreSQL 18.4 runs through Docker with the initial financial schema, and the dashboard displays both live readiness results. Stripe sandbox payments and verified webhooks remain the next implementation milestones.
+The project skeleton and recruiter-facing Next.js dashboard are complete. A real Fastify API serves live health and recent-transaction endpoints, PostgreSQL 18.4 runs through Docker with the initial financial schema and fictional seed records, and the dashboard reads both readiness and transaction data from the API. Stripe sandbox payments and verified webhooks remain the next implementation milestones.

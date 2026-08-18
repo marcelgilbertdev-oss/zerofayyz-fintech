@@ -1,4 +1,8 @@
-import pg from "pg";
+import pg, {
+  type QueryConfigValues,
+  type QueryResult,
+  type QueryResultRow,
+} from "pg";
 
 const { Pool } = pg;
 
@@ -10,6 +14,13 @@ export type DatabaseHealth = {
 
 export type Database = {
   checkHealth: () => Promise<DatabaseHealth>;
+  query: <
+    Row extends QueryResultRow,
+    Values extends unknown[] = unknown[],
+  >(
+    text: string,
+    values?: QueryConfigValues<Values>,
+  ) => Promise<QueryResult<Row>>;
   close: () => Promise<void>;
 };
 
@@ -51,6 +62,15 @@ export function createDatabase(
           name: null,
         };
       }
+    },
+    async query<
+      Row extends QueryResultRow,
+      Values extends unknown[] = unknown[],
+    >(
+      text: string,
+      values?: QueryConfigValues<Values>,
+    ) {
+      return pool.query<Row, Values>(text, values);
     },
     async close() {
       await pool.end();
