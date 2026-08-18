@@ -1,10 +1,10 @@
-# ZeroFayyz Fintech Cloud Platform
+# ZEROFAYYZ FINTECH
 
-## Demo Product
+## Cloud Payments & Operations Platform
 
-**ZeroPay Platform Prototype**
+**Portfolio Prototype — Sandbox Only**
 
-ZeroPay is a portfolio fintech platform demonstrating modern full-stack engineering, payment processing, transaction tracking, cloud deployment, testing, and operational documentation.
+ZEROFAYYZ FINTECH is a portfolio platform under the ZEROFAYYZ STUDIOS name. It demonstrates modern full-stack engineering, payment processing, transaction tracking, cloud deployment, testing, and operational documentation.
 
 ## Primary Goal
 
@@ -89,4 +89,4 @@ docs/
 
 ## Current Status
 
-Initial project skeleton is in progress. Framework installation and application code have not started yet.
+The project skeleton is complete. The Next.js frontend scaffold is installed and verified; backend and application feature development have not started yet.
