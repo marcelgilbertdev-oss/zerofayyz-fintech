@@ -35,6 +35,7 @@ function createTransactionDatabaseStub(): Database {
             amount_minor: "42000",
             currency: "USD",
             status: "succeeded",
+            method_label: "Sandbox card",
             created_at: new Date("2026-08-18T12:00:00.000Z"),
           } as unknown as Row,
         ],

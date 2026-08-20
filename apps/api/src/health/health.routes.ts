@@ -4,6 +4,8 @@ import type { Database } from "../database/database.js";
 
 type HealthRouteOptions = {
   database: Database;
+  stripeConfigured: boolean;
+  webhookConfigured: boolean;
 };
 
 const healthResponseSchema = {
@@ -19,7 +21,7 @@ const healthResponseSchema = {
     checks: {
       type: "object",
       additionalProperties: false,
-      required: ["database"],
+      required: ["database", "stripe", "webhook"],
       properties: {
         database: {
           type: "object",
@@ -31,6 +33,22 @@ const healthResponseSchema = {
             name: { type: ["string", "null"] },
           },
         },
+        stripe: {
+          type: "object",
+          additionalProperties: false,
+          required: ["status"],
+          properties: {
+            status: { type: "string", enum: ["configured", "unconfigured"] },
+          },
+        },
+        webhook: {
+          type: "object",
+          additionalProperties: false,
+          required: ["status"],
+          properties: {
+            status: { type: "string", enum: ["configured", "unconfigured"] },
+          },
+        },
       },
     },
   },
@@ -38,7 +56,7 @@ const healthResponseSchema = {
 
 export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (
   app,
-  { database },
+  { database, stripeConfigured, webhookConfigured },
 ) => {
   app.get(
     "/health",
@@ -65,6 +83,12 @@ export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (
             status: databaseHealth.operational ? ("operational" as const) : ("unavailable" as const),
             latencyMs: databaseHealth.latencyMs,
             name: databaseHealth.name,
+          },
+          stripe: {
+            status: stripeConfigured ? ("configured" as const) : ("unconfigured" as const),
+          },
+          webhook: {
+            status: webhookConfigured ? ("configured" as const) : ("unconfigured" as const),
           },
         },
       };

@@ -13,6 +13,7 @@ type TransactionRow = {
   amount_minor: string;
   currency: string;
   status: string;
+  method_label: string;
   created_at: Date;
 };
 
@@ -83,18 +84,26 @@ export const transactionRoutes: FastifyPluginAsync<TransactionRouteOptions> = as
     },
     async () => {
       const result = await database.query<TransactionRow>(`
-        SELECT
-          transactions.id,
-          users.display_name,
-          users.email,
-          payments.amount_minor::TEXT AS amount_minor,
-          payments.currency,
-          payments.status,
-          payments.created_at
-        FROM transactions
-        INNER JOIN payments ON payments.id = transactions.payment_id
-        INNER JOIN users ON users.id = payments.user_id
-        ORDER BY transactions.occurred_at DESC
+        SELECT *
+        FROM (
+          SELECT DISTINCT ON (payments.id)
+            transactions.id,
+            users.display_name,
+            users.email,
+            payments.amount_minor::TEXT AS amount_minor,
+            payments.currency,
+            payments.status,
+            CASE
+              WHEN payments.provider_checkout_session_id IS NOT NULL THEN 'Stripe Checkout'
+              ELSE 'Sandbox card'
+            END AS method_label,
+            payments.created_at
+          FROM transactions
+          INNER JOIN payments ON payments.id = transactions.payment_id
+          INNER JOIN users ON users.id = payments.user_id
+          ORDER BY payments.id, transactions.occurred_at DESC
+        ) AS latest_payment_events
+        ORDER BY created_at DESC
         LIMIT 10
       `);
 
@@ -107,7 +116,7 @@ export const transactionRoutes: FastifyPluginAsync<TransactionRouteOptions> = as
         amountMinor: Number.parseInt(row.amount_minor, 10),
         currency: row.currency,
         status: row.status,
-        methodLabel: "Sandbox card",
+        methodLabel: row.method_label,
         createdAt: row.created_at.toISOString(),
       }));
 

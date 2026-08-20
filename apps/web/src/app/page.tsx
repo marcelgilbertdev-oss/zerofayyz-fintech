@@ -1,8 +1,12 @@
+import { CheckoutButton } from "@/components/checkout-button";
+
 type ApiHealth = {
   operational: boolean;
   detail: string;
   databaseOperational: boolean;
   databaseDetail: string;
+  stripeConfigured: boolean;
+  webhookConfigured: boolean;
 };
 
 type DashboardTransaction = {
@@ -35,6 +39,8 @@ async function getApiHealth(): Promise<ApiHealth> {
         detail: `HTTP ${response.status}`,
         databaseOperational: false,
         databaseDetail: "Unavailable",
+        stripeConfigured: false,
+        webhookConfigured: false,
       };
     }
 
@@ -46,6 +52,8 @@ async function getApiHealth(): Promise<ApiHealth> {
           status?: unknown;
           latencyMs?: unknown;
         };
+        stripe?: { status?: unknown };
+        webhook?: { status?: unknown };
       };
     };
 
@@ -61,6 +69,8 @@ async function getApiHealth(): Promise<ApiHealth> {
         databaseOperational && typeof databaseLatency === "number"
           ? `${databaseLatency} ms`
           : "Unavailable",
+      stripeConfigured: payload.checks?.stripe?.status === "configured",
+      webhookConfigured: payload.checks?.webhook?.status === "configured",
     };
   } catch {
     return {
@@ -68,6 +78,8 @@ async function getApiHealth(): Promise<ApiHealth> {
       detail: "Unavailable",
       databaseOperational: false,
       databaseDetail: "Unavailable",
+      stripeConfigured: false,
+      webhookConfigured: false,
     };
   }
 }
@@ -203,10 +215,15 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default async function Home() {
-  const [apiHealth, transactionResult] = await Promise.all([
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string | string[] }>;
+}) {
+  const [apiHealth, transactionResult, query] = await Promise.all([
     getApiHealth(),
     getRecentTransactions(),
+    searchParams,
   ]);
   const transactions = transactionResult.data;
   const systemChecks = [
@@ -222,9 +239,23 @@ export default async function Home() {
       status: apiHealth.databaseOperational ? "Operational" : "Unavailable",
       healthy: apiHealth.databaseOperational,
     },
-    { label: "Stripe sandbox", detail: "Awaiting test keys", status: "Not connected", healthy: false },
-    { label: "Webhook queue", detail: "Not configured", status: "Not connected", healthy: false },
+    {
+      label: "Stripe sandbox",
+      detail: apiHealth.stripeConfigured ? "Test API access" : "Awaiting test key",
+      status: apiHealth.stripeConfigured ? "Configured" : "Not connected",
+      healthy: apiHealth.stripeConfigured,
+    },
+    {
+      label: "Webhook queue",
+      detail: apiHealth.webhookConfigured ? "Signature verification" : "Awaiting signing secret",
+      status: apiHealth.webhookConfigured ? "Configured" : "Not connected",
+      healthy: apiHealth.webhookConfigured,
+    },
   ];
+  const liveCheckCount = systemChecks.filter((check) => check.healthy).length;
+  const checkoutStatus = Array.isArray(query.checkout)
+    ? query.checkout[0]
+    : query.checkout;
 
   return (
     <div className="min-h-screen bg-[#07110f] text-[#edf5f1]">
@@ -303,13 +334,23 @@ export default async function Home() {
                 <span className={`size-1.5 rounded-full ${apiHealth.operational ? "bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" : "bg-amber-300"}`} />
                 {apiHealth.operational ? "API connected" : "API unavailable"}
               </span>
-              <button type="button" className="rounded-xl bg-emerald-300 px-4 py-2.5 text-xs font-semibold text-[#062018] shadow-[0_10px_30px_rgba(52,211,153,0.12)] transition hover:bg-emerald-200">+ Test payment</button>
+              <CheckoutButton />
               <div className="grid size-9 place-items-center rounded-full border border-white/10 bg-[#16241f] text-xs font-semibold text-emerald-100">MF</div>
             </div>
           </div>
         </header>
 
         <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+          {checkoutStatus && (
+            <div
+              className={`mb-5 rounded-xl border px-4 py-3 text-xs ${checkoutStatus === "success" ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-100" : "border-amber-300/20 bg-amber-300/[0.08] text-amber-100"}`}
+              role="status"
+            >
+              {checkoutStatus === "success"
+                ? "Stripe sandbox checkout completed. The signed webhook is updating the PostgreSQL ledger."
+                : "Stripe sandbox checkout was canceled. No funds moved."}
+            </div>
+          )}
           <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-emerald-300/70">
@@ -374,7 +415,7 @@ export default async function Home() {
                   <p className="mt-1 text-xs text-white/34">Real integration status</p>
                 </div>
                 <span className="rounded-full border border-amber-300/15 bg-amber-300/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
-                  {apiHealth.databaseOperational ? "2 of 4 live" : "1 of 4 live"}
+                  {liveCheckCount} of 4 live
                 </span>
               </div>
               <div className="mt-5 divide-y divide-white/[0.06]">

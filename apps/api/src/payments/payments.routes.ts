@@ -1,0 +1,309 @@
+import { randomUUID } from "node:crypto";
+
+import type { FastifyPluginAsync } from "fastify";
+import type Stripe from "stripe";
+
+import type { Database } from "../database/database.js";
+import type { StripeGateway } from "./stripe.gateway.js";
+
+type PaymentRouteOptions = {
+  database: Database;
+  stripe: StripeGateway | null;
+};
+
+type UserRow = {
+  id: string;
+};
+
+type CheckoutBody = {
+  customerEmail?: string;
+};
+
+const DEMO_AMOUNT_MINOR = 4_200;
+const DEMO_CURRENCY = "USD";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function paymentIntentId(
+  paymentIntent: string | Stripe.PaymentIntent | null,
+): string | null {
+  if (typeof paymentIntent === "string") {
+    return paymentIntent;
+  }
+
+  return paymentIntent?.id ?? null;
+}
+
+export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
+  app,
+  { database, stripe },
+) => {
+  app.post<{ Body: CheckoutBody }>(
+    "/payments/checkout-session",
+    {
+      schema: {
+        body: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            customerEmail: { type: "string", format: "email", maxLength: 254 },
+          },
+        },
+        response: {
+          201: {
+            type: "object",
+            additionalProperties: false,
+            required: ["checkoutSessionId", "url"],
+            properties: {
+              checkoutSessionId: { type: "string" },
+              url: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      if (!stripe) {
+        return reply.code(503).send({
+          error: "Stripe sandbox is not configured",
+        });
+      }
+
+      const customerEmail =
+        request.body?.customerEmail?.trim().toLowerCase() ??
+        "portfolio.customer@zerofayyz.test";
+      const paymentId = randomUUID();
+      const appUrl = process.env.APP_URL ?? "http://127.0.0.1:3000";
+
+      const userResult = await database.query<UserRow, [string, string]>(
+        `
+          INSERT INTO users (email, display_name)
+          VALUES ($1, $2)
+          ON CONFLICT (LOWER(email))
+          DO UPDATE SET updated_at = NOW()
+          RETURNING id
+        `,
+        [customerEmail, "Portfolio Recruiter"],
+      );
+      const userId = userResult.rows[0]?.id;
+
+      if (!userId) {
+        throw new Error("Unable to create the sandbox customer");
+      }
+
+      await database.query(
+        `
+          INSERT INTO payments (
+            id,
+            user_id,
+            amount_minor,
+            currency,
+            status,
+            description
+          )
+          VALUES ($1, $2, $3, $4, 'created', $5)
+        `,
+        [
+          paymentId,
+          userId,
+          DEMO_AMOUNT_MINOR,
+          DEMO_CURRENCY,
+          "ZEROFAYYZ FINTECH sandbox checkout",
+        ],
+      );
+
+      try {
+        const session = await stripe.checkout.sessions.create(
+          {
+            mode: "payment",
+            integration_identifier: "zerofayyz_fintech_demo_qjvmpxaz",
+            client_reference_id: paymentId,
+            customer_email: customerEmail,
+            success_url: `${appUrl}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${appUrl}/?checkout=canceled`,
+            line_items: [
+              {
+                quantity: 1,
+                price_data: {
+                  currency: DEMO_CURRENCY.toLowerCase(),
+                  unit_amount: DEMO_AMOUNT_MINOR,
+                  product_data: {
+                    name: "ZEROFAYYZ FINTECH Sandbox Payment",
+                    description: "Portfolio prototype transaction—no real funds move.",
+                  },
+                },
+              },
+            ],
+            metadata: {
+              payment_id: paymentId,
+              environment: "portfolio_sandbox",
+            },
+          },
+          { idempotencyKey: paymentId },
+        );
+
+        if (!session.url) {
+          throw new Error("Stripe did not return a Checkout URL");
+        }
+
+        await database.query(
+          `
+            UPDATE payments
+            SET
+              provider_checkout_session_id = $2,
+              status = 'processing',
+              updated_at = NOW()
+            WHERE id = $1
+          `,
+          [paymentId, session.id],
+        );
+
+        return reply.code(201).send({
+          checkoutSessionId: session.id,
+          url: session.url,
+        });
+      } catch (error) {
+        await database.query(
+          `
+            UPDATE payments
+            SET status = 'failed', updated_at = NOW()
+            WHERE id = $1
+          `,
+          [paymentId],
+        );
+        request.log.error({ error, paymentId }, "Unable to create Stripe Checkout Session");
+
+        return reply.code(502).send({
+          error: "Unable to start the Stripe sandbox checkout",
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/webhooks/stripe",
+    {
+      config: {
+        rawBody: true,
+      },
+      schema: {},
+    },
+    async (request, reply) => {
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      const signature = request.headers["stripe-signature"];
+
+      if (!stripe || !webhookSecret) {
+        return reply.code(503).send({
+          error: "Stripe webhook verification is not configured",
+        });
+      }
+
+      if (!request.rawBody || typeof signature !== "string") {
+        return reply.code(400).send({
+          error: "Missing Stripe webhook payload or signature",
+        });
+      }
+
+      let event: Stripe.Event;
+
+      try {
+        event = stripe.webhooks.constructEvent(
+          request.rawBody,
+          signature,
+          webhookSecret,
+        );
+      } catch {
+        return reply.code(400).send({
+          error: "Invalid Stripe webhook signature",
+        });
+      }
+
+      if (
+        event.type !== "checkout.session.completed" &&
+        event.type !== "checkout.session.async_payment_succeeded" &&
+        event.type !== "checkout.session.async_payment_failed" &&
+        event.type !== "checkout.session.expired"
+      ) {
+        return { received: true, processed: false };
+      }
+
+      const session = event.data.object;
+      const paymentId = session.client_reference_id ?? session.metadata?.payment_id;
+
+      if (!paymentId || !UUID_PATTERN.test(paymentId)) {
+        request.log.warn({ eventId: event.id }, "Stripe event has no valid local payment ID");
+        return { received: true, processed: false };
+      }
+
+      const succeeded =
+        event.type === "checkout.session.async_payment_succeeded" ||
+        (event.type === "checkout.session.completed" && session.payment_status === "paid");
+      const failed = event.type === "checkout.session.async_payment_failed";
+      const canceled = event.type === "checkout.session.expired";
+      const status = succeeded
+        ? "succeeded"
+        : failed
+          ? "failed"
+          : canceled
+            ? "canceled"
+            : "processing";
+      const transactionType = succeeded
+        ? "payment_succeeded"
+        : failed
+          ? "payment_failed"
+          : canceled
+            ? "payment_canceled"
+            : "payment_processing";
+
+      await database.query(
+        `
+          WITH recorded_event AS (
+            INSERT INTO transactions (
+              payment_id,
+              provider_event_id,
+              event_type,
+              amount_minor,
+              currency,
+              occurred_at
+            )
+            VALUES ($1, $2, $3, $4, $5, TO_TIMESTAMP($6))
+            ON CONFLICT (provider_event_id) DO NOTHING
+            RETURNING payment_id
+          ),
+          updated_payment AS (
+            UPDATE payments
+            SET
+              provider_payment_id = COALESCE($7, provider_payment_id),
+              provider_checkout_session_id = $8,
+              status = $9,
+              updated_at = NOW()
+            FROM recorded_event
+            WHERE payments.id = recorded_event.payment_id
+            RETURNING payments.id
+          )
+          INSERT INTO audit_logs (action, entity_type, entity_id, metadata)
+          SELECT
+            'stripe.webhook.processed',
+            'payment',
+            id,
+            JSONB_BUILD_OBJECT('event_id', $2, 'event_type', $10)
+          FROM updated_payment
+        `,
+        [
+          paymentId,
+          event.id,
+          transactionType,
+          session.amount_total ?? DEMO_AMOUNT_MINOR,
+          (session.currency ?? DEMO_CURRENCY).toUpperCase(),
+          event.created,
+          paymentIntentId(session.payment_intent),
+          session.id,
+          status,
+          event.type,
+        ],
+      );
+
+      return { received: true, processed: true };
+    },
+  );
+};
