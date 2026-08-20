@@ -13,12 +13,20 @@ services:
     # them across continents and a single page load pays three intercontinental
     # round-trips: viewer to Vercel, Vercel to API, API to database.
     region: singapore
-    buildCommand: npm ci && npm run build
+    # --include=dev is required: NODE_ENV=production makes npm skip
+    # devDependencies, and the TypeScript compiler and its type packages live
+    # there. Without it the build fails on missing @types.
+    buildCommand: npm ci --include=dev && npm run build
     # Migrations run before the server accepts traffic, so a deploy that
     # changes the schema cannot serve requests against the old one.
     startCommand: node dist/database/migrate.js && node dist/server.js
     healthCheckPath: /api/v1/health
     envVars:
+      # Pinned to match CI. Left unset, Render installs whatever Node is
+      # newest, which means deploying on a different major version than the
+      # pipeline tested against.
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       # Render routes to the container's published port; binding to loopback
