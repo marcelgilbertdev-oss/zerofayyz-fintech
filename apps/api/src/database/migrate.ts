@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import pg from "pg";
 
@@ -83,8 +83,11 @@ export async function migrate(
   }
 }
 
-// Running this file directly is the deployment entry point.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// Running this file directly is the deployment entry point. Compare through
+// pathToFileURL rather than string-concatenating: import.meta.url is
+// percent-encoded, so any path containing a space silently fails to match and
+// the runner does nothing at all.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = await migrate();
 
   for (const filename of result.applied) {

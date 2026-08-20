@@ -1,0 +1,31 @@
+# Render Blueprint for the API.
+#
+# The dashboard deploys to Vercel and the database is hosted on Neon, so this
+# file describes only the Fastify service. Import it from the Render dashboard
+# with New → Blueprint, then set the three secret values marked sync: false.
+services:
+  - type: web
+    name: zerofayyz-fintech-api
+    runtime: node
+    rootDir: apps/api
+    plan: free
+    buildCommand: npm ci && npm run build
+    # Migrations run before the server accepts traffic, so a deploy that
+    # changes the schema cannot serve requests against the old one.
+    startCommand: node dist/database/migrate.js && node dist/server.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render routes to the container's published port; binding to loopback
+      # only would make the service unreachable and fail the health check.
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: STRIPE_API_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: APP_URL
+        sync: false

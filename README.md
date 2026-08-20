@@ -11,7 +11,7 @@ append-only transaction ledger in PostgreSQL, and a server-rendered operations d
 Built to be read as much as run — the decisions are documented, the tests are structured
 around how payment systems actually fail, and everything is gated by CI.
 
-- **Live demo:** _not yet deployed_
+- **Live demo:** _deploying — see [the deployment runbook](docs/runbooks/DEPLOYMENT.md)_
 - **Architecture:** [docs/architecture/SYSTEM_OVERVIEW.md](docs/architecture/SYSTEM_OVERVIEW.md)
 - **Quality strategy:** [docs/QUALITY_STRATEGY.md](docs/QUALITY_STRATEGY.md)
 - **Decision records:** [docs/decisions/](docs/decisions/)

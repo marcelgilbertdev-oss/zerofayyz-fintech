@@ -1,0 +1,33 @@
+name: Keep the demo warm
+
+# Free hosting tiers idle a service out after inactivity, and the first request
+# afterwards can take the better part of a minute. A reviewer opening the demo
+# would see "Unavailable" tiles over a healthy backend. A cheap scheduled ping
+# keeps it responsive.
+#
+# Set the repository variable API_HEALTH_URL once the API is deployed:
+#   gh variable set API_HEALTH_URL --body "https://<service>.onrender.com/api/v1/health"
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping the API health endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+        run: |
+          if [ -z "$API_HEALTH_URL" ]; then
+            echo "API_HEALTH_URL is not set; nothing deployed yet. Skipping."
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API_HEALTH_URL")
+          echo "health returned $code"
+          # A cold start counts as success; the point is to wake it, not to gate on it.
+          if [ "$code" = "000" ]; then
+            echo "::warning::No response within 90s"
+          fi

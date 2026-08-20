@@ -1,5 +1,8 @@
 import { CheckoutButton } from "@/components/checkout-button";
 
+const API_BASE_URL = process.env.API_URL ?? "http://127.0.0.1:4000";
+const API_TIMEOUT_MS = Number.parseInt(process.env.API_TIMEOUT_MS ?? "8000", 10);
+
 type ApiHealth = {
   operational: boolean;
   detail: string;
@@ -26,12 +29,11 @@ type TransactionResult = {
 };
 
 async function getApiHealth(): Promise<ApiHealth> {
-  const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
 
   try {
-    const response = await fetch(`${apiUrl}/api/v1/health`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/health`, {
       cache: "no-store",
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -86,12 +88,11 @@ async function getApiHealth(): Promise<ApiHealth> {
 }
 
 async function getRecentTransactions(): Promise<TransactionResult> {
-  const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
 
   try {
-    const response = await fetch(`${apiUrl}/api/v1/transactions`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/transactions`, {
       cache: "no-store",
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -199,12 +200,11 @@ const unavailableMetrics: DashboardMetrics = {
 };
 
 async function getMetrics(): Promise<DashboardMetrics> {
-  const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
 
   try {
-    const response = await fetch(`${apiUrl}/api/v1/metrics`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/metrics`, {
       cache: "no-store",
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
 
     if (!response.ok) {
