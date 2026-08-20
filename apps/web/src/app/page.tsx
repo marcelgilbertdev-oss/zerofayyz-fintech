@@ -10,6 +10,7 @@ type ApiHealth = {
 };
 
 type DashboardTransaction = {
+  id: string;
   customer: string;
   email: string;
   amount: string;
@@ -99,6 +100,7 @@ async function getRecentTransactions(): Promise<TransactionResult> {
 
     const payload = (await response.json()) as {
       data?: Array<{
+        id?: unknown;
         customer?: { displayName?: unknown; email?: unknown };
         amountMinor?: unknown;
         currency?: unknown;
@@ -114,6 +116,7 @@ async function getRecentTransactions(): Promise<TransactionResult> {
     }
 
     const data = payload.data.flatMap((transaction) => {
+      const id = transaction.id;
       const displayName = transaction.customer?.displayName;
       const email = transaction.customer?.email;
       const amountMinor = transaction.amountMinor;
@@ -123,6 +126,7 @@ async function getRecentTransactions(): Promise<TransactionResult> {
       const createdAt = transaction.createdAt;
 
       if (
+        typeof id !== "string" ||
         typeof displayName !== "string" ||
         typeof email !== "string" ||
         typeof amountMinor !== "number" ||
@@ -149,6 +153,7 @@ async function getRecentTransactions(): Promise<TransactionResult> {
 
       return [
         {
+          id,
           customer: displayName,
           email,
           amount: new Intl.NumberFormat("en-US", {
@@ -169,6 +174,97 @@ async function getRecentTransactions(): Promise<TransactionResult> {
   }
 }
 
+type DashboardMetrics = {
+  currency: string;
+  grossVolumeMinor: number;
+  succeededCount: number;
+  successRate: number | null;
+  pendingAmountMinor: number;
+  pendingCount: number;
+  eventsRecorded: number;
+  dailyVolume: Array<{ date: string; amountMinor: number }>;
+  live: boolean;
+};
+
+const unavailableMetrics: DashboardMetrics = {
+  currency: "USD",
+  grossVolumeMinor: 0,
+  succeededCount: 0,
+  successRate: null,
+  pendingAmountMinor: 0,
+  pendingCount: 0,
+  eventsRecorded: 0,
+  dailyVolume: [],
+  live: false,
+};
+
+async function getMetrics(): Promise<DashboardMetrics> {
+  const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
+
+  try {
+    const response = await fetch(`${apiUrl}/api/v1/metrics`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(1500),
+    });
+
+    if (!response.ok) {
+      return unavailableMetrics;
+    }
+
+    const payload = (await response.json()) as {
+      currency?: unknown;
+      grossVolumeMinor?: unknown;
+      succeededCount?: unknown;
+      successRate?: unknown;
+      pending?: { amountMinor?: unknown; count?: unknown };
+      eventsRecorded?: unknown;
+      dailyVolume?: Array<{ date?: unknown; amountMinor?: unknown }>;
+    };
+
+    if (
+      typeof payload.currency !== "string" ||
+      typeof payload.grossVolumeMinor !== "number" ||
+      typeof payload.succeededCount !== "number" ||
+      typeof payload.eventsRecorded !== "number"
+    ) {
+      return unavailableMetrics;
+    }
+
+    return {
+      currency: payload.currency,
+      grossVolumeMinor: payload.grossVolumeMinor,
+      succeededCount: payload.succeededCount,
+      successRate:
+        typeof payload.successRate === "number" ? payload.successRate : null,
+      pendingAmountMinor:
+        typeof payload.pending?.amountMinor === "number"
+          ? payload.pending.amountMinor
+          : 0,
+      pendingCount:
+        typeof payload.pending?.count === "number" ? payload.pending.count : 0,
+      eventsRecorded: payload.eventsRecorded,
+      dailyVolume: Array.isArray(payload.dailyVolume)
+        ? payload.dailyVolume.flatMap((bucket) =>
+            typeof bucket.date === "string" && typeof bucket.amountMinor === "number"
+              ? [{ date: bucket.date, amountMinor: bucket.amountMinor }]
+              : [],
+          )
+        : [],
+      live: true,
+    };
+  } catch {
+    return unavailableMetrics;
+  }
+}
+
+function formatMinor(amountMinor: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amountMinor / 100);
+}
+
 const navItems = [
   { label: "Overview", glyph: "⌂", active: true },
   { label: "Payments", glyph: "↗" },
@@ -183,14 +279,6 @@ const secondaryNav = [
   { label: "Portfolio notes", glyph: "↗" },
 ];
 
-const metrics = [
-  { label: "Gross volume", value: "$48,920", note: "+12.4% vs last month", tone: "positive", glyph: "$" },
-  { label: "Successful payments", value: "1,284", note: "98.7% success rate", tone: "positive", glyph: "✓" },
-  { label: "Pending settlement", value: "$3,840", note: "8 transfers processing", tone: "neutral", glyph: "↻" },
-  { label: "Dispute rate", value: "0.18%", note: "Within healthy range", tone: "positive", glyph: "↓" },
-];
-
-const chartBars = [42, 58, 49, 72, 66, 83, 61, 78, 91, 76, 86, 96];
 
 function BrandMark() {
   return (
@@ -220,12 +308,69 @@ export default async function Home({
 }: {
   searchParams: Promise<{ checkout?: string | string[] }>;
 }) {
-  const [apiHealth, transactionResult, query] = await Promise.all([
+  const [apiHealth, transactionResult, paymentMetrics, query] = await Promise.all([
     getApiHealth(),
     getRecentTransactions(),
+    getMetrics(),
     searchParams,
   ]);
   const transactions = transactionResult.data;
+  const currency = paymentMetrics.currency;
+  const metrics = [
+    {
+      label: "Gross volume",
+      value: formatMinor(paymentMetrics.grossVolumeMinor, currency),
+      note: `${paymentMetrics.succeededCount} succeeded ${paymentMetrics.succeededCount === 1 ? "payment" : "payments"}`,
+      tone: "positive",
+      glyph: "$",
+    },
+    {
+      label: "Successful payments",
+      value: paymentMetrics.succeededCount.toLocaleString("en-US"),
+      note:
+        paymentMetrics.successRate === null
+          ? "No settled payments yet"
+          : `${paymentMetrics.successRate}% success rate`,
+      tone: "positive",
+      glyph: "✓",
+    },
+    {
+      label: "Pending settlement",
+      value: formatMinor(paymentMetrics.pendingAmountMinor, currency),
+      note: `${paymentMetrics.pendingCount} ${paymentMetrics.pendingCount === 1 ? "payment" : "payments"} processing`,
+      tone: "neutral",
+      glyph: "↻",
+    },
+    {
+      label: "Webhook events",
+      value: paymentMetrics.eventsRecorded.toLocaleString("en-US"),
+      note: "Deduplicated by Stripe event id",
+      tone: "positive",
+      glyph: "⇄",
+    },
+  ];
+  const peakDailyVolume = Math.max(
+    1,
+    ...paymentMetrics.dailyVolume.map((bucket) => bucket.amountMinor),
+  );
+  const axisLabels = [
+    paymentMetrics.dailyVolume.at(0)?.date,
+    paymentMetrics.dailyVolume.at(Math.floor(paymentMetrics.dailyVolume.length / 2))?.date,
+    paymentMetrics.dailyVolume.at(-1)?.date,
+  ].flatMap((date) =>
+    date === undefined
+      ? []
+      : [
+          new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            timeZone: "UTC",
+          }),
+        ],
+  );
+  const now = new Date();
+  const greeting =
+    now.getHours() < 12 ? "Good morning" : now.getHours() < 18 ? "Good afternoon" : "Good evening";
   const systemChecks = [
     {
       label: "API service",
@@ -327,7 +472,14 @@ export default async function Home({
             </div>
             <div className="hidden sm:block">
               <p className="text-sm font-medium text-white/82">Operations overview</p>
-              <p className="mt-0.5 text-xs text-white/35">Tuesday, 18 August 2026</p>
+              <p className="mt-0.5 text-xs text-white/35">
+                {now.toLocaleDateString("en-GB", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
             </div>
             <div className="flex items-center gap-2.5 sm:gap-3">
               <span className="hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-xs text-white/50 md:flex">
@@ -357,11 +509,11 @@ export default async function Home({
                 <span className="h-px w-5 bg-emerald-300/60" />
                 Payment operations
               </div>
-              <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">Good morning, Marcel.</h1>
+              <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{greeting}, Marcel.</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/42">Monitor the sandbox payment lifecycle, review recent activity, and verify platform health from one workspace.</p>
             </div>
             <div className="flex items-center gap-2 text-xs text-white/35">
-              <span>Demo data</span><span className="size-1 rounded-full bg-white/20" /><span>Updated just now</span>
+              <span>{paymentMetrics.live ? "Live sandbox data" : "Metrics unavailable"}</span><span className="size-1 rounded-full bg-white/20" /><span>Updated just now</span>
             </div>
           </section>
 
@@ -386,25 +538,44 @@ export default async function Home({
                 <div>
                   <p className="text-sm font-medium text-white/88">Payment volume</p>
                   <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-2xl font-semibold tracking-[-0.03em]">$48,920</span>
-                    <span className="text-xs font-medium text-emerald-300">+12.4%</span>
+                    <span className="text-2xl font-semibold tracking-[-0.03em]">
+                      {formatMinor(
+                        paymentMetrics.dailyVolume.reduce((total, bucket) => total + bucket.amountMinor, 0),
+                        currency,
+                      )}
+                    </span>
+                    <span className="text-xs font-medium text-white/38">settled</span>
                   </div>
                 </div>
-                <div className="inline-flex w-fit rounded-lg border border-white/[0.07] bg-black/10 p-1 text-[11px] text-white/38">
-                  <span className="rounded-md px-2.5 py-1">7D</span>
-                  <span className="rounded-md bg-white/[0.08] px-2.5 py-1 font-medium text-white/80">30D</span>
-                  <span className="rounded-md px-2.5 py-1">90D</span>
+                <div className="inline-flex w-fit rounded-lg border border-white/[0.07] bg-black/10 px-2.5 py-1 text-[11px] text-white/38">
+                  Last {paymentMetrics.dailyVolume.length || 12} days
                 </div>
               </div>
               <div className="mt-8 flex h-44 items-end gap-2 border-b border-white/[0.06] sm:gap-3">
-                {chartBars.map((height, index) => (
-                  <div key={`${height}-${index}`} className="group relative flex h-full flex-1 items-end">
-                    <div className="w-full rounded-t-sm bg-gradient-to-t from-emerald-500/30 to-emerald-300/85 transition group-hover:from-emerald-400/50 group-hover:to-emerald-200" style={{ height: `${height}%` }} />
+                {paymentMetrics.dailyVolume.map((bucket) => (
+                  <div
+                    key={bucket.date}
+                    className="group relative flex h-full flex-1 items-end"
+                    title={`${bucket.date}: ${formatMinor(bucket.amountMinor, currency)}`}
+                  >
+                    <div
+                      className="w-full rounded-t-sm bg-gradient-to-t from-emerald-500/30 to-emerald-300/85 transition group-hover:from-emerald-400/50 group-hover:to-emerald-200"
+                      style={{
+                        height: `${Math.max(2, Math.round((bucket.amountMinor / peakDailyVolume) * 100))}%`,
+                      }}
+                    />
                   </div>
                 ))}
+                {paymentMetrics.dailyVolume.length === 0 && (
+                  <p className="w-full self-center text-center text-xs text-white/30">
+                    Volume history unavailable.
+                  </p>
+                )}
               </div>
               <div className="mt-3 flex justify-between text-[10px] uppercase tracking-wider text-white/25">
-                <span>Jul 20</span><span>Jul 27</span><span>Aug 03</span><span>Aug 10</span><span>Aug 18</span>
+                {axisLabels.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
               </div>
             </article>
 
@@ -462,7 +633,7 @@ export default async function Home({
                 </thead>
                 <tbody className="divide-y divide-white/[0.05]">
                   {transactions.map((transaction) => (
-                    <tr key={transaction.email} className="transition-colors hover:bg-white/[0.025]">
+                    <tr key={transaction.id} className="transition-colors hover:bg-white/[0.025]">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <span className="grid size-8 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[10px] font-semibold text-emerald-100/75">{transaction.initials}</span>

@@ -6,6 +6,7 @@ import {
   type Database,
 } from "./database/database.js";
 import { healthRoutes } from "./health/health.routes.js";
+import { metricRoutes } from "./metrics/metrics.routes.js";
 import { paymentRoutes } from "./payments/payments.routes.js";
 import {
   createStripeGateway,
@@ -44,6 +45,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     database,
     stripeConfigured: stripe !== null,
     webhookConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+  });
+  app.register(metricRoutes, {
+    prefix: "/api/v1",
+    database,
   });
   app.register(paymentRoutes, {
     prefix: "/api/v1",
