@@ -15,6 +15,8 @@ around how payment systems actually fail, and everything is gated by CI.
 - **Architecture:** [docs/architecture/SYSTEM_OVERVIEW.md](docs/architecture/SYSTEM_OVERVIEW.md)
 - **Quality strategy:** [docs/QUALITY_STRATEGY.md](docs/QUALITY_STRATEGY.md)
 - **Decision records:** [docs/decisions/](docs/decisions/)
+- **How it works (full walkthrough):** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
+- **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 - **Case study (non-technical):** [docs/portfolio/CASE_STUDY.md](docs/portfolio/CASE_STUDY.md)
 
 ## Stack
@@ -41,7 +43,7 @@ TypeScript throughout, ESM, Node 20+.
   events, twelve-day volume history, and recent transactions — all derived from the database
 - Health endpoint reporting real database latency and real integration configuration
 - Migration runner with a `schema_migrations` table, applied the same way in every environment
-- 31 automated tests across three layers, all gated in CI
+- 31 automated tests across three layers, all gated in CI, plus a nine-check smoke suite that verifies the live deployment from outside
 
 ## Roadmap
 
@@ -91,6 +93,10 @@ cd apps/api && npm run test:integration
 
 ```bash
 cd apps/web && npm run test:e2e
+```
+
+```bash
+node scripts/production-smoke.mjs
 ```
 
 Integration tests need PostgreSQL running. End-to-end tests build and start both servers
