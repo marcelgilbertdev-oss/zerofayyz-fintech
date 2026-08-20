@@ -2,6 +2,8 @@
 
 ## Cloud Payments & Operations Platform
 
+[![CI](https://github.com/marcelgilbertdev-oss/zerofayyz-fintech/actions/workflows/ci.yml/badge.svg)](https://github.com/marcelgilbertdev-oss/zerofayyz-fintech/actions/workflows/ci.yml)
+
 **Portfolio prototype — Stripe sandbox only. No real funds move.**
 
 A payments and operations platform: hosted Stripe Checkout, signature-verified webhooks, an
