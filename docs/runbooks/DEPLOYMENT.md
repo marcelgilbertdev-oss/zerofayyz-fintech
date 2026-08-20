@@ -31,8 +31,14 @@ about $7/month and never sleeps. Deploy free first; upgrade only if you see it s
 ## Step 1 — The database (Neon)
 
 1. Go to **neon.tech** and sign in with GitHub.
-2. Click **Create project**. Name it `zerofayyz-fintech`. Pick the region closest to you —
-   for Kuwait, choose Europe (Frankfurt); for a Japan-facing audience, Asia Pacific (Tokyo).
+2. Click **Create project**. Name it `zerofayyz-fintech`, leave Postgres 18 selected, and
+   choose region **AWS Asia Pacific 1 (Singapore)**.
+
+   All three services must sit in the same region. A page load goes viewer → Vercel →
+   Render → Neon; spread those across continents and every load pays three intercontinental
+   round-trips. Singapore is the closest region all three providers offer on their free
+   tiers, and the reviewers for these applications are in Tokyo. `render.yaml` and
+   `apps/web/vercel.json` both pin Singapore to match.
 3. When it finishes, Neon shows a **connection string** that looks like:
 
    ```text
