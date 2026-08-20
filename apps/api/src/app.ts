@@ -21,6 +21,9 @@ type BuildAppOptions = {
 };
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
+  // Only close what this function created. An injected database belongs to
+  // the caller, and closing it here would end a pool still in use elsewhere.
+  const ownsDatabase = options.database === undefined;
   const database = options.database ?? createDatabase();
   const stripe = options.stripe === undefined
     ? createStripeGateway()
@@ -59,7 +62,11 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     prefix: "/api/v1",
     database,
   });
-  app.addHook("onClose", async () => database.close());
+  app.addHook("onClose", async () => {
+    if (ownsDatabase) {
+      await database.close();
+    }
+  });
 
   return app;
 }

@@ -9,7 +9,10 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts"
+    "test": "npm run test:unit",
+    "migrate": "tsx src/database/migrate.ts",
+    "test:unit": "node --import tsx --test src/**/*.test.ts",
+    "test:integration": "node --import tsx --test src/**/*.integration-test.ts"
   },
   "keywords": [
     "fintech",

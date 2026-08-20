@@ -286,7 +286,9 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
             'stripe.webhook.processed',
             'payment',
             id,
-            JSONB_BUILD_OBJECT('event_id', $2, 'event_type', $10)
+            -- JSONB_BUILD_OBJECT accepts "any", so an uncast bind parameter has
+            -- no inferable type and PostgreSQL rejects the statement with 42P18.
+            JSONB_BUILD_OBJECT('event_id', $2::TEXT, 'event_type', $10::TEXT)
           FROM updated_payment
         `,
         [
