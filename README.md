@@ -2,91 +2,112 @@
 
 ## Cloud Payments & Operations Platform
 
-**Portfolio Prototype — Sandbox Only**
+**Portfolio prototype — Stripe sandbox only. No real funds move.**
 
-ZEROFAYYZ FINTECH is a portfolio platform under the ZEROFAYYZ STUDIOS name. It demonstrates modern full-stack engineering, payment processing, transaction tracking, cloud deployment, testing, and operational documentation.
+A payments and operations platform: hosted Stripe Checkout, signature-verified webhooks, an
+append-only transaction ledger in PostgreSQL, and a server-rendered operations dashboard.
+Built to be read as much as run — the decisions are documented, the tests are structured
+around how payment systems actually fail, and everything is gated by CI.
 
-## Primary Goal
+- **Live demo:** _not yet deployed_
+- **Architecture:** [docs/architecture/SYSTEM_OVERVIEW.md](docs/architecture/SYSTEM_OVERVIEW.md)
+- **Quality strategy:** [docs/QUALITY_STRATEGY.md](docs/QUALITY_STRATEGY.md)
+- **Decision records:** [docs/decisions/](docs/decisions/)
+- **Case study (non-technical):** [docs/portfolio/CASE_STUDY.md](docs/portfolio/CASE_STUDY.md)
 
-Build and deploy a focused, recruiter-ready MVP quickly. Future technologies have reserved locations but are not required before the first job application.
+## Stack
 
-## Recruiter-Ready MVP
+TypeScript throughout, ESM, Node 20+.
 
-The first working release will include:
+| Layer | Choice |
+| --- | --- |
+| API | Fastify 5, JSON-schema validated responses |
+| Web | Next.js 16, React 19, server components, Tailwind |
+| Database | PostgreSQL 18, `pg`, hand-written SQL |
+| Payments | Stripe 22, hosted Checkout, signed webhooks |
+| Tests | `node --test` for unit and integration, Playwright for end-to-end |
+| CI | GitHub Actions — typecheck, lint, unit, integration, end-to-end |
 
-- Next.js web application
-- User authentication
-- User dashboard
-- Admin dashboard
-- PostgreSQL database
-- Transaction history
-- Stripe sandbox payment flow
-- Stripe webhook processing
-- Payment-status updates
-- Basic audit logging
-- Automated tests
-- Docker-based local development
-- Public deployment
-- Clear architecture and setup documentation
+## Shipped
 
-## Future Expansion
+- Hosted Stripe Checkout, with the local payment id as the idempotency key so a retry cannot
+  open a second session for one payment
+- Webhook handling with signature verification against the raw body, and idempotency enforced
+  by a unique constraint rather than by application branching
+- Transaction ledger, payment status lifecycle, and audit logging written in one statement
+- Live dashboard: platform health, gross volume, success rate, pending settlement, recorded
+  events, twelve-day volume history, and recent transactions — all derived from the database
+- Health endpoint reporting real database latency and real integration configuration
+- Migration runner with a `schema_migrations` table, applied the same way in every environment
+- 31 automated tests across three layers, all gated in CI
 
-Reserved placeholders exist for:
+## Roadmap
 
-- React Native mobile application
-- MongoDB-backed activity events
-- Solidity smart contracts
-- Go services or blockchain integration
-- Cloud infrastructure automation
-- CI/CD workflows
-- Gabriel or AI-assisted background workers
+Phase 1 is complete. Later phases are listed because they are planned, not because they exist.
 
-These features are intentionally outside the first MVP unless later promoted into scope.
+| Phase | Scope | Status |
+| --- | --- | --- |
+| 1 | Payments, webhooks, ledger, dashboard, tests, CI | ✅ Complete |
+| 2 | Public deployment and live webhook registration | 🔜 Next |
+| 3 | Authentication and an admin view | Planned |
+| 4 | MongoDB-backed activity events | Planned |
+| 5 | Infrastructure as code, container deployment | Planned |
+| 6 | Go service, Solidity settlement experiment, React Native client | Exploratory |
 
-## Project Structure
+Reserved directories exist for the later phases and contain no implementation. They are
+placeholders for planned work, not stubs of missing work.
 
-```text
-apps/
-  web/                 Next.js web app and admin dashboard
-  api/                 Backend API
-  mobile/              Future React Native app
+## Running it locally
 
-packages/
-  shared-types/        Shared TypeScript contracts
+Full detail in [docs/runbooks/LOCAL_DEVELOPMENT.md](docs/runbooks/LOCAL_DEVELOPMENT.md).
 
-services/
-  activity-log/        Future MongoDB activity-event service
-  gabriel-worker/      Future AI/Gabriel worker
-
-database/
-  postgres/            Relational database migrations and seeds
-  mongodb/             Future document-database material
-
-integrations/
-  stripe/              Stripe sandbox integration
-  webhooks/            External webhook handling
-
-infrastructure/
-  docker/              Local container configuration
-  cloud/               Future deployment infrastructure
-  ci/                  Future automated build and test workflows
-
-contracts/
-  solidity/            Future Solidity contracts
-  go/                  Future Go components
-
-tests/
-  unit/                Focused component and function tests
-  integration/         API, database, and payment integration tests
-  e2e/                 Browser-level user-flow tests
-
-docs/
-  architecture/        System design and diagrams
-  runbooks/            Setup, deployment, and recovery instructions
-  decisions/           Architecture decision records
-  portfolio/           Recruiter-facing case-study material
+```bash
+docker compose -f infrastructure/docker/compose.yaml up -d postgres
 ```
 
-## Current Status
+```bash
+cd apps/api && npm install && npm run migrate && npm run dev
+```
 
-The project skeleton and recruiter-facing Next.js dashboard are complete. A real Fastify API serves live health and recent-transaction endpoints, PostgreSQL 18.4 runs through Docker with the initial financial schema and fictional seed records, and the dashboard reads both readiness and transaction data from the API. Stripe sandbox payments and verified webhooks remain the next implementation milestones.
+```bash
+cd apps/web && npm install && npm run dev
+```
+
+Copy `.env.example` to `.env` and fill in Stripe test keys. Use a **restricted** test key
+(`rk_test_`) with Checkout write access rather than a full secret key — the reasoning is in
+[ADR 0003](docs/decisions/0003-restrict-the-stripe-key-and-keep-it-server-side.md).
+
+## Tests
+
+```bash
+cd apps/api && npm run test:unit
+```
+
+```bash
+cd apps/api && npm run test:integration
+```
+
+```bash
+cd apps/web && npm run test:e2e
+```
+
+Integration tests need PostgreSQL running. End-to-end tests build and start both servers
+themselves.
+
+## Project structure
+
+```text
+apps/api           Fastify API — health, metrics, transactions, payments, webhooks
+apps/web           Next.js dashboard and checkout proxy
+database/postgres  Migrations and demo seed data
+docs/              Architecture, decisions, quality strategy, runbooks, case study
+infrastructure/    Docker compose for local PostgreSQL
+.github/workflows  CI pipeline
+```
+
+Directories for later phases (`apps/mobile`, `services/`, `contracts/`, `database/mongodb`)
+are reserved and empty.
+
+## Licence
+
+MIT. Sandbox demonstration project; not affiliated with Stripe.

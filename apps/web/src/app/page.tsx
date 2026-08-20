@@ -429,10 +429,18 @@ export default async function Home({
               key={item.label}
               type="button"
               aria-current={item.active ? "page" : undefined}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${item.active ? "bg-white/[0.08] font-medium text-white shadow-[inset_3px_0_0_#6ee7b7]" : "text-white/48 hover:bg-white/[0.04] hover:text-white/80"}`}
+              aria-disabled={item.active ? undefined : true}
+              disabled={!item.active}
+              title={item.active ? undefined : "Planned — see the roadmap in the README"}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${item.active ? "bg-white/[0.08] font-medium text-white shadow-[inset_3px_0_0_#6ee7b7]" : "cursor-not-allowed text-white/30"}`}
             >
               <span className="grid size-5 place-items-center text-sm text-emerald-200/80">{item.glyph}</span>
               {item.label}
+              {!item.active && (
+                <span className="ml-auto rounded-full border border-white/[0.07] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/25">
+                  Planned
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -441,7 +449,14 @@ export default async function Home({
 
         <nav className="space-y-1" aria-label="Project navigation">
           {secondaryNav.map((item) => (
-            <button key={item.label} type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/48 transition-colors hover:bg-white/[0.04] hover:text-white/80">
+            <button
+              key={item.label}
+              type="button"
+              aria-disabled
+              disabled
+              title="Planned — see the roadmap in the README"
+              className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/30"
+            >
               <span className="grid size-5 place-items-center text-sm text-emerald-200/70">{item.glyph}</span>
               {item.label}
             </button>
@@ -622,7 +637,7 @@ export default async function Home({
                     : "Transaction service unavailable"}
                 </p>
               </div>
-              <button type="button" className="w-fit text-xs font-medium text-emerald-300 hover:text-emerald-200">View all transactions →</button>
+              <span className="w-fit text-xs text-white/25">Showing the 10 most recent</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left">
