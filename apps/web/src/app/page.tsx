@@ -258,10 +258,12 @@ async function getMetrics(): Promise<DashboardMetrics> {
 }
 
 function formatMinor(amountMinor: number, currency: string): string {
+  // Minor units are exact; rounding to whole currency would display $185.50 of
+  // pending settlement as $186 and make the tiles fail to reconcile against
+  // the ledger below them.
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
   }).format(amountMinor / 100);
 }
 
