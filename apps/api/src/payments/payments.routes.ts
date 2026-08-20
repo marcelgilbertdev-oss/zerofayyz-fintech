@@ -255,7 +255,13 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
             ? "payment_canceled"
             : "payment_processing";
 
-      await database.query(
+      // The closing INSERT selects from updated_payment, so it writes one row for
+      // a genuinely new event and none for a redelivery. rowCount therefore
+      // reports whether this delivery actually changed anything.
+      let written: number;
+
+      try {
+        const result = await database.query(
         `
           WITH recorded_event AS (
             INSERT INTO transactions (
@@ -291,21 +297,47 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
             JSONB_BUILD_OBJECT('event_id', $2::TEXT, 'event_type', $10::TEXT)
           FROM updated_payment
         `,
-        [
-          paymentId,
-          event.id,
-          transactionType,
-          session.amount_total ?? DEMO_AMOUNT_MINOR,
-          (session.currency ?? DEMO_CURRENCY).toUpperCase(),
-          event.created,
-          paymentIntentId(session.payment_intent),
-          session.id,
-          status,
-          event.type,
-        ],
-      );
+          [
+            paymentId,
+            event.id,
+            transactionType,
+            session.amount_total ?? DEMO_AMOUNT_MINOR,
+            (session.currency ?? DEMO_CURRENCY).toUpperCase(),
+            event.created,
+            paymentIntentId(session.payment_intent),
+            session.id,
+            status,
+            event.type,
+          ],
+        );
 
-      return { received: true, processed: true };
+        written = result.rowCount ?? 0;
+      } catch (error) {
+        // 23503 is a foreign-key violation: the event names a payment this
+        // system has never issued. Acknowledge it so Stripe stops retrying
+        // forever, but record nothing — an unknown reference is not our event.
+        if ((error as { code?: string }).code === "23503") {
+          request.log.warn(
+            { eventId: event.id, paymentId },
+            "Stripe event references an unknown payment",
+          );
+
+          return { received: true, processed: false };
+        }
+
+        throw error;
+      }
+
+      if (written === 0) {
+        request.log.info(
+          { eventId: event.id },
+          "Stripe event was already recorded; nothing changed",
+        );
+      }
+
+      // Report what actually happened. A redelivery is acknowledged, not
+      // claimed as processed.
+      return { received: true, processed: written > 0 };
     },
   );
 };

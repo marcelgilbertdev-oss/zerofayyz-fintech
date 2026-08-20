@@ -24,7 +24,10 @@ type LedgerWrite = {
  * Records every write the handler attempts, so a test can assert not only what
  * was written but that nothing was written at all.
  */
-function createRecordingDatabase(writes: LedgerWrite[]): Database {
+function createRecordingDatabase(
+  writes: LedgerWrite[],
+  options: { rowCount?: number; failWith?: { code: string } } = {},
+): Database {
   return {
     async checkHealth() {
       return { operational: true, latencyMs: 1, name: "zerofayyz_fintech" };
@@ -38,9 +41,13 @@ function createRecordingDatabase(writes: LedgerWrite[]): Database {
     ): Promise<QueryResult<Row>> {
       writes.push({ text, values: (values ?? []) as unknown[] });
 
+      if (options.failWith && text.includes("INSERT INTO transactions")) {
+        throw Object.assign(new Error("simulated database error"), options.failWith);
+      }
+
       return {
         command: "INSERT",
-        rowCount: 1,
+        rowCount: options.rowCount ?? 1,
         oid: 0,
         fields: [],
         rows: [],
@@ -103,7 +110,12 @@ function checkoutEvent(
 async function postWebhook(
   event: Stripe.Event | Error,
   writes: LedgerWrite[],
-  options: { secret?: string | undefined; signature?: string | undefined } = {},
+  options: {
+    secret?: string | undefined;
+    signature?: string | undefined;
+    rowCount?: number;
+    failWith?: { code: string };
+  } = {},
 ) {
   const previousSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const secret = "secret" in options ? options.secret : WEBHOOK_SECRET;
@@ -117,7 +129,10 @@ async function postWebhook(
   }
 
   const app = buildApp({
-    database: createRecordingDatabase(writes),
+    database: createRecordingDatabase(writes, {
+      ...(options.rowCount === undefined ? {} : { rowCount: options.rowCount }),
+      ...(options.failWith === undefined ? {} : { failWith: options.failWith }),
+    }),
     logger: false,
     stripe: createStripeStub(event),
   });
@@ -297,4 +312,43 @@ test("the webhook stays disabled when no signing secret is configured", async ()
 
   assert.equal(response.statusCode, 503);
   assert.deepEqual(writes, []);
+});
+
+test("a redelivered event is acknowledged but not claimed as processed", async () => {
+  const writes: LedgerWrite[] = [];
+  // ON CONFLICT DO NOTHING means the chained audit insert writes no rows.
+  const response = await postWebhook(
+    checkoutEvent("checkout.session.completed", { payment_status: "paid" }),
+    writes,
+    { rowCount: 0 },
+  );
+
+  assert.equal(response.statusCode, 200);
+  // Stripe needs the 2xx to stop retrying, but nothing was recorded, and
+  // saying otherwise would make the response untrue.
+  assert.deepEqual(response.json(), { received: true, processed: false });
+});
+
+test("an event naming an unknown payment is acknowledged, not retried forever", async () => {
+  const writes: LedgerWrite[] = [];
+  const response = await postWebhook(
+    checkoutEvent("checkout.session.completed", { payment_status: "paid" }),
+    writes,
+    { failWith: { code: "23503" } },
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), { received: true, processed: false });
+});
+
+test("an unexpected database error is not swallowed", async () => {
+  const writes: LedgerWrite[] = [];
+  const response = await postWebhook(
+    checkoutEvent("checkout.session.completed", { payment_status: "paid" }),
+    writes,
+    { failWith: { code: "08006" } },
+  );
+
+  // A dropped connection must fail loudly so Stripe retries the delivery.
+  assert.equal(response.statusCode, 500);
 });

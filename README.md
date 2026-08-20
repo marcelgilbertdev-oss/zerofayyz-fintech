@@ -43,7 +43,7 @@ TypeScript throughout, ESM, Node 20+.
   events, twelve-day volume history, and recent transactions — all derived from the database
 - Health endpoint reporting real database latency and real integration configuration
 - Migration runner with a `schema_migrations` table, applied the same way in every environment
-- 31 automated tests across three layers, all gated in CI, plus a nine-check smoke suite that verifies the live deployment from outside
+- 34 automated tests across three layers, all gated in CI, plus a nine-check smoke suite that verifies the live deployment from outside
 
 ## Roadmap
 

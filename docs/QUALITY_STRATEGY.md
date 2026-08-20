@@ -17,7 +17,7 @@ cannot see.
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 19 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses |
+| Unit | 22 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses |
 | Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency, migrations |
 | End-to-end | 5 | Built servers in a real browser | Rendering, hydration, the reviewer's path |
 

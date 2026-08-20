@@ -142,6 +142,8 @@ test("redelivering the same event changes nothing", async () => {
   const response = await deliver("evt_integration_first");
 
   assert.equal(response.statusCode, 200);
+  // Acknowledged so Stripe stops retrying, but reported honestly as unprocessed.
+  assert.deepEqual(response.json(), { received: true, processed: false });
 
   const transactions = await database.query<{ count: string }>(
     "SELECT COUNT(*)::TEXT AS count FROM transactions WHERE payment_id = $1",
