@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
 
-import { hashPassword } from "../auth/password.js";
+import { hashPassword, verifyPassword } from "../auth/password.js";
 import { createDatabase } from "./database.js";
 
 /**
@@ -50,6 +50,45 @@ export async function seedStaff(
       `,
       [DEMO_EMAIL, demoHash, ADMIN_EMAIL, adminHash],
     );
+
+    // Read back and verify, rather than trusting the write.
+    //
+    // Writing a hash proves a row exists; it does not prove the password can
+    // sign anyone in. The admin password is typed blind at a hidden prompt, so
+    // a stray character produces a confident success message and a login that
+    // refuses you — with no way to tell which of the two went wrong. This
+    // re-reads what was stored and runs the real verifier against it, so
+    // "seeded" means "these credentials work", not "a query returned".
+    const stored = await database.query<
+      { email: string; role: string; password_hash: string | null }
+    >(
+      `
+        SELECT email, role, password_hash
+          FROM users
+         WHERE LOWER(email) IN (LOWER($1), LOWER($2))
+      `,
+      [DEMO_EMAIL, ADMIN_EMAIL],
+    );
+
+    for (const [email, password] of [
+      [DEMO_EMAIL, DEMO_PASSWORD],
+      [ADMIN_EMAIL, adminPassword],
+    ] as const) {
+      const row = stored.rows.find(
+        (candidate) => candidate.email.toLowerCase() === email.toLowerCase(),
+      );
+
+      if (!row?.password_hash) {
+        throw new Error(`${email} was not written to the database`);
+      }
+
+      if (!(await verifyPassword(password, row.password_hash))) {
+        throw new Error(
+          `${email} was written but its password does not verify — ` +
+            "the stored hash does not match the password given",
+        );
+      }
+    }
   } finally {
     await database.close();
   }
@@ -73,5 +112,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
 
   await seedStaff(connectionString, adminPassword);
-  console.log(`seeded ${DEMO_EMAIL} (operator) and ${ADMIN_EMAIL} (admin)`);
+  console.log(
+    `seeded and VERIFIED ${DEMO_EMAIL} (operator) and ${ADMIN_EMAIL} (admin)\n` +
+      "Both passwords were read back from the database and checked against the " +
+      "real verifier — these credentials will sign in.",
+  );
 }
