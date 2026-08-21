@@ -322,6 +322,22 @@ export const refundRoutes: FastifyPluginAsync<RefundRouteOptions> = async (
           { idempotencyKey: `refund-request-${row.id}` },
         );
       } catch (error) {
+        // Surface Stripe's own reason, not just the fact of failure.
+        //
+        // The first version said only "Stripe refused the refund", which tells
+        // the operator standing in front of it nothing they can act on — a
+        // missing key permission and an already-refunded charge look
+        // identical. Stripe's messages are written for developers, contain no
+        // cardholder data, and this endpoint is admin-only, so passing the
+        // reason through costs nothing and saves a dashboard expedition.
+        const stripeError = error as {
+          message?: string;
+          code?: string;
+          type?: string;
+          statusCode?: number;
+        };
+        const reason = stripeError.message ?? "no reason given";
+
         // The claim is released so the request can be decided again; the
         // failed attempt still goes into the history, tolerantly — a logging
         // failure must not leave the row claimed forever.
@@ -334,13 +350,20 @@ export const refundRoutes: FastifyPluginAsync<RefundRouteOptions> = async (
             entityId: row.id,
             actorUserId: request.session?.userId ?? null,
             sessionId: request.session?.sessionId ?? null,
-            metadata: { paymentId: row.payment_id },
+            metadata: {
+              paymentId: row.payment_id,
+              stripeCode: stripeError.code ?? null,
+              stripeType: stripeError.type ?? null,
+              reason,
+            },
           },
           (auditError) => request.log.error({ auditError }, "audit write failed"),
         );
         request.log.error({ error, requestId: row.id }, "Stripe refund failed");
 
-        return reply.code(502).send({ error: "Stripe refused the refund; the request is pending again" });
+        return reply.code(502).send({
+          error: `Stripe refused the refund: ${reason} — the request is pending again`,
+        });
       }
 
       await database.query(

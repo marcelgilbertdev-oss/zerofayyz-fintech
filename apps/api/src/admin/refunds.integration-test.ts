@@ -432,7 +432,12 @@ test("a Stripe failure releases the claim so the request can be decided again", 
     ...stripeStub([]),
     refunds: {
       async create() {
-        throw new Error("Stripe sandbox exploded");
+        // Shaped like a real Stripe error so the assertion below covers the
+        // path that actually matters: the operator learning WHY.
+        throw Object.assign(new Error("The provided key does not have the required permissions."), {
+          code: "permission_error",
+          type: "invalid_request_error",
+        });
       },
     } as unknown as Stripe["refunds"],
   };
@@ -456,6 +461,8 @@ test("a Stripe failure releases the claim so the request can be decided again", 
     payload: {},
   });
   assert.equal(failed.statusCode, 502);
+  // The operator must be told what to fix, not merely that something broke.
+  assert.match(failed.json().error, /required permissions/);
 
   // The claim was released: still pending, decidable by someone, and the
   // failed attempt is in the history.
@@ -466,9 +473,12 @@ test("a Stripe failure releases the claim so the request can be decided again", 
   assert.equal(stored.rows[0]?.status, "pending");
   assert.equal(stored.rows[0]?.decided_by, null);
 
-  const audit = await database.query<{ action: string }>(
-    "SELECT action FROM audit_logs WHERE action = 'refund.approve_failed' AND entity_id = $1",
+  const audit = await database.query<{ action: string; metadata: { stripeCode?: string } }>(
+    "SELECT action, metadata FROM audit_logs WHERE action = 'refund.approve_failed' AND entity_id = $1",
     [requestId],
   );
   assert.equal(audit.rows.length >= 1, true);
+  // And the history keeps the provider's code, so the same failure recurring
+  // is diagnosable weeks later.
+  assert.equal(audit.rows[0]?.metadata?.stripeCode, "permission_error");
 });
