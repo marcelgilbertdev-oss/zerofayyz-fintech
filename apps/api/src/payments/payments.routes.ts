@@ -17,9 +17,20 @@ type UserRow = {
 
 type CheckoutBody = {
   customerEmail?: string;
+  amountMinor?: number;
 };
 
 const DEMO_AMOUNT_MINOR = 4_200;
+// Stripe will not charge less than $0.50 in USD, so the floor mirrors the
+// gateway's own rule rather than inventing a softer one.
+//
+// The ceiling is ours, and it is deliberately generous: anyone may pick any
+// amount up to $10,000. It is bounded at all because this endpoint is public
+// and unauthenticated — an unbounded amount lets one stranger put nine digits
+// into the gross-volume tile and ruin the dashboard for everyone after them.
+// A payments reviewer expects to find a bound here; its absence is the finding.
+const MIN_AMOUNT_MINOR = 50;
+const MAX_AMOUNT_MINOR = 1_000_000;
 const DEMO_CURRENCY = "USD";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -47,6 +58,11 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
           additionalProperties: false,
           properties: {
             customerEmail: { type: "string", format: "email", maxLength: 254 },
+            amountMinor: {
+              type: "integer",
+              minimum: MIN_AMOUNT_MINOR,
+              maximum: MAX_AMOUNT_MINOR,
+            },
           },
         },
         response: {
@@ -72,6 +88,7 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
       const customerEmail =
         request.body?.customerEmail?.trim().toLowerCase() ??
         "portfolio.customer@zerofayyz.test";
+      const amountMinor = request.body?.amountMinor ?? DEMO_AMOUNT_MINOR;
       const paymentId = randomUUID();
       const appUrl = process.env.APP_URL ?? "http://127.0.0.1:3000";
 
@@ -106,7 +123,7 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
         [
           paymentId,
           userId,
-          DEMO_AMOUNT_MINOR,
+          amountMinor,
           DEMO_CURRENCY,
           "ZEROFAYYZ FINTECH sandbox checkout",
         ],
@@ -126,7 +143,7 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
                 quantity: 1,
                 price_data: {
                   currency: DEMO_CURRENCY.toLowerCase(),
-                  unit_amount: DEMO_AMOUNT_MINOR,
+                  unit_amount: amountMinor,
                   product_data: {
                     name: "ZEROFAYYZ FINTECH Sandbox Payment",
                     description: "Portfolio prototype transaction—no real funds move.",

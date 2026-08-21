@@ -530,6 +530,9 @@ export default async function Home({
                 label={t.header.testPayment}
                 loadingLabel={t.header.openingStripe}
                 fallbackError={t.checkout.error}
+                amountLabel={t.checkout.amountLabel}
+                amountHint={t.checkout.amountHint}
+                amountInvalid={t.checkout.amountInvalid}
               />
               <div className="grid size-9 place-items-center rounded-full border border-white/10 bg-[#16241f] text-xs font-semibold text-emerald-100">MF</div>
             </div>

@@ -131,6 +131,9 @@ const en = {
   checkout: {
     error: "Unable to start checkout",
     unavailable: "The payment API is currently unavailable",
+    amountLabel: "Test payment amount in US dollars",
+    amountHint: "Any amount from $0.50 to $10,000.00",
+    amountInvalid: "Enter an amount between $0.50 and $10,000.00",
   },
 };
 
@@ -265,6 +268,9 @@ const ja: Dictionary = {
   checkout: {
     error: "決済を開始できませんでした",
     unavailable: "決済 API を現在利用できません",
+    amountLabel: "テスト決済の金額（米ドル）",
+    amountHint: "$0.50 〜 $10,000.00 の範囲で入力できます",
+    amountInvalid: "$0.50 〜 $10,000.00 の範囲で入力してください",
   },
 };
 

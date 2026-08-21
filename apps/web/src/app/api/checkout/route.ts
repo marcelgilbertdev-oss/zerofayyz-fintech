@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
 
-export async function POST() {
+export async function POST(request: Request) {
   const apiUrl = process.env.API_URL ?? "http://127.0.0.1:4000";
   const timeoutMs = Number.parseInt(process.env.API_TIMEOUT_MS ?? "15000", 10);
+
+  // Forward only the amount, and only when it is an integer. The API validates
+  // it again against its own bounds; this proxy is a courier, not a gatekeeper.
+  let forwarded: Record<string, number> = {};
+  try {
+    const body = (await request.json()) as { amountMinor?: unknown };
+    if (typeof body.amountMinor === "number" && Number.isInteger(body.amountMinor)) {
+      forwarded = { amountMinor: body.amountMinor };
+    }
+  } catch {
+    forwarded = {};
+  }
 
   try {
     const response = await fetch(`${apiUrl}/api/v1/payments/checkout-session`, {
@@ -10,7 +22,7 @@ export async function POST() {
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify(forwarded),
       cache: "no-store",
       signal: AbortSignal.timeout(timeoutMs),
     });

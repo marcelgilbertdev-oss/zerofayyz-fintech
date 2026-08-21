@@ -24,7 +24,8 @@ you have five spare minutes; it is responsive and they will try.
 1. Open **https://zerofayyz-fintech.vercel.app**
 2. Look at the four tiles across the top.
 
-**Expect:** Gross volume shows a real dollar amount (currently around $1,222.00),
+**Expect:** Gross volume shows a real dollar amount (it grows by whatever
+amount the last person tested with, so it will not match a number written here),
 Successful payments a whole number, Pending settlement an amount ending in odd
 cents like `.50`, and Webhook events a count.
 
@@ -41,7 +42,8 @@ database and there is a test that should have caught it.
 3. Find the **System health** panel on the right.
 
 **Expect:** "4 OF 4 LIVE" and four green dots — API service, PostgreSQL (showing
-a latency like `3 ms`), Stripe sandbox, Webhook queue.
+a latency in milliseconds — a low number when the API is warm, a few
+hundred on the first request after it has been idle), Stripe sandbox, Webhook queue.
 
 **Proves:** the API is genuinely reachable, the database answered *just now*, and
 both Stripe integrations are configured. The latency number is measured per
@@ -75,27 +77,64 @@ on a Japanese page.
 
 ### A5 · Keyboard only
 
-7. Click once on empty page background, then press **Tab** repeatedly.
+7. Click once on an empty part of the page background — not on a button. This
+   moves focus into the page instead of the browser's address bar.
+8. Press **Tab** five times, slowly.
 
-**Expect:** a visible focus ring moves through the controls and reaches the
-**+ Test payment** button. Press **Enter** on it — checkout opens.
+**Expect exactly five stops, in this order:**
 
-**Proves:** the interface works without a mouse. This is WCAG 2.1 AA territory
-and it is checked automatically by axe-core in CI against both languages —
-introducing that check found and fixed 14 real contrast failures.
+| Tab | Focus lands on | Where |
+|---|---|---|
+| 1 | **Overview** | left sidebar, top nav item |
+| 2 | **English** | top bar, right side |
+| 3 | **日本語** | top bar, right side |
+| 4 | **amount field** | top bar, shows `$ 42.00` |
+| 5 | **+ Test payment** | top bar, far right |
+
+Each stop shows a **mint-green ring** around the control — a 2px outline offset
+3px from the edge, so it sits clear of the button rather than hugging it.
+
+9. With **+ Test payment** ringed, press **Enter**. Stripe Checkout opens.
+   Press the browser Back button to return.
+
+**Why only five stops:** the other seven sidebar items — the four badged
+**PLANNED**, plus System health, Audit log and Portfolio notes — are genuinely
+disabled, not merely styled grey. They carry `aria-disabled="true"` and the
+keyboard skips them entirely. That is the correct behaviour: a keyboard or
+screen-reader user is never sent to a control that does nothing.
+
+**Red flag:** Tab stops on any of those seven, or a stop shows no visible ring.
+Either one means focus handling has regressed.
+
+**Proves:** the interface is fully operable without a mouse. This is WCAG 2.1 AA
+territory and it is checked automatically by axe-core in CI against both
+languages — introducing that check found and fixed 14 real contrast failures.
+
+> **Say this in an interview:** "Disabled navigation is removed from the tab
+> order rather than just greyed out, so keyboard users aren't sent to dead
+> controls — and the whole page is scanned by axe-core in CI in both English and
+> Japanese, which is how the contrast failures got found."
 
 ### A6 · A complete payment, end to end
 
-8. Back on the dashboard, note the current **Gross volume** and **Webhook events**
+10. Back on the dashboard, note the current **Gross volume** and **Webhook events**
    numbers. Write them down.
-9. Click **+ Test payment**.
-10. On Stripe's page, pay with card `4242 4242 4242 4242`, any future expiry, any
+11. **Type an amount of your own choosing** into the `$` field — pick something
+    memorable and odd, like `137.42`. Anything from `0.50` to `10000.00` works.
+12. Click **+ Test payment**.
+13. On Stripe's page, pay with card `4242 4242 4242 4242`, any future expiry, any
     CVC, any name, any postcode.
-11. You return to the dashboard with a green success banner.
-12. **Refresh the page.**
+14. You return to the dashboard with a green success banner.
+15. **Refresh the page.**
 
-**Expect:** the new payment appears at the top of the table as **Succeeded**;
-Gross volume increased by $42.00; Webhook events increased by 1.
+**Expect:** the new payment appears at the top of the table as **Succeeded** for
+**the exact amount you typed**; Gross volume increased by that amount; Webhook
+events increased by 1.
+
+**Why an odd amount of your own choosing matters:** it is the difference between
+believing the ledger and proving it. A number only you picked, appearing in the
+table and moving the headline total by exactly that much, cannot be a cached
+page or a seeded fixture.
 
 **Proves — and this is the whole platform in one step:** your browser asked the
 API to create a session, the API wrote a payment row and called Stripe, you paid
@@ -105,8 +144,8 @@ Singapore, and the dashboard read it back. Card details never touched this syste
 
 ### A7 · The same ledger through two other frameworks
 
-13. Open **https://zerofayyz-fintech-vue.vercel.app**
-14. Open **https://zerofayyz-fintech-svelte.vercel.app**
+16. Open **https://zerofayyz-fintech-vue.vercel.app**
+17. Open **https://zerofayyz-fintech-svelte.vercel.app**
 
 **Expect:** both show the *same* gross volume, the same payment you just made,
 and "4 of 4 live" — including the $42.00 from step 10.
@@ -117,7 +156,7 @@ consumers use it unmodified. This is the artifact for the HENNGE applications.
 
 ### A8 · The sandbox framing is visible
 
-15. Look at the sidebar badge and the page footer.
+18. Look at the sidebar badge and the page footer.
 
 **Expect:** "Sandbox · TEST MODE", "Simulated portfolio environment", and
 "Sandbox data only · No real funds processed".
@@ -190,10 +229,10 @@ sleeps, and measuring a cold start as latency would misreport the system.
 
 ### B4 · Idempotency, the highest-value thing you can demonstrate
 
-15. Go to **https://dashboard.stripe.com/test/workbench/events**
-16. Open the most recent `checkout.session.completed`
-17. Click **Resend** on the `zerofayyz-fintech-api` destination
-18. Refresh the dashboard
+1. Go to **https://dashboard.stripe.com/test/workbench/events**
+2. Open the most recent `checkout.session.completed`
+3. Click **Resend** on the `zerofayyz-fintech-api` destination
+4. Refresh the dashboard
 
 **Expect: nothing changes.** Same gross volume, same event count, no new row.
 
@@ -245,6 +284,15 @@ Next.js dashboard by design (`APP_URL`).
 
 **Japanese on production:** `?lang=ja` renders 総取引額 / オペレーション概要 with
 zero English interface copy leaked.
+
+**Keyboard focus order measured on production (A5):** the live page exposes 11
+focusable elements, of which exactly **4 are tabbable** — Overview, English,
+日本語, + Test payment, in that DOM order. The other seven sidebar items carry
+`aria-disabled="true"` and are correctly skipped. Focus landing on
+**+ Test payment** matches `:focus-visible` and paints a `2px solid rgb(110,231,183)`
+outline at `3px` offset. A5 in this charter was rewritten from those measured
+values, so the step now states the exact number of Tab presses rather than
+"press Tab repeatedly".
 
 ### Failures found and fixed along the way (keep these — they are the story)
 

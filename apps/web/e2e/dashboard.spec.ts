@@ -74,3 +74,48 @@ test("the sandbox framing is visible to a reviewer", async ({ page }) => {
   await expect(page.getByText(/No real funds/i).first()).toBeVisible();
   await expect(page.getByText("Test mode").first()).toBeVisible();
 });
+
+test("a reviewer can choose the payment amount", async ({ page }) => {
+  await page.goto("/");
+
+  const amount = page.getByLabel(/test payment amount/i);
+  await expect(amount).toBeVisible();
+
+  // Pre-filled, so the one-click path still works for anyone who ignores it.
+  await expect(amount).toHaveValue("42.00");
+
+  await amount.fill("173.50");
+  await expect(amount).toHaveValue("173.50");
+  await expect(amount).toHaveAttribute("aria-invalid", "false");
+});
+
+test("an out-of-range amount is refused before any network call", async ({ page }) => {
+  await page.goto("/");
+
+  const amount = page.getByLabel(/test payment amount/i);
+  const button = page.getByRole("button", { name: /test payment/i });
+
+  let checkoutCalls = 0;
+  await page.route("**/api/checkout", async (route) => {
+    checkoutCalls += 1;
+    await route.abort();
+  });
+
+  await amount.fill("999999");
+  await expect(amount).toHaveAttribute("aria-invalid", "true");
+
+  await expect(async () => {
+    await button.click();
+    await expect(page.getByText(/Enter an amount between/i)).toBeVisible({
+      timeout: 3_000,
+    });
+  }).toPass({ timeout: 30_000 });
+
+  expect(checkoutCalls, "a rejected amount must not reach the network").toBe(0);
+});
+
+test("the amount field is labelled in Japanese too", async ({ page }) => {
+  await page.goto("/?lang=ja");
+
+  await expect(page.getByLabel(/テスト決済の金額/)).toBeVisible();
+});
