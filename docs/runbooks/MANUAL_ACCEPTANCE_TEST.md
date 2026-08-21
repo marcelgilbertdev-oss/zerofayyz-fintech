@@ -195,10 +195,12 @@ it and never records it.
 real work (memory-hard scrypt) on a free-tier CPU, not a hang. You land on the
 **Admin console** as *Demo Operator* with an **OPERATOR** badge.
 
-**Expect on the page:** the **Audit log** table, newest first — your own
-`auth.login.succeeded` is the top row. A blue notice says session and account
-management are reserved for administrators, and there is **no** Active sessions
-panel and **no** Accounts panel.
+**Expect on the page:** the console inside the platform shell — sidebar on the
+left with **Admin console** highlighted, and tabs across the top: **Refunds**
+and **Audit log** only. A blue notice says session and account management are
+reserved for administrators; there is **no** Active sessions tab and **no**
+Accounts tab. On the Audit log tab, your own `auth.login.succeeded` is the top
+row.
 
 **Proves:** roles are real. The operator can read history and change nothing.
 And the refusal is not cosmetic — Part B shows the API refuses an operator with
@@ -208,8 +210,8 @@ And the refusal is not cosmetic — Part B shows the API refuses an operator wit
 
 22. Sign out, then sign in as `admin@zerofayyz.test` with your own password.
 
-**Expect:** two more panels the operator never saw: **Active sessions** and
-**Accounts**.
+**Expect:** two more tabs the operator never saw: **Active sessions** (with a
+live count badge) and **Accounts**.
 
 23. In Active sessions, find your own row.
 
@@ -256,7 +258,8 @@ events). The original Phase 1 setup subscribed only the four
 `checkout.session.*` events, and without this one the approve half-works: the
 refund goes out, the confirmation never arrives, and the payment never flips.
 
-28. Sign in as the **demo operator**. In **Payments**, click **Request refund**
+28. Sign in as the **demo operator**. On the **Refunds** tab, in **Payments**,
+    click **Request refund**
     on a succeeded payment, give a reason you'll recognise, leave the amount
     empty (full refund), and submit.
 
@@ -285,8 +288,9 @@ clicked.
 
 ### A14 · Accounts from the console
 
-31. Still as admin, create a staff account in **Accounts** (any role, a
-    12+ character password), then **Disable** it.
+31. Still as admin, open the **Accounts** tab, create a staff account (any
+    role, a 12+ character password — the eye icon shows what you typed), then
+    **Disable** it. The page no longer jumps to the top after either action.
 
 **Expect:** the row gains a **Disabled** badge. Signing in as that account now
 fails with the *same* "Incorrect email or password" a wrong password gets —
@@ -499,6 +503,27 @@ own name ("Role viewer operator admin") to tests and screen readers alike.
 **Awaiting the human pass:** A13–A14 — the production approve is the one step
 automation deliberately leaves to a person, because it moves real sandbox money
 back through Stripe.
+
+### 2026-08-21 (late night) — console redesign pass (Claude)
+
+**Marcel's A13/A14 walk passed on production** — the live refund (request →
+approve → Stripe's charge.refunded flipping the ledger), including a real
+Stripe refusal along the way (the restricted key lacked Refunds: Write) that
+exercised the claim-release recovery path in production and got the error
+message upgraded to carry Stripe's own reason.
+
+**His walk also produced four design findings, all shipped:** the console now
+renders inside the application shell (sidebar section + tabs for
+Refunds/Sessions/Accounts/Audit, each a URL); actions soft-refresh in place
+instead of dumping the operator at the top of the page; both password fields
+gained a visibility toggle; and the login refusal gained "contact your
+administrator" while still refusing identically for wrong, missing, and
+disabled accounts.
+
+**Automated:** 39 e2e (+2: the toggle clicked on the rendered page, the
+refusal wording) · API and client suites unchanged and green. One process
+lesson recorded: the toggle's first landing silently failed in one form while
+its import landed — which is why the e2e clicks the actual button.
 
 ### Failures found and fixed along the way (keep these — they are the story)
 
