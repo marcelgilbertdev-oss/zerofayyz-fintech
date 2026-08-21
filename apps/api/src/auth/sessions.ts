@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 
 import type { Database } from "../database/database.js";
 
@@ -48,11 +48,17 @@ export function clientFingerprint(
     return null;
   }
 
+  // Node reports IPv4 over IPv6 sockets as "::ffff:203.0.113.7". Unwrapped
+  // first, because the colon test below would otherwise classify every such
+  // address as IPv6 and slice them all to the same "::ffff" — one fingerprint
+  // for the entire IPv4 internet.
+  const unwrapped = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+
   // IPv4 → first three octets. IPv6 → the /48 routing prefix. The host part is
   // discarded before anything is stored.
-  const prefix = ip.includes(":")
-    ? ip.split(":").slice(0, 3).join(":")
-    : ip.split(".").slice(0, 3).join(".");
+  const prefix = unwrapped.includes(":")
+    ? unwrapped.split(":").slice(0, 3).join(":")
+    : unwrapped.split(".").slice(0, 3).join(".");
 
   return createHmac("sha256", secret).update(prefix).digest("hex").slice(0, 32);
 }
@@ -146,18 +152,4 @@ export async function revokeSession(
   );
 
   return (result.rowCount ?? 0) > 0;
-}
-
-/**
- * Constant-time equality for two secrets of any length.
- *
- * timingSafeEqual throws when the buffers differ in length, which would itself
- * leak the length through an exception. Hashing both sides first makes every
- * comparison the same size.
- */
-export function safeEquals(a: string, b: string): boolean {
-  return timingSafeEqual(
-    createHash("sha256").update(a).digest(),
-    createHash("sha256").update(b).digest(),
-  );
 }

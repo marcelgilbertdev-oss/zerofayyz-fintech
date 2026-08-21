@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     const upstream = await proxyToApi("/api/v1/auth/login", {
       method: "POST",
       body: { email: body.email, password: body.password },
+      forwardedFor: request.headers.get("x-forwarded-for"),
     });
 
     return await relay(upstream);

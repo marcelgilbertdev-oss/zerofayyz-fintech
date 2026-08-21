@@ -126,8 +126,16 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
     },
     async (request, reply) => {
       const fingerprint = fingerprintFor(request);
-      const limitKey = fingerprint ?? "unknown";
-      const limit = loginLimiter.check(limitKey);
+      const email = request.body.email.trim().toLowerCase();
+
+      // Keyed on the attempted account, not the caller's network identity.
+      // The fingerprint derives from x-forwarded-for, whose leftmost entry an
+      // attacker talking to the API directly writes themselves — a limiter
+      // keyed on it is rotated away in a loop. A per-account key cannot be:
+      // whoever you claim to be, the fifth wrong guess at this email closes
+      // it for fifteen minutes. The cost is that a stranger can briefly lock
+      // an account they know the name of; the audit log records exactly who.
+      const limit = loginLimiter.check(email);
 
       if (!limit.allowed) {
         await recordAuditSafely(
@@ -136,7 +144,7 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
             action: "auth.login.rate_limited",
             entityType: "session",
             clientFingerprint: fingerprint,
-            metadata: { retryAfterSeconds: limit.retryAfterSeconds },
+            metadata: { retryAfterSeconds: limit.retryAfterSeconds, email },
           },
           (error) => request.log.error({ error }, "audit write failed"),
         );
@@ -147,7 +155,6 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
           .send({ error: "Too many attempts. Try again shortly." });
       }
 
-      const email = request.body.email.trim().toLowerCase();
       const result = await database.query<
         { id: string; password_hash: string | null; role: SessionRole },
         [string]
@@ -191,7 +198,7 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
         user.id,
       ]);
 
-      loginLimiter.reset(limitKey);
+      loginLimiter.reset(email);
 
       const session = await resolveSession(database, token);
 

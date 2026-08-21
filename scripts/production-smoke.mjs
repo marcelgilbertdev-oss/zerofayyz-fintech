@@ -229,6 +229,78 @@ for (const client of CLIENTS) {
   });
 }
 
+// ---------------------------------------------------------------- phase 2
+
+// These assert content that exists ONLY in the Phase 2 build. The lesson they
+// encode: this suite once stayed green while Vercel served a stale dashboard,
+// because every check matched text the old build also contained. A smoke suite
+// that cannot tell the new build from the previous one cannot detect a failed
+// deploy — which is the main thing it exists to detect.
+
+await check("the login page is live and publishes the demo credentials", async () => {
+  const response = await fetch(`${WEB}/login`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const html = await response.text();
+
+  assert(response.status === 200, `expected 200, got ${response.status}`);
+  assert(html.includes("demo@zerofayyz.test"), "demo email not published on the login page");
+  assert(html.includes("view-the-ledger"), "demo password not published on the login page");
+
+  return "login page live, reviewer credentials visible";
+});
+
+await check("the admin console refuses the signed-out and redirects to login", async () => {
+  const response = await fetch(`${WEB}/admin`, {
+    redirect: "manual",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+
+  assert(
+    response.status >= 300 && response.status < 400,
+    `expected a redirect, got ${response.status}`,
+  );
+  const location = response.headers.get("location") ?? "";
+  assert(location.includes("/login"), `redirects to ${location}, not /login`);
+
+  return "signed-out /admin redirects to /login";
+});
+
+await check("the API demands authentication on the auth and admin surface", async () => {
+  for (const path of ["/api/v1/auth/me", "/api/v1/admin/sessions", "/api/v1/admin/audit-logs", "/api/v1/admin/users"]) {
+    const response = await fetch(`${API}${path}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    assert(response.status === 401, `${path} answered ${response.status} to an anonymous request`);
+  }
+
+  return "4 privileged routes all 401 anonymous";
+});
+
+await check("a login attempt with wrong credentials is refused, not errored", async () => {
+  // Deliberately a nonsense account: proves the endpoint verifies rather than
+  // crashes, without spending a real account's rate-limit budget.
+  const response = await fetch(`${API}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "smoke@zerofayyz.test", password: "not-a-real-password" }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+
+  assert(
+    response.status === 401 || response.status === 429,
+    `expected 401 (or 429 under limit), got ${response.status}`,
+  );
+
+  return `verified refusal (${response.status})`;
+});
+
+await check("the dashboard header carries the sign-in door", async () => {
+  const response = await fetch(`${WEB}/`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const html = await response.text();
+
+  assert(response.status === 200, `expected 200, got ${response.status}`);
+  assert(/href="\/login"/.test(html), "no sign-in link in the dashboard header");
+
+  return "sign-in link present";
+});
+
 const failed = results.filter((entry) => !entry.ok);
 
 console.log(`\n${results.length - failed.length}/${results.length} checks passed\n`);

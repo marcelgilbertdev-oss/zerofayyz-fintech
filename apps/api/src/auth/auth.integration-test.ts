@@ -322,6 +322,17 @@ test("the sixth wrong password in a window is rate-limited, not verified", async
 
   assert.equal(last, 429);
 
+  // The limiter is keyed on the attempted ACCOUNT, so one locked account must
+  // not lock the platform: a different user still signs in while the storm on
+  // the first is in progress. This is the regression guard for the global-
+  // bucket defect, where everyone shared one network-identity key.
+  const otherUser = await app.inject({
+    method: "POST",
+    url: "/api/v1/auth/login",
+    payload: { email: "integration.viewer@zerofayyz.test", password: PASSWORD },
+  });
+  assert.equal(otherUser.statusCode, 200);
+
   // And the refusal is itself in the history.
   const entries = await database.query<{ action: string }>(
     "SELECT action FROM audit_logs WHERE action = 'auth.login.rate_limited' ORDER BY created_at DESC LIMIT 1",

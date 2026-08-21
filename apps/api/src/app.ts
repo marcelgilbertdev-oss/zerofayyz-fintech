@@ -31,6 +31,15 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     ? createStripeGateway()
     : options.stripe;
   const app = Fastify({
+    // Behind Render's load balancer, and logins arrive via the dashboard's
+    // Vercel proxy. Without this, request.ip is the balancer's address — the
+    // same value for every human on earth — so every session fingerprint
+    // collapses to one and "tell two sessions apart" becomes a lie. With it,
+    // Fastify reads x-forwarded-for, whose leftmost entry is ultimately
+    // caller-controlled: fine for identification (presence, audit), which is
+    // why nothing security-critical keys on it — the login limiter keys on
+    // the attempted account instead.
+    trustProxy: true,
     logger:
       options.logger === false
         ? false

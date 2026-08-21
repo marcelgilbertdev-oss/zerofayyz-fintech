@@ -18,7 +18,12 @@ export const SESSION_COOKIE = "zf_session";
 /** Forwards a request to the API, carrying the caller's session cookie. */
 export async function proxyToApi(
   path: string,
-  init: { method: string; body?: unknown; cookie?: string | null },
+  init: {
+    method: string;
+    body?: unknown;
+    cookie?: string | null;
+    forwardedFor?: string | null;
+  },
 ): Promise<Response> {
   const requestHeaders: Record<string, string> = {};
 
@@ -28,6 +33,15 @@ export async function proxyToApi(
 
   if (init.cookie) {
     requestHeaders.cookie = init.cookie;
+  }
+
+  // Without this, the API sees every login as coming from this proxy and all
+  // session fingerprints collapse into one. Vercel writes the real client
+  // address into x-forwarded-for; passing it on is what makes "tell two
+  // sessions apart" true. Identification only — nothing security-critical
+  // trusts this value.
+  if (init.forwardedFor) {
+    requestHeaders["x-forwarded-for"] = init.forwardedFor;
   }
 
   return fetch(`${API_URL()}${path}`, {
