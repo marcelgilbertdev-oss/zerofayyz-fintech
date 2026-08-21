@@ -154,3 +154,18 @@ from scratch.
 | Webhook returns 400 | Signature mismatch — the secret does not match the running listener |
 | Migration fails with a missing column | A migration was added after the container was created; run `npm run migrate` |
 | Buttons do nothing in the browser | Dev-server origin mismatch; use the same hostname the server started on |
+| CI fails on `npm ci` with "Missing: @emnapi/... from lock file" | A macOS `npm install` pruned Linux-only optional dependencies from the lock. Run `npm run relock` in `apps/web` and commit the result |
+
+## After adding a web dependency
+
+`npm install` on macOS rewrites `package-lock.json` without the Linux-only
+optional dependencies that Next's toolchain needs, so `npm ci` then fails on the
+CI runner while everything works locally. After adding or upgrading anything in
+`apps/web`:
+
+```bash
+cd apps/web && npm run relock
+```
+
+That does a full fresh resolve, which is the only reliable way to get every
+platform's variants into the lock. Commit the regenerated lockfile.
