@@ -43,7 +43,12 @@ TypeScript throughout, ESM, Node 20+.
   events, twelve-day volume history, and recent transactions — all derived from the database
 - Health endpoint reporting real database latency and real integration configuration
 - Migration runner with a `schema_migrations` table, applied the same way in every environment
-- 34 automated tests across three layers, all gated in CI, plus a nine-check smoke suite that verifies the live deployment from outside
+- Japanese and English, with locale negotiated once server-side and translations
+  enforced by the type system — a missing string is a compile error, not an English
+  word in a Japanese page
+- WCAG 2.1 AA verified by axe-core in CI against both locales
+- 46 automated tests across three layers, all gated in CI, plus a nine-check smoke suite
+  that verifies the live deployment from outside
 
 ## Roadmap
 

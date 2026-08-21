@@ -38,6 +38,8 @@ Everything on the dashboard is computed from the database. There are no hardcode
 | Database | **PostgreSQL 18** | Financial records need constraints, transactions and exact numeric types. The idempotency guarantee is enforced *by* the database. |
 | Payments | **Stripe** | The industry standard, and hosted Checkout keeps card data entirely out of this system. |
 | Queries | **Hand-written SQL** (`pg`) | No ORM. The interesting logic is in the SQL, and it should be readable as SQL. |
+| Languages | **English + Japanese** | Typed dictionaries, no i18n dependency: two locales in server components did not justify one, and `Intl` already handles currency, number and date formatting per locale. |
+| Accessibility | **axe-core in CI** | WCAG 2.1 AA checked on every push, against both locales. |
 
 ### The services it runs on
 
@@ -141,9 +143,9 @@ Three layers, each catching what the layer beneath structurally cannot. Full det
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 19 | Stubbed database and Stripe | Branching, status mapping, guard clauses |
+| Unit | 22 | Stubbed database and Stripe | Branching, status mapping, guard clauses |
 | Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency |
-| End-to-end | 5 | Built servers in a real browser | Rendering, hydration, the reviewer's path |
+| End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, accessibility |
 | Production smoke | 9 | The live deployment | That what shipped actually works |
 
 **The story worth telling:** the webhook handler once had nineteen passing unit tests and had
@@ -154,6 +156,35 @@ The first integration test written against real PostgreSQL found it immediately.
 
 The lesson is not "write more tests." A test suite has a *shape*, and defects collect where
 that shape does not reach.
+
+---
+
+## 5a. Languages and accessibility
+
+The dashboard renders in English and Japanese. Two decisions in there are worth knowing.
+
+**Locale is negotiated once, in `proxy.ts`, and attached to the request.** A root layout in
+Next.js never receives `searchParams`, so if the page resolved the locale independently the
+`<html lang>` attribute would keep saying `en` while the page rendered Japanese. That is not
+cosmetic: screen readers choose pronunciation from that attribute, and browsers choose
+line-breaking from it. Precedence is explicit choice → remembered cookie → `Accept-Language`.
+Only an explicit choice is remembered, because persisting an inferred one would quietly
+override the browser on every later visit.
+
+**Translations are enforced by the type system.** The English dictionary defines the shape,
+so a missing Japanese string is a compile error naming the key rather than an English word
+appearing unannounced in a Japanese page.
+
+The language switcher uses plain anchors rather than `next/link`, because a client-side
+navigation does not re-render the root layout — the content would switch while the `lang`
+attribute did not. Changing the document's language is a document-level change, so it gets a
+document-level navigation. It also works with JavaScript disabled.
+
+On accessibility, `axe-core` runs in CI against both locales, gated on WCAG 2.1 A and AA.
+Introducing it found **14 real contrast failures in the existing design** — muted text sitting
+between 2.2:1 and 4.1:1 where AA requires 4.5:1. Those are fixed. Automation catches roughly a
+third of real accessibility problems; it cannot judge whether a label is *meaningful*, so it
+is a floor rather than a certificate.
 
 ---
 

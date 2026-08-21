@@ -19,7 +19,7 @@ cannot see.
 | --- | --- | --- | --- |
 | Unit | 22 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses |
 | Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency, migrations |
-| End-to-end | 5 | Built servers in a real browser | Rendering, hydration, the reviewer's path |
+| End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, WCAG AA |
 
 Total wall-clock for all three, locally: under fifteen seconds.
 
