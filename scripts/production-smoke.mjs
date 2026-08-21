@@ -177,6 +177,58 @@ await check("the sandbox framing is visible to any visitor", async () => {
   return "sandbox disclosure present";
 });
 
+/**
+ * The SPA clients deploy separately from the API and dashboard (prebuilt
+ * output, no auto-deploy — see docs/runbooks/DEPLOYMENT.md). A stray platform
+ * build once overwrote a working deployment with a 500 AFTER it had been
+ * verified by hand; these checks exist so that class of breakage is caught by
+ * a test run, never again by a failure email.
+ */
+const CLIENTS = [
+  { name: "vue client", url: process.env.SMOKE_VUE_URL ?? "https://zerofayyz-fintech-vue.vercel.app", title: "Vue Client" },
+  { name: "svelte client", url: process.env.SMOKE_SVELTE_URL ?? "https://zerofayyz-fintech-svelte.vercel.app", title: "Svelte Client" },
+];
+
+for (const client of CLIENTS) {
+  await check(`${client.name} serves its own build`, async () => {
+    const response = await fetch(client.url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const html = await response.text();
+
+    assert(response.status === 200, `expected 200, got ${response.status}`);
+    // The wrong-context build served the API's output here once; the title is
+    // the cheapest proof the right artifact is behind the alias.
+    assert(html.includes(client.title), `page title does not identify the ${client.name}`);
+    assert(/<script[^>]+type="module"/.test(html), "no module script tag — not a built SPA page");
+
+    return "correct artifact";
+  });
+
+  await check(`${client.name} rewrites /api to the live API`, async () => {
+    const response = await fetch(`${client.url}/api/v1/health`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+
+    assert(response.status === 200, `expected 200, got ${response.status}`);
+
+    const body = await response.json();
+    assert(body.checks?.database?.status === "operational", "API through rewrite is not operational");
+
+    return `same-origin rewrite live, db ${body.checks.database.latencyMs}ms`;
+  });
+
+  await check(`${client.name} serves index.html for deep links`, async () => {
+    const response = await fetch(`${client.url}/some/deep/route`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const html = await response.text();
+
+    assert(response.status === 200, `expected 200, got ${response.status}`);
+    assert(html.includes(client.title), "deep link did not fall back to the SPA shell");
+
+    return "SPA fallback works";
+  });
+}
+
 const failed = results.filter((entry) => !entry.ok);
 
 console.log(`\n${results.length - failed.length}/${results.length} checks passed\n`);
