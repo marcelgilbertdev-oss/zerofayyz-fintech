@@ -297,3 +297,34 @@ test("the database refuses a staff account with no password", async () => {
     /users_staff_have_credentials/,
   );
 });
+
+test("the sixth wrong password in a window is rate-limited, not verified", async (context) => {
+  const app = buildApp({ database, logger: false, stripe: null });
+  context.after(async () => app.close());
+
+  // This test builds its own app and therefore its own limiter. When the
+  // limiter was module-level this test would have poisoned every test after
+  // it in the same process — which is why it is scoped where it is.
+  let last = 0;
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "integration.admin@zerofayyz.test", password: "wrong" },
+    });
+    last = response.statusCode;
+
+    if (attempt < 5) {
+      assert.equal(last, 401, `attempt ${attempt + 1} should still be verified`);
+    }
+  }
+
+  assert.equal(last, 429);
+
+  // And the refusal is itself in the history.
+  const entries = await database.query<{ action: string }>(
+    "SELECT action FROM audit_logs WHERE action = 'auth.login.rate_limited' ORDER BY created_at DESC LIMIT 1",
+  );
+  assert.equal(entries.rows[0]?.action, "auth.login.rate_limited");
+});

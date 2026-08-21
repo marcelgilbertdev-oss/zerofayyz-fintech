@@ -32,11 +32,6 @@ const ROLE_RANK: Record<SessionRole, number> = {
   admin: 3,
 };
 
-// Five attempts per fingerprint per fifteen minutes. Enough that a person who
-// mistypes twice and then checks their password manager is unaffected; far too
-// few for anyone working through a word list.
-const loginLimiter = new FixedWindowRateLimit(5, 15 * 60 * 1000);
-
 // A hash of a password nobody has, used to spend the same CPU time on a
 // missing account as on a real one. Without it, "no such user" returns in
 // microseconds and "wrong password" takes ~100ms, which is a working account
@@ -103,6 +98,17 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
   app,
   { database },
 ) => {
+  // Five attempts per fingerprint per fifteen minutes. Enough that a person
+  // who mistypes twice and then checks their password manager is unaffected;
+  // far too few for anyone working through a word list.
+  //
+  // Scoped to this app instance, not the module. A module-level limiter is
+  // created at import time, shared by every buildApp() in the process, and
+  // survives app.close() — invisible in production, where one process runs one
+  // app, but in a test suite it means five failed logins in one file rate-limit
+  // every file after it.
+  const loginLimiter = new FixedWindowRateLimit(5, 15 * 60 * 1000);
+
   app.post<{ Body: { email: string; password: string } }>(
     "/auth/login",
     {
