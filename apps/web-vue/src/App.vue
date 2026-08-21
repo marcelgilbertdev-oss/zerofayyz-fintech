@@ -8,7 +8,15 @@ import { toMinorUnits } from "./schemas";
 import { useDashboardStore } from "./stores/dashboard";
 
 const store = useDashboardStore();
-const amount = ref("42.00");
+// Same memory as the Next dashboard: pre-filled for the zero-typing path,
+// but a chosen amount survives the Stripe round trip.
+const stored = window.sessionStorage.getItem("zf_last_amount");
+const amount = ref(stored && toMinorUnits(stored) !== null ? stored : "42.00");
+
+function rememberAndCheckout() {
+  window.sessionStorage.setItem("zf_last_amount", amount.value.trim());
+  void store.checkout(amount.value);
+}
 // Same rule the API enforces, from the same shared module the Svelte client
 // uses — the Composition API equivalent of the React client's local state.
 const amountValid = computed(() => toMinorUnits(amount.value) !== null);
@@ -39,7 +47,7 @@ onMounted(() => {
             autocomplete="off"
             aria-describedby="amount-hint"
             :aria-invalid="!amountValid"
-            @keyup.enter="store.checkout(amount)"
+            @keyup.enter="rememberAndCheckout"
           />
         </div>
         <p id="amount-hint" class="amount-hint" :class="{ invalid: !amountValid }">
@@ -49,7 +57,7 @@ onMounted(() => {
           type="button"
           class="pay"
           :disabled="store.checkoutPending"
-          @click="store.checkout(amount)"
+          @click="rememberAndCheckout"
         >
           {{ store.checkoutPending ? "Opening Stripe…" : "+ Test payment" }}
         </button>

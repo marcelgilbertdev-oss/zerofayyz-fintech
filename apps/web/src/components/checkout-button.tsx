@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 // Deliberately a copy of packages/api-contract, not an import of it.
 //
@@ -16,6 +16,10 @@ import { useId, useState } from "react";
 const MIN_AMOUNT_MINOR = 50;
 const MAX_AMOUNT_MINOR = 1_000_000;
 const DEFAULT_AMOUNT = "42.00";
+// Survives the round trip to Stripe and back. The field must stay pre-filled
+// (a demo needs a zero-typing path), but a reviewer who chose $400 and returns
+// to see $42 reads it as the system forgetting them — a live charter finding.
+const AMOUNT_STORAGE_KEY = "zf_last_amount";
 
 /** Dollars as typed → integer minor units, or null when it is not a valid amount. */
 export function toMinorUnits(input: string): number | null {
@@ -57,6 +61,18 @@ export function CheckoutButton({
 }: CheckoutButtonProps) {
   const [amount, setAmount] = useState(DEFAULT_AMOUNT);
   const [focused, setFocused] = useState(false);
+
+  // After mount, not in the initializer: the server renders the default, and
+  // an initializer reading sessionStorage would make the first client render
+  // disagree with it (a hydration error). The brief default-then-swap is the
+  // honest cost of remembering.
+  useEffect(() => {
+    const stored = window.sessionStorage.getItem(AMOUNT_STORAGE_KEY);
+
+    if (stored && toMinorUnits(stored) !== null) {
+      setAmount(stored);
+    }
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const amountId = useId();
@@ -80,6 +96,7 @@ export function CheckoutButton({
 
     setLoading(true);
     setError(null);
+    window.sessionStorage.setItem(AMOUNT_STORAGE_KEY, amount.trim());
 
     try {
       const response = await fetch("/api/checkout", {

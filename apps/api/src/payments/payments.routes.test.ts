@@ -84,7 +84,10 @@ test("POST /api/v1/payments/checkout-session creates a hosted sandbox checkout",
     url: "https://checkout.stripe.com/c/pay/cs_test_zerofayyz",
   });
   assert.equal(checkoutParameters?.mode, "payment");
-  assert.equal("payment_method_types" in (checkoutParameters ?? {}), false);
+  // Pinned to card after a reviewer hit Amazon Pay's sandbox wall on the
+  // hosted page — a dead-end we cannot fix from our side, so we do not offer
+  // the door.
+  assert.deepEqual(checkoutParameters?.payment_method_types, ["card"]);
   assert.equal("automatic_tax" in (checkoutParameters ?? {}), false);
 });
 

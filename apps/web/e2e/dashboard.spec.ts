@@ -133,3 +133,17 @@ test("the permitted amount range is visible, not only announced", async ({ page 
   await expect(hint).toBeVisible();
   await expect(hint).toHaveCSS("opacity", "1");
 });
+
+test("a chosen amount survives the trip to Stripe and back", async ({ page }) => {
+  await page.goto("/");
+
+  // Simulate what the checkout click stores before redirecting to Stripe —
+  // the return from Stripe is a fresh document load, exactly like this one.
+  await page.evaluate(() => window.sessionStorage.setItem("zf_last_amount", "137.50"));
+  await page.reload();
+
+  // Pre-filled with the reviewer's own number, not the default: the field
+  // must never read as the system forgetting what they chose. First-time
+  // visitors (empty storage) still get the one-click 42.00.
+  await expect(page.getByLabel(/test payment amount/i)).toHaveValue("137.50");
+});

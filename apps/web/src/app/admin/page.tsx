@@ -185,7 +185,7 @@ export default async function AdminPage({
     <div className="min-h-screen bg-[#07110f] text-[#edf5f1]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_-10%,rgba(52,211,153,0.11),transparent_35%),radial-gradient(circle_at_10%_90%,rgba(45,212,191,0.06),transparent_28%)]" />
 
-      <AppSidebar t={t} active={tab === "audit" ? "audit" : "admin"} />
+      <AppSidebar t={t} active="admin" />
 
       <div className="relative lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-white/[0.07] bg-[#07110f]/80 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-10">

@@ -133,6 +133,13 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
         const session = await stripe.checkout.sessions.create(
           {
             mode: "payment",
+            // Card only, deliberately. Left unset, Stripe's hosted page offers
+            // every wallet enabled in test mode — and Amazon Pay's sandbox
+            // demands an Amazon sandbox login no reviewer has, a guaranteed
+            // dead-end discovered in a live charter run. The demo's story is
+            // the documented 4242 path; a wallet button that errors teaches a
+            // reviewer nothing except distrust.
+            payment_method_types: ["card"],
             integration_identifier: "zerofayyz_fintech_demo_qjvmpxaz",
             client_reference_id: paymentId,
             customer_email: customerEmail,

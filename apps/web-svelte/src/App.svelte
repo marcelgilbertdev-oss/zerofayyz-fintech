@@ -6,7 +6,17 @@
   import { toMinorUnits } from "./lib/schemas";
 
   const dashboard = createDashboard();
-  let amount = $state("42.00");
+  // Same memory as the other clients: pre-filled for the zero-typing path,
+  // but a chosen amount survives the Stripe round trip.
+  const storedAmount = window.sessionStorage.getItem("zf_last_amount");
+  let amount = $state(
+    storedAmount && toMinorUnits(storedAmount) !== null ? storedAmount : "42.00",
+  );
+
+  function rememberAndCheckout() {
+    window.sessionStorage.setItem("zf_last_amount", amount.trim());
+    dashboard.checkout(amount);
+  }
   // Runes equivalent of the Vue client's computed: same shared rule, same
   // behaviour, expressed in this framework's idiom.
   const amountValid = $derived(toMinorUnits(amount) !== null);
@@ -37,7 +47,7 @@
           aria-describedby="amount-hint"
           aria-invalid={!amountValid}
           onkeyup={(event) => {
-            if (event.key === "Enter") dashboard.checkout(amount);
+            if (event.key === "Enter") rememberAndCheckout();
           }}
         />
       </div>
@@ -48,7 +58,7 @@
         type="button"
         class="pay"
         disabled={dashboard.checkoutPending}
-        onclick={() => dashboard.checkout(amount)}
+        onclick={rememberAndCheckout}
       >
         {dashboard.checkoutPending ? "Opening Stripe…" : "+ Test payment"}
       </button>

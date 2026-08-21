@@ -21,7 +21,7 @@ export function BrandMark() {
 
 type SidebarProps = {
   t: Dictionary;
-  active: "overview" | "admin" | "audit";
+  active: "overview" | "admin";
 };
 
 const PLANNED_KEYS = [
@@ -115,14 +115,12 @@ export function AppSidebar({ t, active }: SidebarProps) {
 
       <div className="my-5 h-px bg-white/[0.06]" />
 
+      {/* The audit log deliberately has no sidebar entry: it is a view of the
+          console (a tab), not a section of the platform, and showing the same
+          label in two navigations at once reads as redundancy — a live charter
+          finding. */}
       <nav className="space-y-1" aria-label={t.nav.projectLabel}>
         <PlannedItem glyph="◉" label={t.nav.systemHealth} title={t.nav.plannedTitle} />
-        <NavLink
-          href="/admin?tab=audit"
-          glyph="≡"
-          label={t.nav.auditLog}
-          current={active === "audit"}
-        />
         <PlannedItem glyph="↗" label={t.nav.portfolioNotes} title={t.nav.plannedTitle} />
       </nav>
 
