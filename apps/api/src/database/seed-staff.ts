@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { pathToFileURL } from "node:url";
 
 import { hashPassword } from "../auth/password.js";
