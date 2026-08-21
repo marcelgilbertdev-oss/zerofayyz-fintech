@@ -190,6 +190,39 @@ is a floor rather than a certificate.
 
 ---
 
+## 5b. The locked half
+
+The dashboard is public. Signing in opens a second half of the platform, and the boundary
+between them is enforced on the API rather than in the page — hiding a panel is
+presentation, and the integration suite proves the refusals by making the requests a
+viewer, an operator, and an anonymous caller are not allowed to make.
+
+**Three roles.** A `viewer` reads the dashboard. An `operator` additionally reads the audit
+log — the published demo account is an operator, so a reviewer sees the showpiece and can
+change nothing. An `admin` sees live sessions and accounts, and can end anyone's session.
+
+**Passwords** use scrypt from Node's standard library, with the cost parameters stored
+inside each hash so they can be raised later without invalidating existing ones. Argon2 is
+the better algorithm and was rejected because it ships as platform-specific native binaries
+— the dependency shape that had already broken this project's CI twice.
+
+**Sessions are opaque and server-side.** The cookie holds 32 random bytes; the database
+holds only its SHA-256. A JWT would have been simpler and cannot be revoked before it
+expires, which makes both "sign this person out now" and "who is signed in right now"
+impossible — and those are the two questions an operations console exists to answer.
+
+**The audit log is append-only, enforced by a database trigger** rather than by convention.
+Making it genuinely immutable forced the foreign keys out of that table: `ON DELETE SET
+NULL` is a write into the audit log performed by the database on another table's behalf, so
+the trigger refused it and nothing could be deleted anywhere. An audit entry is a snapshot,
+not a live join.
+
+**Client identity is a keyed hash of the network prefix, never an IP address.** Strangers
+sign into this demo; distinguishing two sessions and rate-limiting abuse needs no ability to
+locate a person.
+
+---
+
 ## 6. How code reaches production
 
 1. Commit to a branch, open a pull request
@@ -234,8 +267,14 @@ happened**. That is the actual product.
 
 - It runs in **Stripe test mode**. No real money can move, by design.
 - It has **no users** and is not a commercial product.
-- **Sign-in and the admin view are not built** — they're on the roadmap. The payment path was
-  finished properly first, on the view that one complete thing beats three partial ones.
+- The **dashboard is deliberately public**. Anyone can read it and start a test payment.
+  That is a decision, not an oversight: a reviewer must never meet a login wall. The
+  privileged half — admin console, audit log, live sessions — is behind a sign-in.
+- **Refunds and account management are not built yet.** The console reads far more than it
+  writes; that is the next phase.
+- The login rate limiter is **in memory, and therefore per-instance**. One instance runs
+  today. Documented in the code rather than left to be discovered, because a limiter that
+  silently stops working at two instances is worse than none.
 - The free hosting tier **sleeps when idle**; a scheduled job pings it every ten minutes to
   keep the demo responsive.
 - Metrics are scoped to a **single currency**, because summing across currencies is
@@ -254,5 +293,10 @@ Being precise about what it does not do is part of what makes the rest credible.
 | The schema and its constraints | `database/postgres/migrations/001_initial_schema.sql` |
 | The idempotency proof | `apps/api/src/database/ledger.integration-test.ts` |
 | The reviewer's path | `apps/web/e2e/dashboard.spec.ts` |
+| Password hashing, and why scrypt | `apps/api/src/auth/password.ts` |
+| Sessions, revocation, and the privacy hash | `apps/api/src/auth/sessions.ts` |
+| Role guards, rate limiting, enumeration defence | `apps/api/src/auth/auth.routes.ts` |
+| The proof that guards refuse the wrong role | `apps/api/src/admin/admin.integration-test.ts` |
+| The append-only trigger | `database/postgres/migrations/003_authentication_and_sessions.sql` |
 | The deployment definition | `render.yaml` and `.github/workflows/ci.yml` |
 | Why each decision was made | `docs/decisions/` |

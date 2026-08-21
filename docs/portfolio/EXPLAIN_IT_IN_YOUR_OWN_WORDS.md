@@ -14,7 +14,9 @@ everything else is real.
 
 **Say:** *"A cloud payments and operations platform. Stripe hosted checkout,
 signature-verified webhooks, and an auditable transaction ledger in PostgreSQL,
-with a live operations dashboard on top. Sandbox only — no real funds move."*
+with a live operations dashboard on top. The dashboard is public; behind a login
+there's an admin console with role-based access, live session presence, and an
+append-only audit log. Sandbox only — no real funds move."*
 
 ---
 
@@ -115,15 +117,23 @@ costs a join and it's what makes the ledger auditable."*
 
 | Layer | Count | What it catches | What it's blind to |
 |---|---|---|---|
-| Unit | 22 | Logic and branching | Anything involving real SQL |
-| Integration | 7 | Real database: SQL, constraints, idempotency | Rendering, the user's path |
-| End-to-end | 17 | Real browser: does a click reach a handler | Whether the deployed thing works |
-| Client (Vue/Svelte) | 30 | Contract validation, state, partial failure | — |
-| Production smoke | 15 | That what *shipped* actually runs | — |
+| Unit | 56 | Logic, branching, hashing, cookies, rate limiting | Anything involving real SQL |
+| Integration | 29 | Real database: SQL, constraints, triggers, idempotency, auth | Rendering, the user's path |
+| End-to-end | 34 | Real browser: sign-in, roles, accessibility, both locales | Whether the deployed thing works |
+| Client (Vue/Svelte) | 36 | Contract validation, state, partial failure | — |
+| Production smoke | 20 | That what *shipped* actually runs | — |
 
-**Say:** *"Roughly 76 automated tests plus 15 production checks, all gated in CI.
+**Say:** *"Around 104 automated tests plus 20 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
-structurally cannot."*
+structurally cannot — the integration suite exists because 19 green unit tests
+never once executed the SQL that was broken."*
+
+**One layer worth explaining separately:** the production smoke suite checks
+things that exist **only in the newest build**. That sounds pedantic until you
+know why: it once stayed green while a failed deploy left the old version
+serving, because every check matched text both builds contained. A smoke suite
+that can't tell the new build from the previous one can't detect a failed
+deploy, which is its main job.
 
 ---
 
@@ -177,7 +187,97 @@ axe-core in CI against both locales, gated on WCAG 2.1 AA — introducing it fou
 
 ---
 
-## 10. What it isn't — say this before they ask
+## 10. The locked half: accounts, roles, and the audit log
+
+**Plain:** Anyone can look at the dashboard. To *do* anything — see who's signed
+in, kick someone out, read the history — you need an account, and what you're
+allowed to do depends on which kind of account you have.
+
+**Why it's split that way:** a recruiter must never hit a login wall, so the
+dashboard stays open. But a payments platform with no access control isn't
+finished. Showing both halves proves you made a *decision* about where the
+boundary goes, rather than putting one padlock on the front door.
+
+### Passwords
+
+**Plain:** Passwords aren't stored. A scrambled version is stored, and the
+scrambling only goes one way.
+
+**Say:** *"scrypt, from Node's standard library. I chose it over Argon2 — which
+is the better algorithm — because Argon2 ships as platform-specific native
+binaries, and that exact dependency shape had already broken my CI twice. A
+password hash is the last thing that should be missing on one platform. The cost
+parameters are stored inside each hash, so I can raise them later without
+locking out every existing user."*
+
+**If they push on scrypt vs Argon2, agree with them.** Argon2id resists GPU
+attack better. Say so, then say why the deployment risk mattered more here.
+
+### Sessions
+
+**Plain:** When you sign in, you get a random meaningless number in a cookie. The
+real record lives in the database, so it can be switched off.
+
+**Say:** *"Opaque server-side sessions, not JWTs. A JWT can't be revoked before
+it expires — every server honours it until the clock runs out. I needed two
+things a JWT can't do: sign someone out immediately, and show who's signed in
+right now. Only the SHA-256 of the cookie is stored, so a database dump hands an
+attacker nothing they can present as a session."*
+
+**The demo that lands:** an admin ends a session; the holder's cookie hasn't
+changed and hasn't expired; their very next request fails. That's in the
+acceptance charter, verified live.
+
+### The audit log
+
+**Plain:** A history of what happened that even the app itself can't edit.
+
+**Say:** *"Append-only, enforced by a database trigger rather than by convention
+— the application is the thing under suspicion, so 'we only ever insert' isn't
+an answer. Making it truly immutable forced out the foreign keys: `ON DELETE SET
+NULL` is a write into the audit table performed by the database on another
+table's behalf, so the trigger refused it and nothing could be deleted at all.
+Any foreign key with an ON DELETE action is a mutation path into an immutable
+table."*
+
+That last sentence is worth memorising. It's the kind of thing that sounds like
+experience because it is — it came from a real collision, not a book.
+
+### Two details worth volunteering
+
+**Enumeration:** *"A wrong password and a nonexistent account return identical
+responses in comparable time — missing accounts are verified against a decoy
+hash, so response timing can't be used to discover which emails exist."*
+
+**Rate limiting, and the bug in it:** *"Five failed attempts per account per
+fifteen minutes. It originally counted every attempt, and my own test suite
+caught the problem: the shared demo account is the one guaranteed to see bursts
+of concurrent *successful* logins, so the sixth reviewer in a busy window would
+have been locked out of the demo — and a lockout looks exactly like an outage.
+It counts failures only now. What's being limited is guessing, and a correct
+password isn't a guess."*
+
+That story is strong because it's a **denial-of-service against your own demo,
+found by a test that looked like a flake.** Most candidates don't have one.
+
+### Privacy — say this at HENNGE especially
+
+**Plain:** The system can tell two visitors apart without knowing who or where
+they are.
+
+**Say:** *"Audit logs usually capture IP addresses. Strangers log into this demo,
+so I store a keyed hash of the network prefix instead — enough to distinguish
+sessions and rate-limit abuse, not enough to identify or locate anyone. The
+schema comments say so, and a test asserts that what leaves the API isn't shaped
+like an IP address."*
+
+**Why it matters at HENNGE:** they build data-loss prevention. A candidate who
+minimised what they collected *on purpose*, and can explain the reasoning, is
+speaking directly to what they do.
+
+---
+
+## 11. What it isn't — say this before they ask
 
 - A portfolio prototype, **not a product**
 - **Stripe test mode.** No real money can move
@@ -191,7 +291,7 @@ axe-core in CI against both locales, gated on WCAG 2.1 AA — introducing it fou
 
 ---
 
-## 11. Who needs software shaped like this?
+## 12. Who needs software shaped like this?
 
 Marketplaces and platforms. Subscription businesses. **Payment gateways
 themselves — which is literally what KOMOJU is.** Fintech: lending, investment,
@@ -202,7 +302,7 @@ afterwards what happened. That's the actual product."*
 
 ---
 
-## 12. Questions that might catch you out
+## 13. Questions that might catch you out
 
 **"Did you build this alone?"**
 *"Yes, and I used AI tooling heavily and deliberately — I'll talk about where it
@@ -220,6 +320,21 @@ acknowledge fast and process from a queue, so a slow database can't cause Stripe
 to time out and retry."*
 
 **"What's the weakest part?"**
-*"No authentication yet, and no capacity model — the load test asserts a
-no-regression baseline on a single shared free instance, which is the honest
-claim available. Calling it a capacity plan would be theatre."*
+*"No capacity model. The load test asserts a no-regression baseline on a single
+shared free instance, which is the honest claim available — calling it a
+capacity plan would be theatre. The admin console also reads more than it
+writes: refunds and account management are the next things I'd build, because
+that's where an operator actually spends their day."*
+
+**"Your rate limiter is in memory — what happens with two instances?"**
+*"It stops working, and I documented that in the code rather than leaving it to
+be discovered. One instance today; the rule lives in one class so moving it to
+Redis is a change of storage, not a change of policy. A limiter that silently
+degrades when you scale is worse than none, because everyone assumes it's still
+there."*
+
+**"Why is the demo password published?"**
+*"So a reviewer can walk in without asking anyone. It's safe because the role is
+the boundary, not the secret — that account reads everything and changes
+nothing. Administration is a separate role with a password I set myself and
+nobody else has seen."*

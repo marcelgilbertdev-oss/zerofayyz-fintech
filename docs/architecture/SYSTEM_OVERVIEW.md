@@ -55,13 +55,21 @@ deployment and no API URL or key reaches the client.
 
 ## Data model
 
-Four tables, each with one job.
+Five tables, each with one job.
 
 - **users** — a customer. Unique on `LOWER(email)` so casing cannot create duplicates.
 - **payments** — the intent to move money, and its current status. One row per attempt.
 - **transactions** — the immutable event log. One row per Stripe event, unique on
   `provider_event_id`.
+- **sessions** — one row per live sign-in. Stores the SHA-256 of the cookie value, never the
+  value itself, so a dump grants no one a session. Expiry and revocation are evaluated in
+  SQL, and the presence view reads the same predicate the door does.
 - **audit_logs** — what the system did and when, for anything that changed state.
+  Append-only, enforced by a trigger that refuses `UPDATE` and `DELETE` from every
+  connection including the application's own. It carries **no foreign keys**: a reference
+  with an `ON DELETE` action is a write into this table performed on another table's
+  behalf, which the trigger refuses — so ids are stored as plain values and read back with
+  `LEFT JOIN`.
 
 The split between `payments` and `transactions` is the important one. A payment is mutable
 state that answers "where does this stand now." A transaction is an append-only fact that
@@ -85,6 +93,11 @@ The platform is built to degrade visibly rather than pretend.
   tiles rather than blank ones
 - Stripe rejects the session: the payment is marked `failed` before the error is returned,
   so no payment row is left stranded in `created`
+- The audit log cannot be written: privileged actions (a forced sign-out) fail rather than
+  proceed unrecorded, while sign-ins proceed and log the failure loudly — refusing a valid
+  login over a bookkeeping error trades a logging problem for an outage
+- The API is unreachable when the dashboard renders: the signed-out state is shown rather
+  than a 500, so the private half can never take the public half down
 
 ## Related reading
 

@@ -61,9 +61,44 @@ and a handful that drive a real browser through the whole path a person would ta
 
 Every one of them runs automatically before any change can be accepted.
 
+## The second half: who is allowed to do what
+
+Once payments worked, the platform gained the part every operations system eventually needs
+— a locked half. The dashboard stayed public deliberately: anyone reviewing the project must
+be able to see it working without being asked to sign in first. Behind a login sits the
+operational side: a history of everything the system did, a live list of who is signed in at
+this moment, and the ability to sign someone out.
+
+Three decisions there are worth stating plainly, because each one was a choice with a cost.
+
+**Passwords are stored scrambled, one way, using a method built into the platform itself
+rather than an add-on.** The add-on is slightly stronger. It also has to be installed
+separately for each kind of computer, and that exact problem had already broken this
+project's automated checks twice. A password protection that might not install is worse than
+one that is marginally less strong and always present.
+
+**Signing someone out actually signs them out.** The popular modern approach hands the
+visitor a self-contained pass that every server accepts until it expires — which means
+nobody can cancel it early, and nobody can say who is currently signed in. This platform
+keeps the record on the server, so an administrator can end a session and the person is
+locked out on their very next click. That was demonstrated live: a session was ended while
+in use, and the same unchanged, still-valid-looking pass stopped working immediately.
+
+**The history cannot be edited, including by the software itself.** The database refuses
+attempts to change or delete those records, from every connection. This mattered more than
+expected — making it genuinely permanent revealed that ordinary links between tables were
+quietly capable of altering it, and those links had to be removed. A record that the system
+could rewrite is not evidence of anything.
+
+One more detail, chosen on principle: the history deliberately does *not* record visitors'
+network addresses. It records enough to tell two visitors apart and to stop someone guessing
+passwords, and nothing that could identify or locate a person.
+
 ## What it demonstrates
 
 - Building a complete application end to end — interface, service, database, deployment
+- Designing access control, and deciding deliberately what stays public rather than locking
+  everything by reflex
 - Integrating a payment provider correctly, including the parts that are easy to get wrong
 - Designing a data model that can reconstruct what happened, not just what is true now
 - Writing tests that are structured around how software actually fails
@@ -72,9 +107,11 @@ Every one of them runs automatically before any change can be accepted.
 
 ## The honest limits
 
-It is a portfolio prototype, not a product. No real money moves. It has no users. Sign-in and
-the administrator view are on the roadmap and not built yet; the payment path was finished
-properly first, on the view that one complete thing is worth more than three partial ones.
+It is a portfolio prototype, not a product. No real money moves, and there are no real
+customers. The administrator console reads far more than it changes — issuing refunds and
+managing accounts are the next things to build. The payment path was finished properly
+before any of the rest began, on the view that one complete thing is worth more than three
+partial ones.
 
 Those limits are stated in the project's own README as well. A system that is honest about
 what it does not do is easier to trust about what it does.

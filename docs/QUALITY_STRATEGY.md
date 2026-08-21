@@ -17,14 +17,34 @@ cannot see.
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 22 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses |
-| Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency, migrations |
-| End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, WCAG AA |
+| Unit | 56 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
+| Integration | 29 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation |
+| End-to-end | 34 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
-| Vue client unit | 20 | jsdom, fetch mocked at the network seam | Contract validation, store state, partial failure, rendered output |
-| Svelte client unit | 10 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
+| Vue client unit | 23 | jsdom, fetch mocked at the network seam | Contract validation, store state, partial failure, rendered output |
+| Svelte client unit | 13 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
+| Production smoke | 20 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
 
-Total wall-clock for all three, locally: under fifteen seconds.
+Total wall-clock for all local suites: under thirty seconds.
+
+### Authorisation is tested by making the refused request
+
+The auth suites are worth calling out because of *how* they assert. A guard written beside a
+route is not a guard until something walks through the wrong door, so the tests do exactly
+that: an anonymous caller gets `401` on all four privileged routes, a viewer gets `403` on
+all of them, and an operator reads the audit log and is refused everything else. Those
+refusals are the assertions.
+
+The same principle covers the append-only audit log — the test tries to `UPDATE` and
+`DELETE` rows and asserts both are rejected — and revocation, where an ended session's
+unchanged, unexpired cookie must fail on the next request.
+
+### The smoke suite must be able to tell builds apart
+
+A production smoke suite exists to notice a failed deploy. This one once could not: every
+check matched text the previous build also contained, so it stayed green while Vercel served
+a stale dashboard for two hours. Its Phase 3 checks assert content that exists **only** in
+the newest build. A check both builds satisfy is not a deployment check.
 
 ### Unit — `apps/api/src/**/*.test.ts`
 
@@ -119,6 +139,14 @@ automation covers, and it is short on purpose so that it actually gets run.
 | 6 | Replay the event with `stripe events resend <id>` | No new row; counts unchanged |
 | 7 | Abandon a checkout, let it expire | Payment reads Canceled |
 | 8 | `POST /api/v1/webhooks/stripe` with no signature | `400`, nothing written |
+| 9 | Open `/admin` signed out | Redirected to `/login` |
+| 10 | Sign in as the demo operator | Audit log visible; no sessions or accounts panel |
+| 11 | Sign in as an administrator, revoke another session | Row disappears; `admin.session.revoked` logged and attributed |
+| 12 | Replay the revoked session's cookie | `401` — unchanged, unexpired, and refused |
+| 13 | Six wrong passwords for one account | Five `401`, then `429` |
+
+The full walkthrough, with a human result log and every defect found during development,
+lives in [the manual acceptance charter](runbooks/MANUAL_ACCEPTANCE_TEST.md).
 
 Steps 3 to 7 need Stripe test keys and `stripe listen --forward-to
 localhost:4000/api/v1/webhooks/stripe`. See the
@@ -126,11 +154,19 @@ localhost:4000/api/v1/webhooks/stripe`. See the
 
 ## Gates
 
-Nothing merges without the pipeline passing. `.github/workflows/ci.yml` runs three jobs:
+Nothing merges without the pipeline passing. `.github/workflows/ci.yml` runs five jobs:
 
 1. **API** — typecheck, unit tests, migrations against an empty database, integration tests
-2. **Web** — lint, typecheck, production build
-3. **End-to-end** — migrated and seeded database, both servers built and started, Playwright
+2. **Web** — lint, typecheck (application *and* the separately-scoped e2e project), build
+3. **Vue client** — typecheck, unit tests, build
+4. **Svelte client** — typecheck, unit tests, build
+5. **End-to-end** — migrated database, demo data, seeded staff accounts, both servers built
+   and started, Playwright
+
+The web job typechecks through two project files on purpose. The application's `tsconfig`
+excludes `e2e/`, because the Next build typechecks everything it includes and would follow a
+Playwright spec's deliberate cross-package import into a package the deploy never installs —
+which killed two production deploys before the split existed.
 
 TypeScript runs in `strict` mode with `noUncheckedIndexedAccess` and
 `exactOptionalPropertyTypes`, so the compiler is a gate in its own right rather than a

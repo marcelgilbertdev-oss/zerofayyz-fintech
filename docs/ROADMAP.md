@@ -1,7 +1,7 @@
 # Roadmap
 
-Phase 1 is complete and deployed. This describes what comes next, in what order, and why
-that order.
+Phases 1 through 3 are complete and deployed. This describes what comes next, in what order,
+and why that order.
 
 **The governing rule:** each phase must end with something *finished* — tested, deployed, and
 documented — before the next begins. A platform with five half-built features reads worse to
@@ -17,37 +17,66 @@ application to build more is not.
 ## Phase 1 — Payments foundation ✅ Complete
 
 Shipped and live. Stripe hosted Checkout, signature-verified webhooks, an append-only
-transaction ledger, live dashboard metrics, migrations, 31 automated tests across three
-layers, a nine-check production smoke suite, CI/CD, architecture and decision documentation,
-and a public deployment across three colocated regions.
+transaction ledger, live dashboard metrics, migrations, tests across three layers, a
+production smoke suite, CI/CD, architecture and decision documentation, and a public
+deployment across three colocated regions.
+
+## Phase 2 — Three clients, two languages, one contract ✅ Complete
+
+Vue 3 and Svelte 5 clients consuming the same API unmodified through a shared Zod contract;
+English and Japanese with translations enforced by the type system; WCAG 2.1 AA scanned by
+axe-core in CI against both locales; a caller-chosen payment amount bounded by the route
+schema; and a production smoke suite that asserts content unique to the newest build, after
+a failed deploy once hid behind checks both builds satisfied.
 
 ---
 
-## Phase 2 — Authentication and the admin view
+## Phase 3 — Authentication, roles and the admin console ✅ Complete
 
-**Why next:** it is the single most-requested feature in job postings, and the README
-currently lists a user dashboard and admin console as roadmap rather than shipped. Closing
-that gap makes the repository's claims and its contents match exactly.
+Shipped and live. scrypt password hashing with per-hash cost parameters; opaque server-side
+sessions storing only the cookie's SHA-256; `viewer` / `operator` / `admin` guards enforced
+on the API; an append-only audit log made immutable by a database trigger; live session
+presence and remote sign-out; failure-only login rate limiting; and account-enumeration
+protection via decoy-hash verification.
 
-**Scope:**
+The public dashboard deliberately stayed public. A reviewer must never meet a login wall,
+and showing both halves demonstrates a decision about where the boundary belongs rather
+than a padlock on the front door.
 
-- Session-based authentication, one provider, email and password to start
-- A protected route: the dashboard requires a session
-- Two roles — `customer` and `admin`. The `users` table already carries a `role` column with
-  a CHECK constraint, so the data model is ready
-- A customer view that shows only that customer's payments
-- An admin view that shows every payment plus the audit log
+**What proved it works:** integration tests that make the *refused* request — anonymous
+gets 401 everywhere, a viewer gets 403 everywhere, an operator reads the audit log and
+nothing else. A guard written beside a route is not a guard until a test walks through the
+wrong door. Plus a live charter run in which an administrator ended a session and its
+holder's unchanged, unexpired cookie failed on the next request.
 
-**What proves it works:** an integration test asserting a customer cannot read another
-customer's payments — an authorisation test, not just an authentication one. That distinction
-is where most real breaches live.
-
-**Deliberately not in scope:** password reset flows, social login, multi-factor. One provider,
+**Deliberately not in scope:** password reset, social login, multi-factor. One provider,
 done properly.
 
 ---
 
-## Phase 3 — Operational visibility
+## Phase 4 — Refunds and account management 🔜 Next
+
+**Why next:** the admin console reads nearly everything and writes almost nothing. An
+operator's day is spent *acting*, and a refund is the canonical payments action — money
+moving backwards, with an audit trail proving who authorised it and when.
+
+**Scope:**
+
+- Refund a payment from the console, full or partial, through Stripe's refund API
+- The resulting `charge.refunded` webhook updating the ledger, idempotently, the same way
+  every other event does
+- Role separation: an operator may *request* a refund, an admin may *approve* it, and the
+  audit log carries both
+- Create, disable and re-role accounts from the console
+- Replace the Payments, Transactions and Customers sidebar items currently badged PLANNED
+
+**What proves it works:** a refund issued in the console, the ledger moving by exactly that
+amount, the same refund event replayed and changing nothing, and an audit trail naming the
+approver. Plus an authorisation test asserting an operator cannot approve their own request.
+
+---
+
+## Phase 5 — Operational visibility
 
 **Why next:** Piece's posting asks for "monitoring, alerting and support" by name. The health
 endpoint exists; nothing consumes it yet.
@@ -58,15 +87,15 @@ endpoint exists; nothing consumes it yet.
 - An `/api/v1/ready` endpoint distinct from `/health` — liveness and readiness are different
   questions and conflating them causes bad restarts
 - Error tracking, and an alert when the webhook endpoint starts returning non-2xx
-- A dashboard panel reading the real `audit_logs` table, replacing the "Audit log" nav item
-  currently marked Planned
+- Alert routing, so a broken webhook reaches a person rather than a log file
+  (the audit log panel this phase originally planned shipped in Phase 3)
 
 **What proves it works:** deliberately break the webhook secret, confirm the alert fires,
 restore it, confirm recovery. An alert nobody has ever seen fire is not monitoring.
 
 ---
 
-## Phase 4 — Activity events in MongoDB
+## Phase 6 — Activity events in MongoDB
 
 **Why next:** it demonstrates polyglot persistence with an honest reason rather than
 résumé-driven database collecting. Piece's nice-to-haves name document databases explicitly.
@@ -84,7 +113,7 @@ having two. The wrong version of this phase is moving payments into MongoDB.
 
 ---
 
-## Phase 5 — Infrastructure as code
+## Phase 7 — Infrastructure as code
 
 **Why next:** the current deployment is reproducible for the API (`render.yaml`) but the
 database and dashboard were configured by hand. That gap is the difference between a project
@@ -102,7 +131,7 @@ and infrastructure.
 
 ---
 
-## Phase 6 — Exploratory
+## Phase 8 — Exploratory
 
 Only worth doing if a target role names them, and each should be a genuine slice rather than
 a stub:
