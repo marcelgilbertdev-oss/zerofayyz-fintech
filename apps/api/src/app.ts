@@ -5,6 +5,7 @@ import {
   createDatabase,
   type Database,
 } from "./database/database.js";
+import { adminRoutes } from "./admin/admin.routes.js";
 import { authRoutes, sessionResolver } from "./auth/auth.routes.js";
 import { healthRoutes } from "./health/health.routes.js";
 import { metricRoutes } from "./metrics/metrics.routes.js";
@@ -49,6 +50,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   // alone and silently leave every other guard looking at undefined.
   app.addHook("onRequest", sessionResolver(database));
   app.register(authRoutes, {
+    prefix: "/api/v1",
+    database,
+  });
+  app.register(adminRoutes, {
     prefix: "/api/v1",
     database,
   });
