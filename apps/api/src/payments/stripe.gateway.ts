@@ -2,6 +2,7 @@ import Stripe from "stripe";
 
 export type StripeGateway = {
   checkout: Stripe["checkout"];
+  refunds: Stripe["refunds"];
   webhooks: Stripe["webhooks"];
 };
 

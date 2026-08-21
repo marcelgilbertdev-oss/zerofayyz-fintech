@@ -235,6 +235,82 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
         });
       }
 
+      // Refunds confirm through their own event, carrying a Charge rather
+      // than a Checkout Session. The approval route deliberately does not
+      // touch the ledger — this signed event is the fact that money moved,
+      // and it is recorded with the same idempotency shape as every payment
+      // event: the transaction insert keyed on the event id, everything else
+      // chained to it.
+      if (event.type === "charge.refunded") {
+        const charge = event.data.object;
+        const intentId = paymentIntentId(charge.payment_intent);
+
+        if (!intentId) {
+          request.log.warn({ eventId: event.id }, "Refund event carries no payment intent");
+          return { received: true, processed: false };
+        }
+
+        // Stripe fires charge.refunded for partial refunds too, with
+        // charge.refunded=true only once the full amount has gone back. A
+        // partially refunded payment keeps its succeeded status — the money
+        // that remains is still settled money — while the refund itself is a
+        // ledger fact either way.
+        const fullyRefunded = charge.refunded === true;
+        const refundedMinor = charge.amount_refunded ?? 0;
+
+        const result = await database.query(
+          `
+            WITH target_payment AS (
+              SELECT id FROM payments WHERE provider_payment_id = $1
+            ),
+            recorded_event AS (
+              INSERT INTO transactions (
+                payment_id,
+                provider_event_id,
+                event_type,
+                amount_minor,
+                currency,
+                occurred_at
+              )
+              SELECT id, $2, 'payment_refunded', $3, $4, TO_TIMESTAMP($5)
+                FROM target_payment
+              ON CONFLICT (provider_event_id) DO NOTHING
+              RETURNING payment_id
+            ),
+            updated_payment AS (
+              UPDATE payments
+              SET status = CASE WHEN $6 THEN 'refunded' ELSE payments.status END,
+                  updated_at = NOW()
+              FROM recorded_event
+              WHERE payments.id = recorded_event.payment_id
+              RETURNING payments.id
+            )
+            INSERT INTO audit_logs (action, entity_type, entity_id, metadata)
+            SELECT
+              'stripe.webhook.processed',
+              'payment',
+              id,
+              JSONB_BUILD_OBJECT(
+                'event_id', $2::TEXT,
+                'event_type', $7::TEXT,
+                'fully_refunded', $6::BOOLEAN
+              )
+            FROM updated_payment
+          `,
+          [
+            intentId,
+            event.id,
+            refundedMinor,
+            (charge.currency ?? "usd").toUpperCase(),
+            event.created,
+            fullyRefunded,
+            event.type,
+          ],
+        );
+
+        return { received: true, processed: (result.rowCount ?? 0) > 0 };
+      }
+
       if (
         event.type !== "checkout.session.completed" &&
         event.type !== "checkout.session.async_payment_succeeded" &&

@@ -19,6 +19,10 @@ const connectionString =
   "postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech";
 
 const USER_ID = "aaaaaaaa-0000-4000-8000-000000000001";
+// Event ids are unique per run because audit_logs cannot be cleaned between
+// runs — the table refuses DELETE by design — so any assertion counting audit
+// rows must count only this run's.
+const RUN = `r${Date.now().toString(36)}`;
 const PAYMENT_ID = "bbbbbbbb-0000-4000-8000-000000000001";
 const WEBHOOK_SECRET = "whsec_integration";
 
@@ -92,7 +96,16 @@ before(async () => {
     `PostgreSQL is not reachable at ${connectionString}. Start it with: docker compose -f infrastructure/docker/compose.yaml up -d postgres`,
   );
 
-  await database.query("TRUNCATE audit_logs, transactions, payments, users CASCADE");
+  // Scoped cleanup, not TRUNCATE. This file once ran
+  // `TRUNCATE audit_logs, transactions, payments, users CASCADE`, which was
+  // fine when it was the only suite — and beheaded every other suite once the
+  // integration tests ran as parallel files against one database: the CASCADE
+  // through users took every staff account and every session with it, and the
+  // other files' logins started failing with the decoy-hash timing signature.
+  // A test's cleanup may reach exactly as far as the rows it owns.
+  await database.query("DELETE FROM transactions WHERE payment_id = $1", [PAYMENT_ID]);
+  await database.query("DELETE FROM payments WHERE id = $1", [PAYMENT_ID]);
+  await database.query("DELETE FROM users WHERE id = $1", [USER_ID]);
   await database.query(
     `INSERT INTO users (id, email, display_name) VALUES ($1, $2, $3)`,
     [USER_ID, "integration@example.test", "Integration Reviewer"],
@@ -119,7 +132,7 @@ test("the migration runner is idempotent", async () => {
 });
 
 test("a delivered webhook writes the transaction, payment and audit log", async () => {
-  const response = await deliver("evt_integration_first");
+  const response = await deliver(`evt_integration_first_${RUN}`);
 
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.json(), { received: true, processed: true });
@@ -132,14 +145,14 @@ test("a delivered webhook writes the transaction, payment and audit log", async 
   assert.equal(payment.rows[0]?.provider_payment_id, "pi_test_integration");
 
   const audit = await database.query<{ count: string }>(
-    "SELECT COUNT(*)::TEXT AS count FROM audit_logs WHERE entity_id = $1",
-    [PAYMENT_ID],
+    "SELECT COUNT(*)::TEXT AS count FROM audit_logs WHERE entity_id = $1 AND metadata->>'event_id' LIKE $2",
+    [PAYMENT_ID, `%${RUN}`],
   );
   assert.equal(audit.rows[0]?.count, "1");
 });
 
 test("redelivering the same event changes nothing", async () => {
-  const response = await deliver("evt_integration_first");
+  const response = await deliver(`evt_integration_first_${RUN}`);
 
   assert.equal(response.statusCode, 200);
   // Acknowledged so Stripe stops retrying, but reported honestly as unprocessed.
@@ -150,8 +163,8 @@ test("redelivering the same event changes nothing", async () => {
     [PAYMENT_ID],
   );
   const audit = await database.query<{ count: string }>(
-    "SELECT COUNT(*)::TEXT AS count FROM audit_logs WHERE entity_id = $1",
-    [PAYMENT_ID],
+    "SELECT COUNT(*)::TEXT AS count FROM audit_logs WHERE entity_id = $1 AND metadata->>'event_id' LIKE $2",
+    [PAYMENT_ID, `%${RUN}`],
   );
 
   // Stripe retries on any non-2xx and can deliver the same event more than
@@ -161,7 +174,7 @@ test("redelivering the same event changes nothing", async () => {
 });
 
 test("a different event id for the same payment is recorded separately", async () => {
-  await deliver("evt_integration_second");
+  await deliver(`evt_integration_second_${RUN}`);
 
   const transactions = await database.query<{ count: string }>(
     "SELECT COUNT(*)::TEXT AS count FROM transactions WHERE payment_id = $1",
@@ -181,11 +194,16 @@ test("GET /api/v1/transactions runs its SQL against real rows", async (context) 
 
   const body = response.json();
   assert.equal(body.meta.source, "postgresql");
-  // DISTINCT ON collapses the two events down to the latest per payment.
-  assert.equal(body.data.length, 1);
-  assert.equal(body.data[0].customer.email, "integration@example.test");
-  assert.equal(body.data[0].amountMinor, 4_200);
-  assert.equal(body.data[0].status, "succeeded");
+
+  // Assert on this suite's own row rather than the table's total length —
+  // other suites run in parallel against the same database and may have rows
+  // of their own here. DISTINCT ON still collapses this payment's two events
+  // to one row, which is what the exact-match count proves.
+  const mine = (body.data as Array<{ customer: { email: string }; amountMinor: number; status: string }>)
+    .filter((row) => row.customer.email === "integration@example.test");
+  assert.equal(mine.length, 1);
+  assert.equal(mine[0]?.amountMinor, 4_200);
+  assert.equal(mine[0]?.status, "succeeded");
 });
 
 test("GET /api/v1/metrics aggregates real rows", async (context) => {

@@ -46,6 +46,7 @@ type UserRow = {
   role: string;
   last_login_at: Date | null;
   created_at: Date;
+  disabled_at: Date | null;
   payment_count: string;
 };
 
@@ -224,6 +225,7 @@ export const adminRoutes: FastifyPluginAsync<AdminRouteOptions> = async (
                  u.role,
                  u.last_login_at,
                  u.created_at,
+                 u.disabled_at,
                  COUNT(p.id) AS payment_count
             FROM users u
             LEFT JOIN payments p ON p.user_id = u.id
@@ -241,9 +243,236 @@ export const adminRoutes: FastifyPluginAsync<AdminRouteOptions> = async (
           role: row.role,
           lastLoginAt: row.last_login_at ? row.last_login_at.toISOString() : null,
           createdAt: row.created_at.toISOString(),
+          disabledAt: row.disabled_at ? row.disabled_at.toISOString() : null,
           paymentCount: Number(row.payment_count),
         })),
       };
+    },
+  );
+};
+
+/**
+ * Account management. Admin only, and none of it may be aimed at yourself:
+ * self-demotion and self-disabling are how a platform loses its last
+ * administrator to a misclick.
+ */
+export const accountRoutes: FastifyPluginAsync<AdminRouteOptions> = async (
+  app,
+  { database },
+) => {
+  app.post<{
+    Body: { email: string; displayName: string; role: string; password: string };
+  }>(
+    "/admin/users",
+    {
+      preHandler: requireRole("admin"),
+      schema: {
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["email", "displayName", "role", "password"],
+          properties: {
+            email: { type: "string", format: "email", maxLength: 254 },
+            displayName: { type: "string", minLength: 2, maxLength: 100 },
+            role: { type: "string", enum: ["viewer", "operator", "admin"] },
+            password: { type: "string", minLength: 12, maxLength: 512 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { hashPassword } = await import("../auth/password.js");
+      const email = request.body.email.trim().toLowerCase();
+      const hash = await hashPassword(request.body.password);
+
+      let created;
+
+      try {
+        created = await database.query<{ id: string }>(
+          `
+            INSERT INTO users (email, display_name, role, password_hash)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+          `,
+          [email, request.body.displayName.trim(), request.body.role, hash],
+        );
+      } catch (error) {
+        if ((error as { code?: string }).code === "23505") {
+          return reply.code(409).send({ error: "An account with that email already exists" });
+        }
+
+        throw error;
+      }
+
+      await recordAudit(database, {
+        action: "admin.user.created",
+        entityType: "user",
+        entityId: created.rows[0]?.id ?? null,
+        actorUserId: request.session?.userId ?? null,
+        sessionId: request.session?.sessionId ?? null,
+        // The email and role are the auditable facts. The password is not,
+        // in any form.
+        metadata: { email, role: request.body.role },
+      });
+
+      return reply.code(201).send({ id: created.rows[0]?.id, email, role: request.body.role });
+    },
+  );
+
+  app.patch<{ Params: { id: string }; Body: { role: string } }>(
+    "/admin/users/:id/role",
+    {
+      preHandler: requireRole("admin"),
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id"],
+          properties: { id: { type: "string", format: "uuid" } },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          required: ["role"],
+          properties: { role: { type: "string", enum: ["viewer", "operator", "admin"] } },
+        },
+      },
+    },
+    async (request, reply) => {
+      if (request.params.id === request.session?.userId) {
+        return reply.code(403).send({
+          error: "You cannot change your own role",
+        });
+      }
+
+      const result = await database.query<{ email: string }>(
+        `
+          UPDATE users
+             SET role = $2, updated_at = NOW()
+           WHERE id = $1
+             AND role <> 'customer'
+             AND password_hash IS NOT NULL
+          RETURNING email
+        `,
+        [request.params.id, request.body.role],
+      );
+
+      if ((result.rowCount ?? 0) === 0) {
+        return reply.code(404).send({ error: "No staff account with that id" });
+      }
+
+      await recordAudit(database, {
+        action: "admin.user.role_changed",
+        entityType: "user",
+        entityId: request.params.id,
+        actorUserId: request.session?.userId ?? null,
+        sessionId: request.session?.sessionId ?? null,
+        metadata: { email: result.rows[0]?.email, newRole: request.body.role },
+      });
+
+      return reply.send({ updated: true, role: request.body.role });
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/admin/users/:id/disable",
+    {
+      preHandler: requireRole("admin"),
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id"],
+          properties: { id: { type: "string", format: "uuid" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      if (request.params.id === request.session?.userId) {
+        return reply.code(403).send({ error: "You cannot disable your own account" });
+      }
+
+      // Disabling and revoking happen together: an account that cannot sign in
+      // but whose existing sessions keep working is not disabled, it is
+      // decorative.
+      const result = await database.query<{ email: string }>(
+        `
+          WITH disabled AS (
+            UPDATE users
+               SET disabled_at = NOW(), updated_at = NOW()
+             WHERE id = $1
+               AND role <> 'customer'
+               AND disabled_at IS NULL
+            RETURNING id, email
+          ),
+          ended AS (
+            UPDATE sessions
+               SET revoked_at = NOW()
+              FROM disabled
+             WHERE sessions.user_id = disabled.id
+               AND sessions.revoked_at IS NULL
+          )
+          SELECT email FROM disabled
+        `,
+        [request.params.id],
+      );
+
+      if ((result.rowCount ?? 0) === 0) {
+        return reply.code(404).send({ error: "No enabled staff account with that id" });
+      }
+
+      await recordAudit(database, {
+        action: "admin.user.disabled",
+        entityType: "user",
+        entityId: request.params.id,
+        actorUserId: request.session?.userId ?? null,
+        sessionId: request.session?.sessionId ?? null,
+        metadata: { email: result.rows[0]?.email },
+      });
+
+      return reply.send({ disabled: true });
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    "/admin/users/:id/enable",
+    {
+      preHandler: requireRole("admin"),
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id"],
+          properties: { id: { type: "string", format: "uuid" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await database.query<{ email: string }>(
+        `
+          UPDATE users
+             SET disabled_at = NULL, updated_at = NOW()
+           WHERE id = $1
+             AND disabled_at IS NOT NULL
+          RETURNING email
+        `,
+        [request.params.id],
+      );
+
+      if ((result.rowCount ?? 0) === 0) {
+        return reply.code(404).send({ error: "No disabled account with that id" });
+      }
+
+      await recordAudit(database, {
+        action: "admin.user.enabled",
+        entityType: "user",
+        entityId: request.params.id,
+        actorUserId: request.session?.userId ?? null,
+        sessionId: request.session?.sessionId ?? null,
+        metadata: { email: result.rows[0]?.email },
+      });
+
+      return reply.send({ enabled: true });
     },
   );
 };

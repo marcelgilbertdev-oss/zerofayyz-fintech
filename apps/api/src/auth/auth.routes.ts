@@ -168,6 +168,7 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
             FROM users
            WHERE LOWER(email) = $1
              AND role <> 'customer'
+             AND disabled_at IS NULL
         `,
         [email],
       );

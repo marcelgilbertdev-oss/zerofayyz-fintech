@@ -5,7 +5,8 @@ import {
   createDatabase,
   type Database,
 } from "./database/database.js";
-import { adminRoutes } from "./admin/admin.routes.js";
+import { accountRoutes, adminRoutes } from "./admin/admin.routes.js";
+import { refundRoutes } from "./admin/refunds.routes.js";
 import { authRoutes, sessionResolver } from "./auth/auth.routes.js";
 import { healthRoutes } from "./health/health.routes.js";
 import { metricRoutes } from "./metrics/metrics.routes.js";
@@ -65,6 +66,15 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   app.register(adminRoutes, {
     prefix: "/api/v1",
     database,
+  });
+  app.register(accountRoutes, {
+    prefix: "/api/v1",
+    database,
+  });
+  app.register(refundRoutes, {
+    prefix: "/api/v1",
+    database,
+    stripe,
   });
   app.register(healthRoutes, {
     prefix: "/api/v1",
