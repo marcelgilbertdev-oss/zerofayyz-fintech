@@ -298,6 +298,23 @@ test("the database refuses a staff account with no password", async () => {
   );
 });
 
+test("many correct sign-ins in a row are never rate-limited", async (context) => {
+  const app = buildApp({ database, logger: false, stripe: null });
+  context.after(async () => app.close());
+
+  // The shared demo account is the one guaranteed to see bursts of concurrent
+  // successful logins, so success must not consume budget. Ten in a row, well
+  // past the limit of five.
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "integration.viewer@zerofayyz.test", password: PASSWORD },
+    });
+    assert.equal(response.statusCode, 200, `correct sign-in ${attempt + 1} was refused`);
+  }
+});
+
 test("the sixth wrong password in a window is rate-limited, not verified", async (context) => {
   const app = buildApp({ database, logger: false, stripe: null });
   context.after(async () => app.close());

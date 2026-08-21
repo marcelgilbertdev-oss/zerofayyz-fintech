@@ -115,3 +115,44 @@ test("the operator console has no detectable WCAG A/AA violations", async ({ pag
     results.violations.map((violation) => `${violation.id}: ${violation.help}`),
   ).toEqual([]);
 });
+
+// Both of these come from a live charter run — a real person using the page
+// for the first time, which is the only way either was going to be found.
+
+test("one click fills both demo fields correctly", async ({ page }) => {
+  await page.goto("/login");
+
+  const email = page.getByLabel(/email address/i);
+  const password = page.getByLabel(/password/i);
+
+  await expect(email).toHaveValue("");
+
+  await page.getByRole("button", { name: /fill these in for me/i }).click();
+
+  // The failure this prevents: pasting the whole credentials block into the
+  // email field, being told "Incorrect email or password", and concluding the
+  // demo is broken.
+  await expect(email).toHaveValue(DEMO_EMAIL);
+  await expect(password).toHaveValue(DEMO_PASSWORD);
+  await expect(page.getByText(/filled in — press sign in/i)).toBeVisible();
+
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.waitForURL("**/admin");
+  await expect(page.getByRole("heading", { name: /admin console/i })).toBeVisible();
+});
+
+test("the error clears as soon as you start correcting the field", async ({ page }) => {
+  await page.goto("/login");
+
+  await page.getByLabel(/email address/i).fill("dmin@zerofayyz.test");
+  await page.getByLabel(/password/i).fill("whatever");
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+
+  const error = page.getByText(/incorrect email or password/i);
+  await expect(error).toBeVisible();
+
+  // Typing a correction must not leave the old verdict on screen: a fixed
+  // field that still reads "Incorrect" makes a correct fix look rejected.
+  await page.getByLabel(/email address/i).fill("admin@zerofayyz.test");
+  await expect(error).toHaveCount(0);
+});

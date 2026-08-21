@@ -32,25 +32,20 @@ export default async function LoginPage() {
         submitLabel={t.auth.signIn}
         submittingLabel={t.auth.submitting}
         fallbackError={t.auth.genericError}
+        demo={{
+          title: t.auth.demoTitle,
+          intro: t.auth.demoIntro,
+          note: t.auth.demoNote,
+          fill: t.auth.demoFill,
+          filled: t.auth.demoFilled,
+          // Published on purpose, and kept in one place so the page and the
+          // seed cannot drift — an integration test asserts this exact
+          // password is the one stored for the demo account.
+          email: "demo@zerofayyz.test",
+          password: "view-the-ledger",
+        }}
       />
 
-      <section className="mt-8 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-5">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-200">
-          {t.auth.demoTitle}
-        </h2>
-        <p className="mt-2 text-xs leading-5 text-white/70">{t.auth.demoIntro}</p>
-        <dl className="mt-3 space-y-1 font-mono text-xs text-emerald-100">
-          <div className="flex gap-2">
-            <dt className="text-white/50">email</dt>
-            <dd>demo@zerofayyz.test</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-white/50">password</dt>
-            <dd>view-the-ledger</dd>
-          </div>
-        </dl>
-        <p className="mt-3 text-xs leading-5 text-white/50">{t.auth.demoNote}</p>
-      </section>
     </main>
   );
 }

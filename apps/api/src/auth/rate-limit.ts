@@ -1,17 +1,25 @@
 /**
- * A fixed-window rate limiter held in memory.
+ * A fixed-window limiter for failed login attempts, held in memory.
+ *
+ * It counts FAILURES only. A successful sign-in neither consumes budget nor
+ * accumulates toward a lockout, because the thing being rate-limited is
+ * guessing, and a correct password is not a guess.
+ *
+ * That distinction is not academic here. The demo operator account is public
+ * and shared by every reviewer who visits, so it is the one account guaranteed
+ * to see bursts of simultaneous *successful* logins. Counting those would mean
+ * the sixth recruiter in a busy fifteen minutes is turned away from a demo
+ * built to impress them — and the lockout would look identical to a broken
+ * platform. This project's own parallel test suite tripped exactly that.
  *
  * In memory because this API runs as a single instance and an external store
- * would be a dependency bought for a problem it does not have yet. The limit
- * is stated in one place so the day it moves to Redis is a change of storage,
- * not a change of rule.
- *
- * It is documented as per-instance on purpose: a limiter that silently stops
- * working when a second instance appears is worse than no limiter, because
- * everyone assumes it is still there.
+ * would be a dependency bought for a problem it does not have yet. It is
+ * documented as per-instance on purpose: a limiter that silently stops working
+ * when a second instance appears is worse than no limiter, because everyone
+ * assumes it is still there.
  */
-export type RateLimitResult = {
-  allowed: boolean;
+export type RateLimitStatus = {
+  blocked: boolean;
   remaining: number;
   retryAfterSeconds: number;
 };
@@ -24,34 +32,43 @@ export class FixedWindowRateLimit {
     private readonly windowMs: number,
   ) {}
 
-  check(key: string, now = Date.now()): RateLimitResult {
+  /** Read-only: does this key currently owe a wait? Consumes nothing. */
+  status(key: string, now = Date.now()): RateLimitStatus {
     this.evictExpired(now);
 
-    const existing = this.hits.get(key);
+    const entry = this.hits.get(key);
 
-    if (!existing || existing.resetAt <= now) {
-      this.hits.set(key, { count: 1, resetAt: now + this.windowMs });
-      return { allowed: true, remaining: this.limit - 1, retryAfterSeconds: 0 };
+    if (!entry || entry.resetAt <= now) {
+      return { blocked: false, remaining: this.limit, retryAfterSeconds: 0 };
     }
 
-    existing.count += 1;
-
-    if (existing.count > this.limit) {
-      return {
-        allowed: false,
-        remaining: 0,
-        retryAfterSeconds: Math.ceil((existing.resetAt - now) / 1000),
-      };
-    }
+    const remaining = Math.max(0, this.limit - entry.count);
 
     return {
-      allowed: true,
-      remaining: this.limit - existing.count,
-      retryAfterSeconds: 0,
+      blocked: remaining === 0,
+      remaining,
+      retryAfterSeconds: remaining === 0
+        ? Math.ceil((entry.resetAt - now) / 1000)
+        : 0,
     };
   }
 
-  /** Called on success, so a legitimate login does not spend anyone's budget. */
+  /** Called only when an attempt was wrong. */
+  recordFailure(key: string, now = Date.now()): RateLimitStatus {
+    this.evictExpired(now);
+
+    const entry = this.hits.get(key);
+
+    if (!entry || entry.resetAt <= now) {
+      this.hits.set(key, { count: 1, resetAt: now + this.windowMs });
+    } else {
+      entry.count += 1;
+    }
+
+    return this.status(key, now);
+  }
+
+  /** Called on success, so a legitimate sign-in clears the slate. */
   reset(key: string): void {
     this.hits.delete(key);
   }

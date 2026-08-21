@@ -151,6 +151,8 @@ const en = {
       "Use the demo operator account — it is published on purpose, so you can walk in without asking anyone:",
     demoNote:
       "The operator role can read everything and change nothing. Administration is reserved for the platform owner.",
+    demoFill: "Fill these in for me",
+    demoFilled: "Filled in — press Sign in",
     signedInAs: (name: string) => `Signed in as ${name}`,
   },
   admin: {
@@ -348,6 +350,8 @@ const ja: Dictionary = {
       "デモ用オペレーターアカウントをご利用ください。誰にも許可を求めずに入れるよう、意図的に公開しています：",
     demoNote:
       "オペレーター権限はすべて閲覧できますが、何も変更できません。管理操作はプラットフォーム所有者に限定されています。",
+    demoFill: "自動入力する",
+    demoFilled: "入力しました — サインインを押してください",
     signedInAs: (name: string) => `${name} としてサインイン中`,
   },
   admin: {

@@ -135,9 +135,13 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
       // whoever you claim to be, the fifth wrong guess at this email closes
       // it for fifteen minutes. The cost is that a stranger can briefly lock
       // an account they know the name of; the audit log records exactly who.
-      const limit = loginLimiter.check(email);
+      //
+      // Read-only here. Budget is spent below, and only if the attempt was
+      // actually wrong — see the limiter's own note on why counting successes
+      // would lock the shared demo account out of its own demo.
+      const limit = loginLimiter.status(email);
 
-      if (!limit.allowed) {
+      if (limit.blocked) {
         await recordAuditSafely(
           database,
           {
@@ -176,6 +180,8 @@ export const authRoutes: FastifyPluginAsync<AuthRouteOptions> = async (
       const passwordMatches = await verifyPassword(request.body.password, stored);
 
       if (!user || !passwordMatches) {
+        loginLimiter.recordFailure(email);
+
         await recordAuditSafely(
           database,
           {
