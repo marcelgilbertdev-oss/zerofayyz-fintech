@@ -111,6 +111,13 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web-vue/package-lock.json
 
+      # The shared contract carries its own dependencies and no client installs
+      # it implicitly (the postinstall that once did was removed with the Vercel
+      # prebuilt-deploy work). This step is required, not redundant.
+      - name: Install shared contract
+        working-directory: packages/api-contract
+        run: npm ci
+
       - name: Install dependencies
         working-directory: apps/web-vue
         run: npm ci
@@ -139,6 +146,13 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/web-svelte/package-lock.json
+
+      # The shared contract carries its own dependencies and no client installs
+      # it implicitly (the postinstall that once did was removed with the Vercel
+      # prebuilt-deploy work). This step is required, not redundant.
+      - name: Install shared contract
+        working-directory: packages/api-contract
+        run: npm ci
 
       - name: Install dependencies
         working-directory: apps/web-svelte
