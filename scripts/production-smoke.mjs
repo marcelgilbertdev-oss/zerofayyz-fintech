@@ -227,6 +227,23 @@ for (const client of CLIENTS) {
 
     return "SPA fallback works";
   });
+
+  await check(`${client.name} carries the auth path through its rewrite`, async () => {
+    // Unauthenticated on purpose: a clean 401 with the API's own JSON proves
+    // the operator panel's whole login path — rewrite, cookie domain, session
+    // check — is reachable from this origin without spending a login attempt
+    // or leaving audit noise in the production trail.
+    const response = await fetch(`${client.url}/api/v1/auth/me`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+
+    assert(response.status === 401, `expected 401, got ${response.status}`);
+
+    const body = await response.json();
+    assert(body.error === "Not signed in", `unexpected body: ${JSON.stringify(body)}`);
+
+    return "staff door reachable, correctly closed";
+  });
 }
 
 // ---------------------------------------------------------------- phase 2

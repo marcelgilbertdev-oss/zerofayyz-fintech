@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 
 import HealthPanel from "./components/HealthPanel.vue";
+import OperatorPanel from "./components/OperatorPanel.vue";
 import MetricTiles from "./components/MetricTiles.vue";
 import TransactionsTable from "./components/TransactionsTable.vue";
 import { toMinorUnits } from "./schemas";
@@ -100,6 +101,8 @@ onMounted(() => {
         Some panels failed to load: {{ store.errors.join(" · ") }}
       </p>
     </template>
+
+    <OperatorPanel />
 
     <footer class="foot">
       <span>ZEROFAYYZ FINTECH · Portfolio Prototype · Vue 3 + Pinia client</span>

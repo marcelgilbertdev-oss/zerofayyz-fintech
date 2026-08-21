@@ -108,3 +108,44 @@ export function toMinorUnits(input: string): number | null {
 
   return minor;
 }
+
+/**
+ * The authenticated half of the contract.
+ *
+ * Every client that grows a staff door validates these the same way it
+ * validates the ledger reads: at the boundary, loudly, with the endpoint
+ * named. The role enum is deliberately closed — a new role appearing in a
+ * response is a contract change, and a contract change should fail a client
+ * rather than silently rendering an unknown badge.
+ */
+
+export const sessionUserSchema = z.object({
+  email: z.string(),
+  displayName: z.string(),
+  role: z.enum(["viewer", "operator", "admin"]),
+});
+
+export const loginResponseSchema = z.object({
+  user: sessionUserSchema,
+  expiresAt: z.string(),
+});
+
+export const auditLogsSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.string().uuid(),
+      action: z.string(),
+      entityType: z.string(),
+      entityId: z.string().nullable(),
+      actorEmail: z.string().nullable(),
+      sessionId: z.string().nullable(),
+      clientFingerprint: z.string().nullable(),
+      metadata: z.record(z.string(), z.unknown()),
+      createdAt: z.string(),
+    }),
+  ),
+});
+
+export type SessionUser = z.infer<typeof sessionUserSchema>;
+export type LoginResponse = z.infer<typeof loginResponseSchema>;
+export type AuditLogs = z.infer<typeof auditLogsSchema>;

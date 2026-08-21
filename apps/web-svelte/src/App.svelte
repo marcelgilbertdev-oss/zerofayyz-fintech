@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createDashboard } from "./lib/dashboard.svelte";
   import HealthPanel from "./lib/HealthPanel.svelte";
+  import OperatorPanel from "./lib/OperatorPanel.svelte";
   import MetricTiles from "./lib/MetricTiles.svelte";
   import TransactionsTable from "./lib/TransactionsTable.svelte";
   import { toMinorUnits } from "./lib/schemas";
@@ -102,6 +103,8 @@
       </p>
     {/if}
   {/if}
+
+  <OperatorPanel />
 
   <footer class="foot">
     <span>ZEROFAYYZ FINTECH · Portfolio Prototype · Svelte 5 client</span>
