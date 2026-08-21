@@ -300,6 +300,31 @@ self-disabling are how a platform loses its last administrator.
 
 ---
 
+### A15 · The ledger pages — no more PLANNED badges
+
+32. In the sidebar, click **Payments**, then **Transactions**, then
+    **Customers**. Every destination is real now.
+
+**Payments:** the full ledger with filter pills. Click **Failed** — every row
+shown is failed, and the count at the bottom left follows the filter. That
+count is computed in the same query as the rows, so they cannot disagree.
+
+**Transactions:** the raw Stripe event stream. Look at the **Stripe event id**
+column — every real event's id is there in full. That column carries a UNIQUE
+constraint in the database, and that constraint — not application code — is why
+the duplicate delivery you replayed in B4 changed nothing. This page is your
+idempotency story made visible.
+
+**Customers:** note any customer with a *processing* or *failed* payment —
+count 1, settled volume $0.00. Unsettled money is not money, and the page shows
+the distinction rather than explaining it.
+
+**Also check:** the sidebar shows exactly one **Audit log** (inside the admin
+console tabs), **System health** jumps to the live panel on the overview, and
+**Portfolio notes** opens the reviewer doc on GitHub.
+
+---
+
 ## Part B — Verification you can run (terminal)
 
 Open Terminal, then:
@@ -524,6 +549,24 @@ disabled accounts.
 refusal wording) · API and client suites unchanged and green. One process
 lesson recorded: the toggle's first landing silently failed in one form while
 its import landed — which is why the e2e clicks the actual button.
+
+### 2026-08-21 (Phase 5) — ledger pages pass (Claude)
+
+**All suites green three times over:** 56 unit · 42 integration · 48 e2e
+(axe-scanned all three new pages, English and Japanese) · 36 client = **182
+automated**, smoke 20→22.
+
+**The review question — "did we break anything?" — was answered honestly: yes,
+twice, and both were caught.** CI went red on two lint errors (a
+setState-in-effect and a raw anchor where a Link belongs), fixed at the source
+rather than suppressed. And two test-side defects surfaced: the metrics suite's
+absolute assertions had silently assumed its rows were the only USD rows in the
+database (now delta-based against a captured baseline), and a brand-new smoke
+check failed against healthy production because it read .data off its own
+helper's wrapper — logged here because a check that cries wolf gets ignored the
+day the wolf comes.
+
+**Awaiting the human pass:** A15.
 
 ### Failures found and fixed along the way (keep these — they are the story)
 
