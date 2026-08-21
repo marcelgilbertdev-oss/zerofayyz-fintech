@@ -111,10 +111,6 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web-vue/package-lock.json
 
-      - name: Install shared contract
-        working-directory: packages/api-contract
-        run: npm ci
-
       - name: Install dependencies
         working-directory: apps/web-vue
         run: npm ci
@@ -143,10 +139,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/web-svelte/package-lock.json
-
-      - name: Install shared contract
-        working-directory: packages/api-contract
-        run: npm ci
 
       - name: Install dependencies
         working-directory: apps/web-svelte

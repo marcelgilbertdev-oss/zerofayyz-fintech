@@ -38,6 +38,7 @@ Everything on the dashboard is computed from the database. There are no hardcode
 | Database | **PostgreSQL 18** | Financial records need constraints, transactions and exact numeric types. The idempotency guarantee is enforced *by* the database. |
 | Payments | **Stripe** | The industry standard, and hosted Checkout keeps card data entirely out of this system. |
 | Queries | **Hand-written SQL** (`pg`) | No ORM. The interesting logic is in the SQL, and it should be readable as SQL. |
+| SPA clients | **Vue 3 + Pinia**, **Svelte 5 runes** | Two further frontends consuming the same API unmodified, sharing one Zod contract (`packages/api-contract`) that validates every response at the boundary. The point: the API is demonstrated by three differently-built consumers, not asserted by one. |
 | Languages | **English + Japanese** | Typed dictionaries, no i18n dependency: two locales in server components did not justify one, and `Intl` already handles currency, number and date formatting per locale. |
 | Accessibility | **axe-core in CI** | WCAG 2.1 AA checked on every push, against both locales. |
 
@@ -144,6 +145,7 @@ Three layers, each catching what the layer beneath structurally cannot. Full det
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
 | Unit | 22 | Stubbed database and Stripe | Branching, status mapping, guard clauses |
+| Client unit | 30 | jsdom, fetch mocked at the network seam | Contract validation and state logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
 | Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency |
 | End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, accessibility |
 | Production smoke | 9 | The live deployment | That what shipped actually works |
