@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 
 // Deliberately a copy of packages/api-contract, not an import of it.
 //
@@ -20,6 +20,12 @@ const DEFAULT_AMOUNT = "42.00";
 // (a demo needs a zero-typing path), but a reviewer who chose $400 and returns
 // to see $42 reads it as the system forgetting them — a live charter finding.
 const AMOUNT_STORAGE_KEY = "zf_last_amount";
+
+function subscribeToStorage(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+
+  return () => window.removeEventListener("storage", onChange);
+}
 
 /** Dollars as typed → integer minor units, or null when it is not a valid amount. */
 export function toMinorUnits(input: string): number | null {
@@ -59,20 +65,21 @@ export function CheckoutButton({
   amountHint,
   amountInvalid,
 }: CheckoutButtonProps) {
-  const [amount, setAmount] = useState(DEFAULT_AMOUNT);
+  // The remembered amount comes through useSyncExternalStore rather than an
+  // effect that calls setState: the server snapshot is null (so SSR renders
+  // the default), React swaps to the client snapshot after hydration, and no
+  // render-cascading setState ever runs. `typed` then overrides the stored
+  // value the moment the user edits.
+  const stored = useSyncExternalStore(
+    subscribeToStorage,
+    () => window.sessionStorage.getItem(AMOUNT_STORAGE_KEY),
+    () => null,
+  );
+  const [typed, setTyped] = useState<string | null>(null);
+  const amount =
+    typed ?? (stored !== null && toMinorUnits(stored) !== null ? stored : DEFAULT_AMOUNT);
+  const setAmount = setTyped;
   const [focused, setFocused] = useState(false);
-
-  // After mount, not in the initializer: the server renders the default, and
-  // an initializer reading sessionStorage would make the first client render
-  // disagree with it (a hydration error). The brief default-then-swap is the
-  // honest cost of remembering.
-  useEffect(() => {
-    const stored = window.sessionStorage.getItem(AMOUNT_STORAGE_KEY);
-
-    if (stored && toMinorUnits(stored) !== null) {
-      setAmount(stored);
-    }
-  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const amountId = useId();

@@ -14,6 +14,10 @@ export function SignOutButton({ label }: { label: string }) {
     } finally {
       // Land on the public dashboard either way — the API clears the cookie
       // even for a session it no longer recognises.
+      // Deliberate full navigation: the session cookie just changed, so every
+      // server component is stale — a client-side push would render the old
+      // signed-in state.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign("/");
     }
   }
@@ -53,7 +57,11 @@ export function RevokeSessionButton({
       if (isCurrent) {
         // Revoking your own session signs you out; landing on the dashboard
         // is honest about that.
-        window.location.assign("/");
+        // Deliberate full navigation: the session cookie just changed, so every
+      // server component is stale — a client-side push would render the old
+      // signed-in state.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/");
       } else {
         // Someone else's session: soft refresh, scroll and tab intact.
         setBusy(false);

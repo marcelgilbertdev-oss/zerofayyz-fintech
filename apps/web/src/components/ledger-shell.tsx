@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import Link from "next/link";
 
 import { AppSidebar, BrandMark } from "@/components/app-shell";
 import { getDictionary, type Dictionary } from "@/i18n/dictionaries";
@@ -51,12 +52,12 @@ export function LedgerFrame({
               <h1 className="text-sm font-medium text-white/82">{title}</h1>
               <p className="mt-0.5 max-w-2xl text-xs leading-5 text-white/60">{subtitle}</p>
             </div>
-            <a
+            <Link
               href="/"
               className="rounded-xl border border-white/15 px-3.5 py-2.5 text-xs font-semibold text-white/80 transition hover:border-emerald-300/40 hover:text-white"
             >
               {t.nav.overview}
-            </a>
+            </Link>
           </div>
         </header>
 

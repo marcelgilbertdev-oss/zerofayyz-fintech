@@ -85,6 +85,9 @@ export function LoginForm({
       // A full navigation, not a client-side route change: the admin page is
       // server-rendered from the cookie that was just set, and the fresh
       // document request is what carries it there.
+      // Deliberate full navigation: the cookie was just set, and /admin is
+      // server-rendered from it.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign("/admin");
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : fallbackError);
