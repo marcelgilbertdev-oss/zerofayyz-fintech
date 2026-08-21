@@ -117,6 +117,29 @@ describe("dashboard store", () => {
     expect(store.errors).toHaveLength(3);
   });
 
+  it("recovers when a retry succeeds after total failure", async () => {
+    // First load: everything down (the cold-start case). Retry: all healthy.
+    // The error state must not be a dead end — this is the Try-again path.
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      calls += 1;
+      if (calls <= 3) return respond({ error: "asleep" }, 503);
+      const path = String(input);
+      if (path.includes("/health")) return respond(health);
+      if (path.includes("/metrics")) return respond(metrics);
+      return respond(transactions);
+    }));
+
+    const store = useDashboardStore();
+    await store.load();
+    expect(store.state).toBe("error");
+
+    await store.load();
+    expect(store.state).toBe("ready");
+    expect(store.errors).toEqual([]);
+    expect(store.liveChecks).toBe(4);
+  });
+
   it("surfaces the API's own message when checkout fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () =>
       respond({ error: "Stripe sandbox is not configured" }, 503),

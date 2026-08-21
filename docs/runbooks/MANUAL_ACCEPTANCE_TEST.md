@@ -223,8 +223,47 @@ two Vercel failure modes behind it, are in `DEPLOYMENT.md`.
 
 ---
 
-## Result log
+## Automated pre-check log
 
-| Date | Part A | Part B | Notes |
-| --- | --- | --- | --- |
-| 2026-08-21 | | | first run |
+What was verified by automation before the human run, including what failed and
+how it was fixed. The failures are recorded deliberately: they are the evidence
+the checks are real.
+
+### 2026-08-21 — full automated pass (Claude)
+
+**All suites green:** 22 API unit · 7 integration (real PostgreSQL) · 21 Vue ·
+11 Svelte · 17 Playwright E2E (both locales + accessibility) = **78 automated**,
+plus **15/15 production smoke** and the load-test baseline (p95 546/399/319ms,
+zero errors at 10 concurrent).
+
+**End-to-end payment through the Vue client (new coverage):** browser checkout
+started from the Vue SPA — POST through Vercel's `/api` rewrite → Render →
+Stripe hosted page → test card `4242…` → signed webhook → PostgreSQL. Ledger
+moved $1,222.00 → $1,264.00, 3 → 4 succeeded, 5 → 6 events, and all three
+client origins report identical figures. The success redirect lands on the
+Next.js dashboard by design (`APP_URL`).
+
+**Japanese on production:** `?lang=ja` renders 総取引額 / オペレーション概要 with
+zero English interface copy leaked.
+
+### Failures found and fixed along the way (keep these — they are the story)
+
+| # | Failure | Root cause | Fix | Guard now |
+| --- | --- | --- | --- | --- |
+| 1 | Webhook returned 500 on every real delivery despite 19 green unit tests | `JSONB_BUILD_OBJECT` rejects uncast parameters (42P18); every unit test stubbed the DB | Cast the parameters | Integration suite vs real PostgreSQL |
+| 2 | `npm ci` failed on Linux CI, twice | macOS lockfile pruned Linux-only optional deps | Full fresh relock; `npm run relock` | Error string documented in runbook |
+| 3 | Duplicate webhook reported `processed: true` while writing nothing | Response didn't consult `rowCount` | Report honestly; ack unknown refs with 200 | Unit + integration tests |
+| 4 | Vue/Svelte Vercel build: `TS2307` on zod | Client-scoped root dir never uploads `packages/api-contract` | — superseded by #5 | — |
+| 5 | Repo-scoped Vercel build compiled the **API** instead of the client | Framework auto-detection scanned the tree | Deploy prebuilt `dist/` with `framework: null` (`deploy-clients.sh`) | Smoke checks each alias serves its own artifact |
+| 6 | Verified Svelte deploy overwritten with a 500 minutes later | `vercel link` silently git-connected the project; a docs push rebuilt it wrong | `vercel git disconnect` on both SPA projects; re-ran the trigger | 6 per-client smoke checks |
+| 7 | CI red: nothing installed the shared contract | Two individually-safe cleanups composed (removed "redundant" CI installs, then removed the postinstall they were redundant with) | Restored installs with a comment naming why | Comment in ci.yml |
+| 8 | Vue client dead on arrival: "API unreachable · signal timed out ×3", no recovery path | 15s client timeout < ~22s free-tier cold start; keep-warm cron observed drifting to 33–43 min | 45s timeouts, honest wake-from-sleep message, **Try again** button, retry-recovery tests in both clients | Retry tests; redeployed and re-verified |
+
+## Human result log
+
+Fill this in yourself — the automated log above is not a substitute for a person
+walking the journey.
+
+| Date | Part A (steps passed / issues) | Part B | B4 idempotency seen? | Notes |
+| --- | --- | --- | --- | --- |
+| | | | | |

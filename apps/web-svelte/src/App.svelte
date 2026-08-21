@@ -34,9 +34,16 @@
   {#if dashboard.state === "loading"}
     <p role="status" class="loading">Loading live data…</p>
   {:else if dashboard.state === "error"}
-    <p role="alert" class="error">
-      The API is unreachable. {dashboard.errors.join(" · ")}
-    </p>
+    <div role="alert" class="error-block">
+      <p class="error">
+        The API did not respond — it runs on a free tier and may be waking from
+        sleep, which takes about half a minute.
+      </p>
+      <button type="button" class="retry" onclick={() => dashboard.load()}>
+        Try again
+      </button>
+      <p class="error-detail">{dashboard.errors.join(" · ")}</p>
+    </div>
   {:else if dashboard.state === "ready"}
     {#if dashboard.metrics}
       <MetricTiles metrics={dashboard.metrics} />
@@ -126,6 +133,30 @@
   }
   .error {
     color: #fda4af;
+  }
+  .error-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .error-detail {
+    color: rgba(253, 164, 175, 0.6);
+    font-size: 11px;
+    margin: 0;
+  }
+  .retry {
+    background: transparent;
+    border: 1px solid rgba(110, 231, 183, 0.4);
+    border-radius: 10px;
+    color: #6ee7b7;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 14px;
+  }
+  .retry:hover {
+    background: rgba(110, 231, 183, 0.08);
   }
   .foot {
     color: rgba(255, 255, 255, 0.55);

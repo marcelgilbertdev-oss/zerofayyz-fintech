@@ -16,7 +16,11 @@ async function getValidated<Schema extends z.ZodTypeAny>(
   path: string,
   schema: Schema,
 ): Promise<z.infer<Schema>> {
-  const response = await fetch(path, { signal: AbortSignal.timeout(15_000) });
+  // 45s, not 15: the API runs on a free tier that sleeps, the scheduled
+  // keep-warm drifts (observed running every 33-43 minutes against a 10-minute
+  // cron), and a cold start takes ~22s. A timeout shorter than the wake-up
+  // turns every cold start into a dead error page.
+  const response = await fetch(path, { signal: AbortSignal.timeout(45_000) });
 
   if (!response.ok) {
     throw new Error(`${path} responded ${response.status}`);
@@ -46,7 +50,7 @@ export async function startCheckout(): Promise<string> {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({}),
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(45_000),
   });
 
   const payload = await response.json().catch(() => null);
