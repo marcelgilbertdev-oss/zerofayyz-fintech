@@ -187,7 +187,9 @@ it and never records it.
 19. Click **Sign in** in the dashboard header.
 20. On the login page, read the **Reviewer access** box — the demo credentials
     are printed there on purpose.
-21. Sign in as `demo@zerofayyz.test` / `view-the-ledger`.
+21. Click **Fill these in for me**, then **Sign in**. (Typing them by hand works
+    too; the button exists because the first person to run this charter pasted
+    both values into the email field and was told the credentials were wrong.)
 
 **Expect:** the sign-in takes a few seconds — that is the password hash doing
 real work (memory-hard scrypt) on a free-tier CPU, not a hang. You land on the
@@ -275,7 +277,7 @@ system the way a stranger reaches it, using only the public URLs.
 cd apps/api && npm run test:unit && npm run test:integration && cd ../..
 ```
 
-**Expect:** `54 pass` then `24 pass`.
+**Expect:** `56 pass` then `29 pass`.
 
 Integration needs the local database running. If it fails to connect:
 
@@ -442,6 +444,9 @@ watched removing a session from the list.
 | 11 | `promisify(scrypt)` silently dropped the cost options — password hashing would have run at defaults while types said otherwise | promisify picks the overload without options; a cast would have hidden it | Hand-written promise wrapper | Typecheck; parameter string asserted in unit tests |
 | 12 | Two Vercel deploys failed in 13s while CI and smoke stayed green; production served a stale dashboard unnoticed | Build typecheck followed a Playwright spec's import across the package boundary; smoke greps matched text present in the old build too | tsconfig split (build excludes e2e; CI typechecks it where deps exist); smoke gained checks unique to the new build | 5 build-unique smoke checks |
 | 13 | Every session fingerprint identical in production; login limiter was one global bucket — 5 failed attempts by anyone locked everyone out | No `trustProxy` behind Render's balancer, and `::ffff:` IPv4-mapped addresses all sliced to one prefix | trustProxy + forwarded client address; limiter re-keyed per attempted account; mapped addresses unwrapped | Unit + integration tests; both limiter directions probed live |
+| 14 | Reviewer pasted the whole credentials block into the email field and was told "Incorrect email or password" | The demo box printed two values in a way that invites one copy | **Fill these in for me** button; credentials still printed for anyone who prefers to read them | E2E fills, submits, and lands on /admin |
+| 15 | The login error stayed on screen while the typo it complained about was being corrected | The form cleared its error on submit, not on edit | Clears the moment either field is edited | E2E types a correction and asserts the message disappears |
+| 16 | Accessibility checks failed only in parallel runs — read as flake, was a real defect | The login limiter counted **every** attempt, so concurrent successful demo logins exhausted its budget. In production the sixth reviewer in a busy 15 minutes would have been locked out of the public demo account, looking identical to an outage | Limiter counts failures only: `status()` is read-only, `recordFailure()` spends budget, success clears the slate | Unit test for 10 consecutive successes; integration test for 10 real sign-ins |
 
 ## Human result log
 
@@ -450,4 +455,5 @@ walking the journey.
 
 | Date | Part A (steps passed / issues) | Part B | B4 idempotency seen? | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-08-21 | **A9–A12 passed** (Marcel, with Claude). A9 seeded on the second run — see note. A10 demo operator: audit log present, no privileged panels, operator notice shown. A11 admin: presence panel with "This is you", revoked a session and watched the row disappear; `admin.session.revoked` logged and attributed. Live two-browser revoke done — Claude's session was killed mid-use and the same unchanged, unexpired cookie then returned 401. A12 read. | **B5 passed**: 4× 401 on the privileged routes, 307 on `/admin`, five 401s then 429 on the sixth login attempt. | not re-run this session | Three defects found by this walk — rows 14–16 above. Also: the first seed reported success without proving the password worked; the seed now reads both accounts back and verifies them before printing VERIFIED. |
 | | | | | |
