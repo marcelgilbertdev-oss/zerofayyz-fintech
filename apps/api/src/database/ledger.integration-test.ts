@@ -27,6 +27,13 @@ const PAYMENT_ID = "bbbbbbbb-0000-4000-8000-000000000001";
 const WEBHOOK_SECRET = "whsec_integration";
 
 let database: Database;
+let baseline: {
+  grossVolumeMinor: number;
+  succeededCount: number;
+  eventsRecorded: number;
+  pendingCount: number;
+  lastDayMinor: number;
+};
 
 function paidEvent(eventId: string): Stripe.Event {
   return {
@@ -110,6 +117,27 @@ before(async () => {
   await database.query("DELETE FROM transactions WHERE payment_id = $1", [PAYMENT_ID]);
   await database.query("DELETE FROM payments WHERE id = $1", [PAYMENT_ID]);
   await database.query("DELETE FROM users WHERE id = $1", [USER_ID]);
+
+  // Metrics are asserted as DELTAS against this baseline, captured after the
+  // suite's own rows are cleaned and before any are inserted. The original
+  // test asserted absolute figures, which silently assumed this suite's rows
+  // were the only USD rows in the database — true in the TRUNCATE era, false
+  // the moment the demo seed became restorable. A suite may assert what it
+  // adds; the table's absolute contents belong to no one.
+  {
+    const app = buildApp({ database, logger: false, stripe: null });
+    const before = await app.inject({ method: "GET", url: "/api/v1/metrics" });
+    const body = before.json();
+    baseline = {
+      grossVolumeMinor: body.grossVolumeMinor,
+      succeededCount: body.succeededCount,
+      eventsRecorded: body.eventsRecorded,
+      pendingCount: body.pending.count,
+      lastDayMinor: body.dailyVolume.at(-1)?.amountMinor ?? 0,
+    };
+    await app.close();
+  }
+
   await database.query(
     `INSERT INTO users (id, email, display_name) VALUES ($1, $2, $3)`,
     [USER_ID, "integration@example.test", "Integration Reviewer"],
@@ -220,13 +248,16 @@ test("GET /api/v1/metrics aggregates real rows", async (context) => {
 
   const body = response.json();
   assert.equal(body.currency, "USD");
-  assert.equal(body.grossVolumeMinor, 4_200);
-  assert.equal(body.succeededCount, 1);
-  assert.equal(body.successRate, 100);
-  assert.equal(body.pending.count, 0);
-  assert.equal(body.eventsRecorded, 2);
+  // This suite's contribution: one payment that succeeded ($42.00, today) and
+  // two recorded events. Its payment entered as processing and left as
+  // succeeded, so pending is back where it started.
+  assert.equal(body.grossVolumeMinor - baseline.grossVolumeMinor, 4_200);
+  assert.equal(body.succeededCount - baseline.succeededCount, 1);
+  assert.equal(body.pending.count, baseline.pendingCount);
+  assert.equal(body.eventsRecorded - baseline.eventsRecorded, 2);
   assert.equal(body.dailyVolume.length, 12);
-  assert.equal(body.dailyVolume.at(-1)?.amountMinor, 4_200);
+  assert.equal((body.dailyVolume.at(-1)?.amountMinor ?? 0) - baseline.lastDayMinor, 4_200);
+  assert.ok(body.successRate === null || (body.successRate >= 0 && body.successRate <= 100));
 });
 
 test("GET /api/v1/health reports a real database latency", async (context) => {

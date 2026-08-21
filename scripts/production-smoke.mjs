@@ -301,6 +301,40 @@ await check("the dashboard header carries the sign-in door", async () => {
   return "sign-in link present";
 });
 
+// ---------------------------------------------------------------- phase 5
+
+await check("the three ledger pages serve real data", async () => {
+  for (const [path, marker] of [
+    ["/payments", "Filter by status"],
+    ["/transactions", "UNIQUE-constrained"],
+    ["/customers", "Settled volume"],
+  ]) {
+    const response = await fetch(`${WEB}${path}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const html = await response.text();
+
+    assert(response.status === 200, `${path} answered ${response.status}`);
+    // Content that exists only in the Phase 5 build — the smoke suite must be
+    // able to tell this deploy from the previous one.
+    assert(html.includes(marker), `${path} is missing its Phase 5 content`);
+  }
+
+  return "payments, transactions, customers all live";
+});
+
+await check("the ledger API paginates and filters", async () => {
+  const filtered = await fetchJson("/api/v1/payments?status=succeeded&limit=5");
+  assert(Array.isArray(filtered.data), "no data array");
+  for (const row of filtered.data) {
+    assert(row.status === "succeeded", `filter leaked a ${row.status} payment`);
+  }
+  assert(typeof filtered.meta?.total === "number", "no exact total in meta");
+
+  const events = await fetchJson("/api/v1/events?limit=5");
+  assert(Array.isArray(events.data), "no events array");
+
+  return `${filtered.meta.total} succeeded payments, ${events.meta.total} events`;
+});
+
 const failed = results.filter((entry) => !entry.ok);
 
 console.log(`\n${results.length - failed.length}/${results.length} checks passed\n`);

@@ -119,6 +119,44 @@ const en = {
     created: "Created",
     refunded: "Refunded",
   },
+  pages: {
+    payments: {
+      title: "Payments",
+      subtitle:
+        "The full ledger — every payment the platform has issued, straight from PostgreSQL. Filter by status; the totals follow the filter.",
+      filterLabel: "Filter by status",
+      all: "All",
+      empty: "No payments match this filter.",
+      description: "Description",
+    },
+    events: {
+      title: "Transactions",
+      subtitle:
+        "The raw Stripe event stream. Every row is one delivered webhook; the event id column is UNIQUE-constrained in the database, and that constraint — not application code — is why a duplicate delivery can never write twice.",
+      eventId: "Stripe event id",
+      eventType: "Event type",
+      seeded: "seeded",
+      empty: "No events recorded yet.",
+      occurred: "Occurred",
+    },
+    customers: {
+      title: "Customers",
+      subtitle:
+        "Every sandbox customer, with lifetime settled volume (USD) and payment count. Aggregated in SQL, not in the page.",
+      customer: "Customer",
+      payments: "Payments",
+      volume: "Settled volume",
+      lastActivity: "Last activity",
+      never: "Never",
+      empty: "No customers yet.",
+    },
+    pagination: {
+      previous: "← Newer",
+      next: "Older →",
+      showing: (from: number, to: number, total: number) =>
+        `${from}–${to} of ${total}`,
+    },
+  },
   flow: {
     label: "MVP payment flow",
     blurb: "A visible, testable path from checkout to financial record.",
@@ -370,6 +408,44 @@ const ja: Dictionary = {
     canceled: "キャンセル",
     created: "作成済み",
     refunded: "返金済み",
+  },
+  pages: {
+    payments: {
+      title: "決済",
+      subtitle:
+        "完全な台帳 — プラットフォームが発行したすべての決済を PostgreSQL から直接表示。ステータスで絞り込みでき、件数は絞り込みに追従します。",
+      filterLabel: "ステータスで絞り込む",
+      all: "すべて",
+      empty: "この条件に一致する決済はありません。",
+      description: "説明",
+    },
+    events: {
+      title: "取引",
+      subtitle:
+        "Stripe の生イベントストリーム。各行は配信された 1 つの Webhook です。イベント ID 列はデータベースの UNIQUE 制約で守られており、重複配信が二重に記録されない理由はアプリケーションコードではなくこの制約です。",
+      eventId: "Stripe イベント ID",
+      eventType: "イベント種別",
+      seeded: "シード",
+      empty: "記録されたイベントはまだありません。",
+      occurred: "発生日時",
+    },
+    customers: {
+      title: "顧客",
+      subtitle:
+        "すべてのサンドボックス顧客と、累計確定額（米ドル）および決済回数。集計はページではなく SQL で行っています。",
+      customer: "顧客",
+      payments: "決済数",
+      volume: "確定額",
+      lastActivity: "最終アクティビティ",
+      never: "なし",
+      empty: "顧客はまだいません。",
+    },
+    pagination: {
+      previous: "← 新しい",
+      next: "古い →",
+      showing: (from: number, to: number, total: number) =>
+        `${total} 件中 ${from}–${to} 件`,
+    },
   },
   flow: {
     label: "MVP 決済フロー",

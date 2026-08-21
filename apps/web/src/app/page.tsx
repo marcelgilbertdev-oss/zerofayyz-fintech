@@ -550,7 +550,7 @@ export default async function Home({
               </div>
             </article>
 
-            <article className="rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:p-6">
+            <article id="system-health" className="scroll-mt-24 rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-white/88">{t.health.title}</p>

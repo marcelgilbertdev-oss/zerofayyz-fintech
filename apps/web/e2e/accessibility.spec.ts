@@ -61,11 +61,20 @@ test("the language switcher exposes its current selection to assistive tech", as
   await expect(active).toHaveAttribute("aria-current", "true");
 });
 
-test("disabled navigation is announced as disabled, not merely styled", async ({ page }) => {
-  await page.goto("/?lang=en");
+test("the sidebar marks the current page for assistive tech", async ({ page }) => {
+  // This test used to assert the PLANNED items were genuinely disabled. Every
+  // destination is real now, so the assertion evolves with the product: the
+  // active item carries aria-current, which is what a screen reader needs to
+  // answer "where am I".
+  await page.goto("/payments?lang=en");
 
-  const planned = page.getByRole("button", { name: /Payments/ }).first();
-
-  await expect(planned).toBeDisabled();
-  await expect(planned).toHaveAttribute("aria-disabled", "true");
+  const nav = page.getByRole("navigation", { name: /primary navigation/i });
+  await expect(nav.getByRole("link", { name: /payments/i })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(nav.getByRole("link", { name: /overview/i })).not.toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });

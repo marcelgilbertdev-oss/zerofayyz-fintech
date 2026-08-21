@@ -10,15 +10,26 @@ import path from "node:path";
  * e2e suite self-contained instead of dependent on run order.
  */
 export default function globalSetup() {
+  const env = {
+    ...process.env,
+    DATABASE_URL:
+      process.env.DATABASE_URL ??
+      "postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech",
+    ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? "ci-throwaway-admin-password",
+  };
+
+  // Demo data first: the ledger pages assert against seeded customers, and a
+  // local database that older test runs have chewed on drifts away from what
+  // CI seeds fresh. The seed is idempotent, so this is a restore, not a reset.
+  execFileSync("npm", ["run", "seed:demo"], {
+    cwd: path.resolve(__dirname, "../../api"),
+    env,
+    stdio: "inherit",
+  });
+
   execFileSync("npm", ["run", "seed:staff"], {
     cwd: path.resolve(__dirname, "../../api"),
-    env: {
-      ...process.env,
-      DATABASE_URL:
-        process.env.DATABASE_URL ??
-        "postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech",
-      ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? "ci-throwaway-admin-password",
-    },
+    env,
     stdio: "inherit",
   });
 }

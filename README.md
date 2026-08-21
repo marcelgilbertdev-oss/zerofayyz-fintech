@@ -75,6 +75,10 @@ TypeScript throughout, ESM, Node 20+.
 - Account management from the console: create staff, change roles, disable and enable —
   never against your own account, and disabling revokes every live session in the same
   statement
+- Full ledger pages — Payments (status-filterable, paginated with exact totals),
+  Transactions (the raw Stripe event stream, provider event ids visible — the idempotency
+  constraint made inspectable), and Customers (per-customer settled volume aggregated in
+  SQL). Every sidebar destination is real; the last PLANNED badges are gone
 - Account-enumeration protection: a missing account is verified against a decoy hash, so a
   wrong password and a nonexistent user return byte-identical responses in comparable time
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
@@ -114,8 +118,8 @@ Phase 1 and Phase 2 are complete. Later phases are listed because they are plann
 | 2 | Public deployment, live webhook registration, three clients, i18n, accessibility | ✅ Complete |
 | 3 | Authentication, roles, audit log, admin console with live presence | ✅ Complete |
 | 4 | Refunds (four-eyes rule, withdrawal, refund webhook) and account management | ✅ Complete |
-| 5 | Payments, Transactions and Customers views (currently badged PLANNED in the sidebar) | 🔜 Next |
-| 6 | Infrastructure as code, container deployment | Planned |
+| 5 | Payments, Transactions and Customers ledger pages | ✅ Complete |
+| 6 | Infrastructure as code, container deployment | 🔜 Next |
 | 7 | Go service, Solidity settlement experiment, React Native client | Exploratory |
 
 Reserved directories exist for the later phases and contain no implementation. They are

@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 1 through 3 are complete and deployed. This describes what comes next, in what order,
+Phases 1 through 5 are complete and deployed. This describes what comes next, in what order,
 and why that order.
 
 **The governing rule:** each phase must end with something *finished* — tested, deployed, and

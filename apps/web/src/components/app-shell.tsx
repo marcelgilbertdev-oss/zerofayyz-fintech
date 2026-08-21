@@ -21,14 +21,8 @@ export function BrandMark() {
 
 type SidebarProps = {
   t: Dictionary;
-  active: "overview" | "admin";
+  active: "overview" | "payments" | "transactions" | "customers" | "admin";
 };
-
-const PLANNED_KEYS = [
-  { key: "payments", glyph: "↗" },
-  { key: "transactions", glyph: "⇄" },
-  { key: "customers", glyph: "◎" },
-] as const;
 
 function NavLink({
   href,
@@ -57,21 +51,6 @@ function NavLink({
   );
 }
 
-function PlannedItem({ glyph, label, title }: { glyph: string; label: string; title: string }) {
-  return (
-    <button
-      type="button"
-      aria-disabled
-      disabled
-      title={title}
-      className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/55"
-    >
-      <span className="grid size-5 place-items-center text-sm text-emerald-200/70">{glyph}</span>
-      {label}
-    </button>
-  );
-}
-
 export function AppSidebar({ t, active }: SidebarProps) {
   return (
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-white/[0.07] bg-[#081310]/95 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col">
@@ -91,25 +70,14 @@ export function AppSidebar({ t, active }: SidebarProps) {
         <p className="mt-1 text-[11px] leading-4 text-white/40">{t.sandbox.note}</p>
       </div>
 
+      {/* Every primary destination is real now. The last PLANNED badges came
+          off when the ledger pages shipped — a sidebar advertising three
+          unbuilt sections read as unfinished work, and it was. */}
       <nav className="mt-7 space-y-1" aria-label={t.nav.primaryLabel}>
         <NavLink href="/" glyph="⌂" label={t.nav.overview} current={active === "overview"} />
-        {PLANNED_KEYS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            aria-disabled
-            disabled
-            title={t.nav.plannedTitle}
-            className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/55"
-          >
-            <span className="grid size-5 place-items-center text-sm text-emerald-200/80">{item.glyph}</span>
-            {t.nav[item.key]}
-            <span className="ml-auto rounded-full border border-white/[0.07] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/55">
-              {t.nav.planned}
-            </span>
-          </button>
-        ))}
-        {/* Real destinations now, not PLANNED badges: the console shipped. */}
+        <NavLink href="/payments" glyph="↗" label={t.nav.payments} current={active === "payments"} />
+        <NavLink href="/transactions" glyph="⇄" label={t.nav.transactions} current={active === "transactions"} />
+        <NavLink href="/customers" glyph="◎" label={t.nav.customers} current={active === "customers"} />
         <NavLink href="/admin" glyph="◇" label={t.nav.admin} current={active === "admin"} />
       </nav>
 
@@ -120,8 +88,21 @@ export function AppSidebar({ t, active }: SidebarProps) {
           label in two navigations at once reads as redundancy — a live charter
           finding. */}
       <nav className="space-y-1" aria-label={t.nav.projectLabel}>
-        <PlannedItem glyph="◉" label={t.nav.systemHealth} title={t.nav.plannedTitle} />
-        <PlannedItem glyph="↗" label={t.nav.portfolioNotes} title={t.nav.plannedTitle} />
+        {/* The health panel is fully rendered on the overview; this is a jump,
+            not a page pretending to exist. */}
+        <NavLink href="/#system-health" glyph="◉" label={t.nav.systemHealth} current={false} />
+        {/* Reviewer notes live in the repository, where an engineer will read
+            them; the sidebar link goes there honestly instead of stubbing an
+            in-app page. */}
+        <a
+          href="https://github.com/marcelgilbertdev-oss/zerofayyz-fintech/blob/main/docs/portfolio/TRY_IT_IN_THREE_MINUTES.md"
+          target="_blank"
+          rel="noreferrer"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white"
+        >
+          <span className="grid size-5 place-items-center text-sm text-emerald-200/70">↗</span>
+          {t.nav.portfolioNotes}
+        </a>
       </nav>
 
       <div className="mt-auto rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">

@@ -9,6 +9,7 @@ import { accountRoutes, adminRoutes } from "./admin/admin.routes.js";
 import { refundRoutes } from "./admin/refunds.routes.js";
 import { authRoutes, sessionResolver } from "./auth/auth.routes.js";
 import { healthRoutes } from "./health/health.routes.js";
+import { ledgerRoutes } from "./ledger/ledger.routes.js";
 import { metricRoutes } from "./metrics/metrics.routes.js";
 import { paymentRoutes } from "./payments/payments.routes.js";
 import {
@@ -92,6 +93,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     stripe,
   });
   app.register(transactionRoutes, {
+    prefix: "/api/v1",
+    database,
+  });
+  app.register(ledgerRoutes, {
     prefix: "/api/v1",
     database,
   });
