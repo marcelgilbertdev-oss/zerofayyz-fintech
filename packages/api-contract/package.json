@@ -1,0 +1,14 @@
+{
+  "name": "@zerofayyz/api-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "schemas.ts",
+  "types": "schemas.ts",
+  "scripts": {
+    "relock": "rm -rf node_modules package-lock.json && npm install"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  }
+}

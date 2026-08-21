@@ -22,6 +22,7 @@ cannot see.
 | End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, WCAG AA |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
 | Vue client unit | 20 | jsdom, fetch mocked at the network seam | Contract validation, store state, partial failure, rendered output |
+| Svelte client unit | 10 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
 
 Total wall-clock for all three, locally: under fifteen seconds.
 

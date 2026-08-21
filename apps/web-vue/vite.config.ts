@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 3001,
+    // The shared API contract lives above this package's root.
+    fs: { allow: [".."] },
     // The browser only ever talks to its own origin. Locally Vite proxies /api
     // to the Fastify server; in production the hosting platform rewrites the
     // same path. Same trust posture as the Next.js client: no API origin in

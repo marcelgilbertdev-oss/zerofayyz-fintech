@@ -47,11 +47,12 @@ TypeScript throughout, ESM, Node 20+.
   enforced by the type system — a missing string is a compile error, not an English
   word in a Japanese page
 - WCAG 2.1 AA verified by axe-core in CI against both locales
-- A second frontend in Vue 3 (Composition API, Pinia, Vitest with Testing Library, Zod
-  validating every response at the boundary) consuming the same API unmodified — the API
-  contract proven by a second, differently-built consumer
+- Three independent frontends on one API — Next.js 16, Vue 3 (Composition API + Pinia) and
+  Svelte 5 (runes) — sharing one Zod contract that validates every response at the boundary.
+  The API is consumed unmodified by all three, so the contract is demonstrated rather than
+  asserted
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
-- 66 automated tests across four suites, all gated in CI, plus a nine-check smoke suite
+- 76 automated tests across five suites, all gated in CI, plus a nine-check smoke suite
   that verifies the live deployment from outside
 
 ## Roadmap
@@ -90,6 +91,10 @@ cd apps/web && npm install && npm run dev
 cd apps/web-vue && npm install && npm run dev     # Vue client on http://localhost:3001
 ```
 
+```bash
+cd apps/web-svelte && npm install && npm run dev  # Svelte client on http://localhost:3002
+```
+
 Copy `.env.example` to `.env` and fill in Stripe test keys. Use a **restricted** test key
 (`rk_test_`) with Checkout write access rather than a full secret key — the reasoning is in
 [ADR 0003](docs/decisions/0003-restrict-the-stripe-key-and-keep-it-server-side.md).
@@ -125,6 +130,8 @@ themselves.
 apps/api           Fastify API — health, metrics, transactions, payments, webhooks
 apps/web           Next.js dashboard and checkout proxy
 apps/web-vue       Vue 3 client — same API, Composition API + Pinia + Zod + Vitest
+apps/web-svelte    Svelte 5 client — same API, runes + Zod + Vitest
+packages/api-contract  Shared Zod description of the API, used by both SPA clients
 database/postgres  Migrations and demo seed data
 docs/              Architecture, decisions, quality strategy, runbooks, case study
 infrastructure/    Docker compose for local PostgreSQL
