@@ -250,6 +250,12 @@ the terminal.
 Requires A9's accounts, and works best in production where payments carry a
 real Stripe payment intent.
 
+**One-time setup:** the Stripe webhook destination must subscribe to
+`charge.refunded` (Dashboard → Developers → Webhooks → your endpoint → add
+events). The original Phase 1 setup subscribed only the four
+`checkout.session.*` events, and without this one the approve half-works: the
+refund goes out, the confirmation never arrives, and the payment never flips.
+
 28. Sign in as the **demo operator**. In **Payments**, click **Request refund**
     on a succeeded payment, give a reason you'll recognise, leave the amount
     empty (full refund), and submit.
@@ -322,7 +328,7 @@ system the way a stranger reaches it, using only the public URLs.
 cd apps/api && npm run test:unit && npm run test:integration && cd ../..
 ```
 
-**Expect:** `56 pass` then `29 pass`.
+**Expect:** `56 pass` then `38 pass`.
 
 Integration needs the local database running. If it fails to connect:
 

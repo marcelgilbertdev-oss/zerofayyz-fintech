@@ -54,25 +54,26 @@ done properly.
 
 ---
 
-## Phase 4 — Refunds and account management 🔜 Next
+## Phase 4 — Refunds and account management ✅ Complete
 
-**Why next:** the admin console reads nearly everything and writes almost nothing. An
+Shipped and live: request/approve with the four-eyes rule enforced by API and
+CHECK constraint, requester withdrawal (a feature the e2e suite proved missing
+by deadlocking without it), Stripe refunds keyed idempotently on the request
+id, the ledger moved only by the signed charge.refunded webhook, and account
+create / re-role / disable / enable — never against yourself, with disabling
+revoking every live session in the same statement.
+
+**Why it was next:** the admin console reads nearly everything and writes almost nothing. An
 operator's day is spent *acting*, and a refund is the canonical payments action — money
 moving backwards, with an audit trail proving who authorised it and when.
 
-**Scope:**
+**Deferred from this phase:** the Payments, Transactions and Customers sidebar
+pages — now Phase 5's whole scope.
 
-- Refund a payment from the console, full or partial, through Stripe's refund API
-- The resulting `charge.refunded` webhook updating the ledger, idempotently, the same way
-  every other event does
-- Role separation: an operator may *request* a refund, an admin may *approve* it, and the
-  audit log carries both
-- Create, disable and re-role accounts from the console
-- Replace the Payments, Transactions and Customers sidebar items currently badged PLANNED
-
-**What proves it works:** a refund issued in the console, the ledger moving by exactly that
-amount, the same refund event replayed and changing nothing, and an audit trail naming the
-approver. Plus an authorisation test asserting an operator cannot approve their own request.
+**What proved it works:** the refund event replayed and changing nothing; an
+approval racing a rejection losing cleanly with Stripe never called; a Stripe
+failure releasing the claim so the request stays decidable; and the schema
+refusing a self-approval even from raw SQL.
 
 ---
 

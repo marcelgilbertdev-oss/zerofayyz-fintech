@@ -201,6 +201,9 @@ production it needs a public address.
    - `checkout.session.async_payment_succeeded`
    - `checkout.session.async_payment_failed`
    - `checkout.session.expired`
+   - `charge.refunded` — added in Phase 4. Without it, approving a refund calls
+     Stripe and succeeds, but the confirmation never arrives and the payment
+     sits at "succeeded" forever: the ledger only moves on the signed event.
 5. Click **Add endpoint**.
 6. On the endpoint's page, find **Signing secret** and click reveal. It starts with `whsec_`.
 7. In Render → **Environment**, set `STRIPE_WEBHOOK_SECRET` to that value. Save.

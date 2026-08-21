@@ -383,3 +383,92 @@ test("a requester withdraws their own pending request; nobody else can", async (
   });
   assert.equal(late.statusCode, 404);
 });
+
+test("an approval arriving after a rejection is refused, and Stripe is never called", async (context) => {
+  const stripeCalls: Array<Record<string, unknown>> = [];
+  const app = buildApp({ database, logger: false, stripe: stripeStub(stripeCalls) });
+  context.after(async () => app.close());
+
+  const operatorCookie = await login(app, "refund.operator@zerofayyz.test");
+  const requested = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/payments/${PAYMENT_ID}/refund-requests`,
+    headers: { cookie: operatorCookie },
+    payload: { reason: "Raced decision" },
+  });
+  const requestId = requested.json().id as string;
+
+  const adminCookie = await login(app, "refund.admin@zerofayyz.test");
+  await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/refund-requests/${requestId}/reject`,
+    headers: { cookie: adminCookie },
+    payload: { note: "Rejected first" },
+  });
+
+  // The race, sequentially: the second decider must lose cleanly. The first
+  // version of this route would have called Stripe here and overwritten the
+  // rejection with an approval.
+  const secondCookie = await login(app, "refund.admin2@zerofayyz.test");
+  const late = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/refund-requests/${requestId}/approve`,
+    headers: { cookie: secondCookie },
+    payload: {},
+  });
+
+  assert.equal(late.statusCode, 404);
+  assert.equal(stripeCalls.length, 0, "Stripe was called for an already-decided request");
+
+  const stored = await database.query<{ status: string }>(
+    "SELECT status FROM refund_requests WHERE id = $1",
+    [requestId],
+  );
+  assert.equal(stored.rows[0]?.status, "rejected", "the rejection was overwritten");
+});
+
+test("a Stripe failure releases the claim so the request can be decided again", async (context) => {
+  const failingStripe = {
+    ...stripeStub([]),
+    refunds: {
+      async create() {
+        throw new Error("Stripe sandbox exploded");
+      },
+    } as unknown as Stripe["refunds"],
+  };
+  const app = buildApp({ database, logger: false, stripe: failingStripe });
+  context.after(async () => app.close());
+
+  const operatorCookie = await login(app, "refund.operator@zerofayyz.test");
+  const requested = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/payments/${PAYMENT_ID}/refund-requests`,
+    headers: { cookie: operatorCookie },
+    payload: { reason: "Provider will fail" },
+  });
+  const requestId = requested.json().id as string;
+
+  const adminCookie = await login(app, "refund.admin@zerofayyz.test");
+  const failed = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/refund-requests/${requestId}/approve`,
+    headers: { cookie: adminCookie },
+    payload: {},
+  });
+  assert.equal(failed.statusCode, 502);
+
+  // The claim was released: still pending, decidable by someone, and the
+  // failed attempt is in the history.
+  const stored = await database.query<{ status: string; decided_by: string | null }>(
+    "SELECT status, decided_by FROM refund_requests WHERE id = $1",
+    [requestId],
+  );
+  assert.equal(stored.rows[0]?.status, "pending");
+  assert.equal(stored.rows[0]?.decided_by, null);
+
+  const audit = await database.query<{ action: string }>(
+    "SELECT action FROM audit_logs WHERE action = 'refund.approve_failed' AND entity_id = $1",
+    [requestId],
+  );
+  assert.equal(audit.rows.length >= 1, true);
+});

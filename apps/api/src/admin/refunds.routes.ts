@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 
-import { recordAudit } from "../auth/audit.js";
+import { recordAudit, recordAuditSafely } from "../auth/audit.js";
 import { requireRole } from "../auth/auth.routes.js";
 import type { Database } from "../database/database.js";
 import type { StripeGateway } from "../payments/stripe.gateway.js";
@@ -224,48 +224,79 @@ export const refundRoutes: FastifyPluginAsync<RefundRouteOptions> = async (
         return reply.code(503).send({ error: "Stripe sandbox is not configured" });
       }
 
-      const pending = await database.query<
+      // Claim first, call Stripe second, revert on failure.
+      //
+      // The first version checked the request was pending, called Stripe, and
+      // then wrote the approval with no status guard — so a rejection landing
+      // in that gap was silently overwritten by an approval whose refund had
+      // already gone out the door. The claim is one atomic UPDATE: whoever
+      // moves the row out of 'pending' wins, and everyone else gets told the
+      // request was already decided. Stripe is only ever called by the winner.
+      const claimed = await database.query<
         {
           id: string;
           payment_id: string;
           amount_minor: string | null;
-          requested_by: string;
           provider_payment_id: string | null;
           payment_amount_minor: string;
-          currency: string;
         },
-        [string]
+        [string, string | null, string | null]
       >(
         `
-          SELECT r.id,
-                 r.payment_id,
-                 r.amount_minor,
-                 r.requested_by,
-                 p.provider_payment_id,
-                 p.amount_minor AS payment_amount_minor,
-                 p.currency
-            FROM refund_requests r
-            JOIN payments p ON p.id = r.payment_id
+          UPDATE refund_requests r
+             SET status = 'approved',
+                 decided_by = $2,
+                 decided_at = NOW(),
+                 decision_note = $3
+            FROM payments p
            WHERE r.id = $1
              AND r.status = 'pending'
+             AND r.requested_by <> $2
+             AND p.id = r.payment_id
+          RETURNING r.id,
+                    r.payment_id,
+                    r.amount_minor,
+                    p.provider_payment_id,
+                    p.amount_minor AS payment_amount_minor
         `,
-        [request.params.id],
+        [request.params.id, request.session?.userId ?? null, request.body.note ?? null],
       );
-      const row = pending.rows[0];
+      const row = claimed.rows[0];
 
       if (!row) {
+        // Refused, but why? Own-request gets the honest explanation; anything
+        // else — decided already, never existed — is a 404.
+        const own = await database.query<{ id: string }>(
+          "SELECT id FROM refund_requests WHERE id = $1 AND status = 'pending' AND requested_by = $2",
+          [request.params.id, request.session?.userId ?? null],
+        );
+
+        if (own.rows[0]) {
+          return reply.code(403).send({
+            error: "A refund cannot be approved by the person who requested it",
+          });
+        }
+
         return reply.code(404).send({ error: "No pending refund request with that id" });
       }
 
-      if (row.requested_by === request.session?.userId) {
-        // The schema's CHECK would refuse this too; answering here keeps the
-        // error honest instead of a bare constraint violation.
-        return reply.code(403).send({
-          error: "A refund cannot be approved by the person who requested it",
-        });
-      }
+      const revert = () =>
+        database.query(
+          `
+            UPDATE refund_requests
+               SET status = 'pending',
+                   decided_by = NULL,
+                   decided_at = NULL,
+                   decision_note = NULL
+             WHERE id = $1
+               AND status = 'approved'
+               AND provider_refund_id IS NULL
+          `,
+          [row.id],
+        );
 
       if (!row.provider_payment_id) {
+        await revert();
         return reply.code(409).send({
           error: "This payment has no Stripe payment intent to refund against",
         });
@@ -274,31 +305,47 @@ export const refundRoutes: FastifyPluginAsync<RefundRouteOptions> = async (
       const amountMinor =
         row.amount_minor === null ? null : Number(row.amount_minor);
 
-      const refund = await stripe.refunds.create(
-        {
-          payment_intent: row.provider_payment_id,
-          ...(amountMinor === null ? {} : { amount: amountMinor }),
-          metadata: {
-            refund_request_id: row.id,
-            environment: "portfolio_sandbox",
+      let refund;
+
+      try {
+        refund = await stripe.refunds.create(
+          {
+            payment_intent: row.provider_payment_id,
+            ...(amountMinor === null ? {} : { amount: amountMinor }),
+            metadata: {
+              refund_request_id: row.id,
+              environment: "portfolio_sandbox",
+            },
           },
-        },
-        // Stripe deduplicates on this key, so an approval retried after a
-        // network failure cannot issue a second refund for the same request.
-        { idempotencyKey: `refund-request-${row.id}` },
-      );
+          // Stripe deduplicates on this key, so an approval retried after a
+          // network failure cannot issue a second refund for the same request.
+          { idempotencyKey: `refund-request-${row.id}` },
+        );
+      } catch (error) {
+        // The claim is released so the request can be decided again; the
+        // failed attempt still goes into the history, tolerantly — a logging
+        // failure must not leave the row claimed forever.
+        await revert();
+        await recordAuditSafely(
+          database,
+          {
+            action: "refund.approve_failed",
+            entityType: "refund_request",
+            entityId: row.id,
+            actorUserId: request.session?.userId ?? null,
+            sessionId: request.session?.sessionId ?? null,
+            metadata: { paymentId: row.payment_id },
+          },
+          (auditError) => request.log.error({ auditError }, "audit write failed"),
+        );
+        request.log.error({ error, requestId: row.id }, "Stripe refund failed");
+
+        return reply.code(502).send({ error: "Stripe refused the refund; the request is pending again" });
+      }
 
       await database.query(
-        `
-          UPDATE refund_requests
-             SET status = 'approved',
-                 decided_by = $2,
-                 decided_at = NOW(),
-                 decision_note = $3,
-                 provider_refund_id = $4
-           WHERE id = $1
-        `,
-        [row.id, request.session?.userId ?? null, request.body.note ?? null, refund.id],
+        "UPDATE refund_requests SET provider_refund_id = $2 WHERE id = $1",
+        [row.id, refund.id],
       );
 
       await recordAudit(database, {
