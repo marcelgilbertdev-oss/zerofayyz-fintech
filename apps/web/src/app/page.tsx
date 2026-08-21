@@ -1,13 +1,29 @@
+import { headers } from "next/headers";
+
 import { CheckoutButton } from "@/components/checkout-button";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getDictionary } from "@/i18n/dictionaries";
+import {
+  DEFAULT_LOCALE,
+  formatCount,
+  formatFullDate,
+  formatMoney,
+  formatRelative,
+  formatShortDate,
+  isLocale,
+  type Locale,
+} from "@/i18n/locale";
+import { LOCALE_HEADER } from "@/proxy";
 
 const API_BASE_URL = process.env.API_URL ?? "http://127.0.0.1:4000";
 const API_TIMEOUT_MS = Number.parseInt(process.env.API_TIMEOUT_MS ?? "8000", 10);
 
 type ApiHealth = {
   operational: boolean;
-  detail: string;
+  /** Raw version string; the label around it is localised at render time. */
+  version: string | null;
   databaseOperational: boolean;
-  databaseDetail: string;
+  databaseLatencyMs: number | null;
   stripeConfigured: boolean;
   webhookConfigured: boolean;
 };
@@ -16,10 +32,12 @@ type DashboardTransaction = {
   id: string;
   customer: string;
   email: string;
-  amount: string;
-  method: string;
+  amountMinor: number;
+  currency: string;
+  /** Raw provider status; localised at render time, not at fetch time. */
   status: string;
-  time: string;
+  viaCheckout: boolean;
+  minutesAgo: number;
   initials: string;
 };
 
@@ -39,9 +57,9 @@ async function getApiHealth(): Promise<ApiHealth> {
     if (!response.ok) {
       return {
         operational: false,
-        detail: `HTTP ${response.status}`,
+        version: null,
         databaseOperational: false,
-        databaseDetail: "Unavailable",
+        databaseLatencyMs: null,
         stripeConfigured: false,
         webhookConfigured: false,
       };
@@ -66,21 +84,21 @@ async function getApiHealth(): Promise<ApiHealth> {
 
     return {
       operational: apiOperational,
-      detail: typeof payload.version === "string" ? `v${payload.version}` : "Connected",
+      version: typeof payload.version === "string" ? payload.version : null,
       databaseOperational,
-      databaseDetail:
+      databaseLatencyMs:
         databaseOperational && typeof databaseLatency === "number"
-          ? `${databaseLatency} ms`
-          : "Unavailable",
+          ? databaseLatency
+          : null,
       stripeConfigured: payload.checks?.stripe?.status === "configured",
       webhookConfigured: payload.checks?.webhook?.status === "configured",
     };
   } catch {
     return {
       operational: false,
-      detail: "Unavailable",
+      version: null,
       databaseOperational: false,
-      databaseDetail: "Unavailable",
+      databaseLatencyMs: null,
       stripeConfigured: false,
       webhookConfigured: false,
     };
@@ -150,20 +168,17 @@ async function getRecentTransactions(): Promise<TransactionResult> {
         0,
         Math.round((Date.now() - new Date(createdAt).getTime()) / 60_000),
       );
-      const readableStatus = status.charAt(0).toUpperCase() + status.slice(1);
 
       return [
         {
           id,
           customer: displayName,
           email,
-          amount: new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency,
-          }).format(amountMinor / 100),
-          method: methodLabel,
-          status: readableStatus,
-          time: minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.round(minutesAgo / 60)} hr ago`,
+          amountMinor,
+          currency,
+          status,
+          viaCheckout: methodLabel === "Stripe Checkout",
+          minutesAgo,
           initials,
         },
       ];
@@ -257,29 +272,21 @@ async function getMetrics(): Promise<DashboardMetrics> {
   }
 }
 
-function formatMinor(amountMinor: number, currency: string): string {
-  // Minor units are exact; rounding to whole currency would display $185.50 of
-  // pending settlement as $186 and make the tiles fail to reconcile against
-  // the ledger below them.
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
-}
 
-const navItems = [
-  { label: "Overview", glyph: "⌂", active: true },
-  { label: "Payments", glyph: "↗" },
-  { label: "Transactions", glyph: "⇄" },
-  { label: "Customers", glyph: "◎" },
-  { label: "Admin console", glyph: "◇" },
-];
 
-const secondaryNav = [
-  { label: "System health", glyph: "◉" },
-  { label: "Audit log", glyph: "≡" },
-  { label: "Portfolio notes", glyph: "↗" },
-];
+const NAV_KEYS = [
+  { key: "overview", glyph: "⌂", active: true },
+  { key: "payments", glyph: "↗" },
+  { key: "transactions", glyph: "⇄" },
+  { key: "customers", glyph: "◎" },
+  { key: "admin", glyph: "◇" },
+] as const;
+
+const SECONDARY_NAV_KEYS = [
+  { key: "systemHealth", glyph: "◉" },
+  { key: "auditLog", glyph: "≡" },
+  { key: "portfolioNotes", glyph: "↗" },
+] as const;
 
 
 function BrandMark() {
@@ -290,17 +297,19 @@ function BrandMark() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const styles = status === "Succeeded"
-    ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
-    : status === "Processing"
-      ? "border-sky-300/20 bg-sky-300/10 text-sky-200"
-      : "border-amber-300/20 bg-amber-300/10 text-amber-200";
+const STATUS_STYLES: Record<string, string> = {
+  succeeded: "border-emerald-300/20 bg-emerald-300/10 text-emerald-200",
+  processing: "border-sky-300/20 bg-sky-300/10 text-sky-200",
+};
+
+function StatusBadge({ status, label }: { status: string; label: string }) {
+  const styles =
+    STATUS_STYLES[status] ?? "border-amber-300/20 bg-amber-300/10 text-amber-200";
 
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${styles}`}>
       <span className="size-1.5 rounded-full bg-current" />
-      {status}
+      {label}
     </span>
   );
 }
@@ -308,45 +317,52 @@ function StatusBadge({ status }: { status: string }) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string | string[] }>;
+  searchParams: Promise<{ checkout?: string | string[]; lang?: string | string[] }>;
 }) {
-  const [apiHealth, transactionResult, paymentMetrics, query] = await Promise.all([
-    getApiHealth(),
-    getRecentTransactions(),
-    getMetrics(),
-    searchParams,
-  ]);
+  const [apiHealth, transactionResult, paymentMetrics, query, requestHeaders] =
+    await Promise.all([
+      getApiHealth(),
+      getRecentTransactions(),
+      getMetrics(),
+      searchParams,
+      headers(),
+    ]);
+  // Negotiated once in middleware so the page and the <html lang> attribute
+  // cannot disagree. See src/middleware.ts for the precedence rules.
+  const negotiated = requestHeaders.get(LOCALE_HEADER);
+  const locale: Locale = isLocale(negotiated) ? negotiated : DEFAULT_LOCALE;
+  const t = getDictionary(locale);
   const transactions = transactionResult.data;
   const currency = paymentMetrics.currency;
   const metrics = [
     {
-      label: "Gross volume",
-      value: formatMinor(paymentMetrics.grossVolumeMinor, currency),
-      note: `${paymentMetrics.succeededCount} succeeded ${paymentMetrics.succeededCount === 1 ? "payment" : "payments"}`,
+      label: t.metrics.grossVolume,
+      value: formatMoney(paymentMetrics.grossVolumeMinor, currency, locale),
+      note: t.metrics.succeededNote(formatCount(paymentMetrics.succeededCount, locale)),
       tone: "positive",
       glyph: "$",
     },
     {
-      label: "Successful payments",
-      value: paymentMetrics.succeededCount.toLocaleString("en-US"),
+      label: t.metrics.succeededPayments,
+      value: formatCount(paymentMetrics.succeededCount, locale),
       note:
         paymentMetrics.successRate === null
-          ? "No settled payments yet"
-          : `${paymentMetrics.successRate}% success rate`,
+          ? t.metrics.noSettled
+          : t.metrics.successRate(formatCount(paymentMetrics.successRate, locale)),
       tone: "positive",
       glyph: "✓",
     },
     {
-      label: "Pending settlement",
-      value: formatMinor(paymentMetrics.pendingAmountMinor, currency),
-      note: `${paymentMetrics.pendingCount} ${paymentMetrics.pendingCount === 1 ? "payment" : "payments"} processing`,
+      label: t.metrics.pendingSettlement,
+      value: formatMoney(paymentMetrics.pendingAmountMinor, currency, locale),
+      note: t.metrics.processingNote(formatCount(paymentMetrics.pendingCount, locale)),
       tone: "neutral",
       glyph: "↻",
     },
     {
-      label: "Webhook events",
-      value: paymentMetrics.eventsRecorded.toLocaleString("en-US"),
-      note: "Deduplicated by Stripe event id",
+      label: t.metrics.webhookEvents,
+      value: formatCount(paymentMetrics.eventsRecorded, locale),
+      note: t.metrics.deduplicated,
       tone: "positive",
       glyph: "⇄",
     },
@@ -362,40 +378,48 @@ export default async function Home({
   ].flatMap((date) =>
     date === undefined
       ? []
-      : [
-          new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            timeZone: "UTC",
-          }),
-        ],
+      : [formatShortDate(new Date(`${date}T00:00:00Z`), locale)],
   );
   const now = new Date();
   const greeting =
-    now.getHours() < 12 ? "Good morning" : now.getHours() < 18 ? "Good afternoon" : "Good evening";
+    now.getHours() < 12
+      ? t.hero.morning
+      : now.getHours() < 18
+        ? t.hero.afternoon
+        : t.hero.evening;
   const systemChecks = [
     {
-      label: "API service",
-      detail: apiHealth.detail,
-      status: apiHealth.operational ? "Operational" : "Unavailable",
+      label: t.health.apiService,
+      detail:
+        apiHealth.version !== null
+          ? `v${apiHealth.version}`
+          : apiHealth.operational
+            ? t.health.connected
+            : t.health.unavailable,
+      status: apiHealth.operational ? t.health.operational : t.health.unavailable,
       healthy: apiHealth.operational,
     },
     {
-      label: "PostgreSQL",
-      detail: apiHealth.databaseDetail,
-      status: apiHealth.databaseOperational ? "Operational" : "Unavailable",
+      label: t.health.database,
+      detail:
+        apiHealth.databaseLatencyMs !== null
+          ? `${formatCount(apiHealth.databaseLatencyMs, locale)} ms`
+          : t.health.unavailable,
+      status: apiHealth.databaseOperational ? t.health.operational : t.health.unavailable,
       healthy: apiHealth.databaseOperational,
     },
     {
-      label: "Stripe sandbox",
-      detail: apiHealth.stripeConfigured ? "Test API access" : "Awaiting test key",
-      status: apiHealth.stripeConfigured ? "Configured" : "Not connected",
+      label: t.health.stripe,
+      detail: apiHealth.stripeConfigured ? t.health.testApiAccess : t.health.awaitingKey,
+      status: apiHealth.stripeConfigured ? t.health.configured : t.health.notConnected,
       healthy: apiHealth.stripeConfigured,
     },
     {
-      label: "Webhook queue",
-      detail: apiHealth.webhookConfigured ? "Signature verification" : "Awaiting signing secret",
-      status: apiHealth.webhookConfigured ? "Configured" : "Not connected",
+      label: t.health.webhook,
+      detail: apiHealth.webhookConfigured
+        ? t.health.signatureVerification
+        : t.health.awaitingSecret,
+      status: apiHealth.webhookConfigured ? t.health.configured : t.health.notConnected,
       healthy: apiHealth.webhookConfigured,
     },
   ];
@@ -412,35 +436,35 @@ export default async function Home({
         <div className="flex items-center gap-3 px-1">
           <BrandMark />
           <div>
-            <p className="text-sm font-semibold tracking-[0.08em] text-white">ZEROFAYYZ</p>
-            <p className="text-[10px] font-medium tracking-[0.24em] text-emerald-300/70">FINTECH</p>
+            <p className="text-sm font-semibold tracking-[0.08em] text-white">{t.brand.name}</p>
+            <p className="text-[10px] font-medium tracking-[0.24em] text-emerald-300/70">{t.brand.suffix}</p>
           </div>
         </div>
 
         <div className="mt-8 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.06] px-3 py-2.5">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-medium text-emerald-100">Sandbox</span>
-            <span className="rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">Test mode</span>
+            <span className="text-xs font-medium text-emerald-100">{t.sandbox.label}</span>
+            <span className="rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">{t.sandbox.badge}</span>
           </div>
-          <p className="mt-1 text-[11px] leading-4 text-white/40">Simulated portfolio environment</p>
+          <p className="mt-1 text-[11px] leading-4 text-white/40">{t.sandbox.note}</p>
         </div>
 
-        <nav className="mt-7 space-y-1" aria-label="Primary navigation">
-          {navItems.map((item) => (
+        <nav className="mt-7 space-y-1" aria-label={t.nav.primaryLabel}>
+          {NAV_KEYS.map((item) => (
             <button
-              key={item.label}
+              key={item.key}
               type="button"
-              aria-current={item.active ? "page" : undefined}
-              aria-disabled={item.active ? undefined : true}
-              disabled={!item.active}
-              title={item.active ? undefined : "Planned — see the roadmap in the README"}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${item.active ? "bg-white/[0.08] font-medium text-white shadow-[inset_3px_0_0_#6ee7b7]" : "cursor-not-allowed text-white/30"}`}
+              aria-current={"active" in item && item.active ? "page" : undefined}
+              aria-disabled={"active" in item && item.active ? undefined : true}
+              disabled={!("active" in item && item.active)}
+              title={"active" in item && item.active ? undefined : t.nav.plannedTitle}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${"active" in item && item.active ? "bg-white/[0.08] font-medium text-white shadow-[inset_3px_0_0_#6ee7b7]" : "cursor-not-allowed text-white/55"}`}
             >
               <span className="grid size-5 place-items-center text-sm text-emerald-200/80">{item.glyph}</span>
-              {item.label}
-              {!item.active && (
-                <span className="ml-auto rounded-full border border-white/[0.07] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/25">
-                  Planned
+              {t.nav[item.key]}
+              {!("active" in item && item.active) && (
+                <span className="ml-auto rounded-full border border-white/[0.07] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/55">
+                  {t.nav.planned}
                 </span>
               )}
             </button>
@@ -449,27 +473,27 @@ export default async function Home({
 
         <div className="my-5 h-px bg-white/[0.06]" />
 
-        <nav className="space-y-1" aria-label="Project navigation">
-          {secondaryNav.map((item) => (
+        <nav className="space-y-1" aria-label={t.nav.projectLabel}>
+          {SECONDARY_NAV_KEYS.map((item) => (
             <button
-              key={item.label}
+              key={item.key}
               type="button"
               aria-disabled
               disabled
-              title="Planned — see the roadmap in the README"
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/30"
+              title={t.nav.plannedTitle}
+              className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/55"
             >
               <span className="grid size-5 place-items-center text-sm text-emerald-200/70">{item.glyph}</span>
-              {item.label}
+              {t.nav[item.key]}
             </button>
           ))}
         </nav>
 
         <div className="mt-auto rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Portfolio build</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60">{t.build.label}</p>
           <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-xs text-white/65">MVP foundation</span>
-            <span className="text-xs font-semibold text-emerald-300">Phase 1</span>
+            <span className="text-xs text-white/65">{t.build.stage}</span>
+            <span className="text-xs font-semibold text-emerald-300">{t.build.phase}</span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
             <div className="h-full w-[28%] rounded-full bg-gradient-to-r from-emerald-400 to-teal-300" />
@@ -483,27 +507,30 @@ export default async function Home({
             <div className="flex items-center gap-3 lg:hidden">
               <BrandMark />
               <div>
-                <p className="text-xs font-semibold tracking-[0.08em]">ZEROFAYYZ</p>
-                <p className="text-[9px] tracking-[0.22em] text-emerald-300/70">FINTECH</p>
+                <p className="text-xs font-semibold tracking-[0.08em]">{t.brand.name}</p>
+                <p className="text-[9px] tracking-[0.22em] text-emerald-300/70">{t.brand.suffix}</p>
               </div>
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-white/82">Operations overview</p>
-              <p className="mt-0.5 text-xs text-white/35">
-                {now.toLocaleDateString("en-GB", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
+              <p className="text-sm font-medium text-white/82">{t.header.overview}</p>
+              <p className="mt-0.5 text-xs text-white/60">{formatFullDate(now, locale)}</p>
             </div>
             <div className="flex items-center gap-2.5 sm:gap-3">
               <span className="hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-xs text-white/50 md:flex">
                 <span className={`size-1.5 rounded-full ${apiHealth.operational ? "bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" : "bg-amber-300"}`} />
-                {apiHealth.operational ? "API connected" : "API unavailable"}
+                {apiHealth.operational ? t.header.apiConnected : t.header.apiUnavailable}
               </span>
-              <CheckoutButton />
+              <LanguageSwitcher
+                locale={locale}
+                label={t.header.languageLabel}
+                toJapanese={t.header.switchToJapanese}
+                toEnglish={t.header.switchToEnglish}
+              />
+              <CheckoutButton
+                label={t.header.testPayment}
+                loadingLabel={t.header.openingStripe}
+                fallbackError={t.checkout.error}
+              />
               <div className="grid size-9 place-items-center rounded-full border border-white/10 bg-[#16241f] text-xs font-semibold text-emerald-100">MF</div>
             </div>
           </div>
@@ -515,36 +542,34 @@ export default async function Home({
               className={`mb-5 rounded-xl border px-4 py-3 text-xs ${checkoutStatus === "success" ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-100" : "border-amber-300/20 bg-amber-300/[0.08] text-amber-100"}`}
               role="status"
             >
-              {checkoutStatus === "success"
-                ? "Stripe sandbox checkout completed. The signed webhook is updating the PostgreSQL ledger."
-                : "Stripe sandbox checkout was canceled. No funds moved."}
+              {checkoutStatus === "success" ? t.banner.success : t.banner.canceled}
             </div>
           )}
           <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-emerald-300/70">
                 <span className="h-px w-5 bg-emerald-300/60" />
-                Payment operations
+                {t.hero.eyebrow}
               </div>
-              <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{greeting}, Marcel.</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/42">Monitor the sandbox payment lifecycle, review recent activity, and verify platform health from one workspace.</p>
+              <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{greeting}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">{t.hero.blurb}</p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-white/35">
-              <span>{paymentMetrics.live ? "Live sandbox data" : "Metrics unavailable"}</span><span className="size-1 rounded-full bg-white/20" /><span>Updated just now</span>
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              <span>{paymentMetrics.live ? t.hero.live : t.hero.unavailable}</span><span className="size-1 rounded-full bg-white/20" /><span>{t.hero.updated}</span>
             </div>
           </section>
 
-          <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key metrics">
+          <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t.metrics.sectionLabel}>
             {metrics.map((metric) => (
               <article key={metric.label} className="group rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.16)] transition hover:-translate-y-0.5 hover:border-emerald-300/20">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs font-medium text-white/42">{metric.label}</p>
+                    <p className="text-xs font-medium text-white/65">{metric.label}</p>
                     <p className="mt-2.5 text-2xl font-semibold tracking-[-0.03em] text-white">{metric.value}</p>
                   </div>
                   <span className="grid size-9 place-items-center rounded-xl border border-white/[0.07] bg-white/[0.035] text-sm font-semibold text-emerald-200">{metric.glyph}</span>
                 </div>
-                <p className={`mt-3 text-xs ${metric.tone === "positive" ? "text-emerald-300/75" : "text-white/35"}`}>{metric.note}</p>
+                <p className={`mt-3 text-xs ${metric.tone === "positive" ? "text-emerald-300/75" : "text-white/60"}`}>{metric.note}</p>
               </article>
             ))}
           </section>
@@ -553,19 +578,20 @@ export default async function Home({
             <article className="rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:p-6">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                 <div>
-                  <p className="text-sm font-medium text-white/88">Payment volume</p>
+                  <p className="text-sm font-medium text-white/88">{t.chart.title}</p>
                   <div className="mt-2 flex items-baseline gap-2">
                     <span className="text-2xl font-semibold tracking-[-0.03em]">
-                      {formatMinor(
+                      {formatMoney(
                         paymentMetrics.dailyVolume.reduce((total, bucket) => total + bucket.amountMinor, 0),
                         currency,
+                        locale,
                       )}
                     </span>
-                    <span className="text-xs font-medium text-white/38">settled</span>
+                    <span className="text-xs font-medium text-white/60">{t.chart.settled}</span>
                   </div>
                 </div>
-                <div className="inline-flex w-fit rounded-lg border border-white/[0.07] bg-black/10 px-2.5 py-1 text-[11px] text-white/38">
-                  Last {paymentMetrics.dailyVolume.length || 12} days
+                <div className="inline-flex w-fit rounded-lg border border-white/[0.07] bg-black/10 px-2.5 py-1 text-[11px] text-white/60">
+                  {t.chart.window(formatCount(paymentMetrics.dailyVolume.length || 12, locale))}
                 </div>
               </div>
               <div className="mt-8 flex h-44 items-end gap-2 border-b border-white/[0.06] sm:gap-3">
@@ -573,7 +599,7 @@ export default async function Home({
                   <div
                     key={bucket.date}
                     className="group relative flex h-full flex-1 items-end"
-                    title={`${bucket.date}: ${formatMinor(bucket.amountMinor, currency)}`}
+                    title={`${bucket.date}: ${formatMoney(bucket.amountMinor, currency, locale)}`}
                   >
                     <div
                       className="w-full rounded-t-sm bg-gradient-to-t from-emerald-500/30 to-emerald-300/85 transition group-hover:from-emerald-400/50 group-hover:to-emerald-200"
@@ -584,12 +610,12 @@ export default async function Home({
                   </div>
                 ))}
                 {paymentMetrics.dailyVolume.length === 0 && (
-                  <p className="w-full self-center text-center text-xs text-white/30">
-                    Volume history unavailable.
+                  <p className="w-full self-center text-center text-xs text-white/55">
+                    {t.chart.unavailable}
                   </p>
                 )}
               </div>
-              <div className="mt-3 flex justify-between text-[10px] uppercase tracking-wider text-white/25">
+              <div className="mt-3 flex justify-between text-[10px] uppercase tracking-wider text-white/55">
                 {axisLabels.map((label) => (
                   <span key={label}>{label}</span>
                 ))}
@@ -599,11 +625,11 @@ export default async function Home({
             <article className="rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.16)] sm:p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-white/88">System health</p>
-                  <p className="mt-1 text-xs text-white/34">Real integration status</p>
+                  <p className="text-sm font-medium text-white/88">{t.health.title}</p>
+                  <p className="mt-1 text-xs text-white/60">{t.health.subtitle}</p>
                 </div>
                 <span className="rounded-full border border-amber-300/15 bg-amber-300/[0.07] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
-                  {liveCheckCount} of 4 live
+                  {t.health.liveCount(formatCount(liveCheckCount, locale), formatCount(systemChecks.length, locale))}
                 </span>
               </div>
               <div className="mt-5 divide-y divide-white/[0.06]">
@@ -613,17 +639,17 @@ export default async function Home({
                       <span className={`size-2 rounded-full ${check.healthy ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.65)]" : "bg-white/20"}`} />
                       <div>
                         <p className="text-xs font-medium text-white/72">{check.label}</p>
-                        <p className="mt-0.5 text-[10px] text-white/28">{check.detail}</p>
+                        <p className="mt-0.5 text-[10px] text-white/55">{check.detail}</p>
                       </div>
                     </div>
-                    <span className={`text-[10px] ${check.healthy ? "text-emerald-300/70" : "text-white/30"}`}>{check.status}</span>
+                    <span className={`text-[10px] ${check.healthy ? "text-emerald-300/70" : "text-white/55"}`}>{check.status}</span>
                   </div>
                 ))}
               </div>
               <div className="mt-1 rounded-xl border border-white/[0.06] bg-black/10 p-3">
-                <div className="flex items-center justify-between gap-3 text-[10px] text-white/35">
-                  <span>API response source</span>
-                  <span className={`font-medium ${apiHealth.operational ? "text-emerald-300/75" : "text-amber-200/75"}`}>{apiHealth.operational ? "Live endpoint" : "Fallback state"}</span>
+                <div className="flex items-center justify-between gap-3 text-[10px] text-white/60">
+                  <span>{t.health.responseSource}</span>
+                  <span className={`font-medium ${apiHealth.operational ? "text-emerald-300/75" : "text-amber-200/75"}`}>{apiHealth.operational ? t.health.liveEndpoint : t.health.fallbackState}</span>
                 </div>
               </div>
             </article>
@@ -632,20 +658,20 @@ export default async function Home({
           <section className="mt-4 overflow-hidden rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 shadow-[0_18px_60px_rgba(0,0,0,0.16)]">
             <div className="flex flex-col justify-between gap-3 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:px-6">
               <div>
-                <h2 className="text-sm font-medium text-white/88">Recent transactions</h2>
-                <p className="mt-1 text-xs text-white/34">
+                <h2 className="text-sm font-medium text-white/88">{t.transactions.title}</h2>
+                <p className="mt-1 text-xs text-white/60">
                   {transactionResult.source === "postgresql"
-                    ? "Live sandbox records from PostgreSQL"
-                    : "Transaction service unavailable"}
+                    ? t.transactions.live
+                    : t.transactions.unavailableSource}
                 </p>
               </div>
-              <span className="w-fit text-xs text-white/25">Showing the 10 most recent</span>
+              <span className="w-fit text-xs text-white/55">{t.transactions.showing}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left">
                 <thead>
-                  <tr className="border-b border-white/[0.055] text-[10px] font-semibold uppercase tracking-[0.12em] text-white/28">
-                    <th className="px-6 py-3 font-semibold">Customer</th><th className="px-4 py-3 font-semibold">Amount</th><th className="px-4 py-3 font-semibold">Payment method</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-6 py-3 text-right font-semibold">Time</th>
+                  <tr className="border-b border-white/[0.055] text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
+                    <th className="px-6 py-3 font-semibold">{t.transactions.customer}</th><th className="px-4 py-3 font-semibold">{t.transactions.amount}</th><th className="px-4 py-3 font-semibold">{t.transactions.method}</th><th className="px-4 py-3 font-semibold">{t.transactions.status}</th><th className="px-6 py-3 text-right font-semibold">{t.transactions.time}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.05]">
@@ -654,19 +680,24 @@ export default async function Home({
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <span className="grid size-8 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[10px] font-semibold text-emerald-100/75">{transaction.initials}</span>
-                          <div><p className="text-xs font-medium text-white/78">{transaction.customer}</p><p className="mt-0.5 text-[10px] text-white/28">{transaction.email}</p></div>
+                          <div><p className="text-xs font-medium text-white/78">{transaction.customer}</p><p className="mt-0.5 text-[10px] text-white/55">{transaction.email}</p></div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-xs font-semibold text-white/80">{transaction.amount}</td>
-                      <td className="px-4 py-4 text-xs text-white/42">{transaction.method}</td>
-                      <td className="px-4 py-4"><StatusBadge status={transaction.status} /></td>
-                      <td className="px-6 py-4 text-right text-xs text-white/32">{transaction.time}</td>
+                      <td className="px-4 py-4 text-xs font-semibold text-white/80">{formatMoney(transaction.amountMinor, transaction.currency, locale)}</td>
+                      <td className="px-4 py-4 text-xs text-white/65">{transaction.viaCheckout ? t.transactions.stripeCheckout : t.transactions.sandboxCard}</td>
+                      <td className="px-4 py-4">
+                        <StatusBadge
+                          status={transaction.status}
+                          label={t.status[transaction.status as keyof typeof t.status] ?? transaction.status}
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-right text-xs text-white/60">{formatRelative(transaction.minutesAgo, locale)}</td>
                     </tr>
                   ))}
                   {transactions.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-xs text-white/35">
-                        Transaction data is currently unavailable.
+                      <td colSpan={5} className="px-6 py-10 text-center text-xs text-white/60">
+                        {t.transactions.empty}
                       </td>
                     </tr>
                   )}
@@ -678,11 +709,11 @@ export default async function Home({
           <section className="mt-4 rounded-2xl border border-white/[0.075] bg-[#0d1a17]/70 px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/32">MVP payment flow</p>
-                <p className="mt-1.5 text-sm text-white/65">A visible, testable path from checkout to financial record.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">{t.flow.label}</p>
+                <p className="mt-1.5 text-sm text-white/65">{t.flow.blurb}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/55 sm:gap-3">
-                {["Next.js app", "Backend API", "Stripe sandbox", "Webhook event", "PostgreSQL"].map((step, index) => (
+                {t.flow.steps.map((step, index) => (
                   <div key={step} className="flex items-center gap-2 sm:gap-3">
                     <span className="rounded-lg border border-white/[0.07] bg-white/[0.035] px-3 py-2">{step}</span>
                     {index < 4 && <span className="text-emerald-300/55">→</span>}
@@ -692,9 +723,9 @@ export default async function Home({
             </div>
           </section>
 
-          <footer className="mt-7 flex flex-col justify-between gap-2 border-t border-white/[0.05] pt-5 text-[10px] text-white/25 sm:flex-row">
-            <span>ZEROFAYYZ FINTECH · Portfolio Prototype</span>
-            <span>Sandbox data only · No real funds processed</span>
+          <footer className="mt-7 flex flex-col justify-between gap-2 border-t border-white/[0.05] pt-5 text-[10px] text-white/55 sm:flex-row">
+            <span>{t.footer.left}</span>
+            <span>{t.footer.right}</span>
           </footer>
         </main>
       </div>

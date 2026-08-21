@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 
-export function CheckoutButton() {
+type CheckoutButtonProps = {
+  label: string;
+  loadingLabel: string;
+  fallbackError: string;
+};
+
+export function CheckoutButton({
+  label,
+  loadingLabel,
+  fallbackError,
+}: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,19 +31,13 @@ export function CheckoutButton() {
 
       if (!response.ok || typeof payload.url !== "string") {
         throw new Error(
-          typeof payload.error === "string"
-            ? payload.error
-            : "Unable to start checkout",
+          typeof payload.error === "string" ? payload.error : fallbackError,
         );
       }
 
       window.location.assign(payload.url);
     } catch (checkoutError) {
-      setError(
-        checkoutError instanceof Error
-          ? checkoutError.message
-          : "Unable to start checkout",
-      );
+      setError(checkoutError instanceof Error ? checkoutError.message : fallbackError);
       setLoading(false);
     }
   }
@@ -46,7 +50,7 @@ export function CheckoutButton() {
         disabled={loading}
         className="rounded-xl bg-emerald-300 px-4 py-2.5 text-xs font-semibold text-[#062018] shadow-[0_10px_30px_rgba(52,211,153,0.12)] transition hover:bg-emerald-200 disabled:cursor-wait disabled:opacity-60"
       >
-        {loading ? "Opening Stripe…" : "+ Test payment"}
+        {loading ? loadingLabel : label}
       </button>
       <p
         aria-live="polite"
