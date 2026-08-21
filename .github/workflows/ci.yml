@@ -216,6 +216,14 @@ jobs:
         working-directory: apps/web
         run: npm ci
 
+      # The contract-parity spec imports packages/api-contract at runtime, so
+      # this job needs the package's dependencies just like the web job does.
+      # Hidden until now because pushes cancel in-flight runs: several e2e
+      # jobs since the spec landed were cancelled before reaching this step.
+      - name: Install shared contract dependencies
+        working-directory: packages/api-contract
+        run: npm ci
+
       - name: Apply migrations
         working-directory: apps/api
         run: npm run migrate
