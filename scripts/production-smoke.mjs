@@ -322,15 +322,17 @@ await check("the three ledger pages serve real data", async () => {
 });
 
 await check("the ledger API paginates and filters", async () => {
-  const filtered = await fetchJson("/api/v1/payments?status=succeeded&limit=5");
-  assert(Array.isArray(filtered.data), "no data array");
+  // fetchJson returns { response, body } — the first version read .data off
+  // the wrapper and blamed production for a test-side undefined.
+  const { body: filtered } = await fetchJson("/api/v1/payments?status=succeeded&limit=5");
+  assert(Array.isArray(filtered?.data), "no data array");
   for (const row of filtered.data) {
     assert(row.status === "succeeded", `filter leaked a ${row.status} payment`);
   }
   assert(typeof filtered.meta?.total === "number", "no exact total in meta");
 
-  const events = await fetchJson("/api/v1/events?limit=5");
-  assert(Array.isArray(events.data), "no events array");
+  const { body: events } = await fetchJson("/api/v1/events?limit=5");
+  assert(Array.isArray(events?.data), "no events array");
 
   return `${filtered.meta.total} succeeded payments, ${events.meta.total} events`;
 });
