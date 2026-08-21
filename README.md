@@ -47,6 +47,7 @@ TypeScript throughout, ESM, Node 20+.
   enforced by the type system — a missing string is a compile error, not an English
   word in a Japanese page
 - WCAG 2.1 AA verified by axe-core in CI against both locales
+- Load testing with asserted latency and error-rate thresholds, scheduled in CI
 - 46 automated tests across three layers, all gated in CI, plus a nine-check smoke suite
   that verifies the live deployment from outside
 
@@ -102,6 +103,10 @@ cd apps/web && npm run test:e2e
 
 ```bash
 node scripts/production-smoke.mjs
+```
+
+```bash
+node scripts/load-test.mjs
 ```
 
 Integration tests need PostgreSQL running. End-to-end tests build and start both servers

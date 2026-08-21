@@ -1,0 +1,37 @@
+name: Load test
+
+# Deliberately NOT on every push. Load-testing the deployed system on each commit
+# would add a minute to every build, and a failure would usually mean "the free
+# instance was cold", not "this commit regressed". Scheduled plus on-demand gives
+# a trend without crying wolf.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      concurrency:
+        description: "Concurrent requests"
+        required: false
+        default: "10"
+      requests:
+        description: "Requests per endpoint"
+        required: false
+        default: "120"
+
+jobs:
+  load:
+    name: Baseline against production
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run load test
+        env:
+          CONCURRENCY: ${{ github.event.inputs.concurrency || '10' }}
+          REQUESTS: ${{ github.event.inputs.requests || '120' }}
+        run: node scripts/load-test.mjs

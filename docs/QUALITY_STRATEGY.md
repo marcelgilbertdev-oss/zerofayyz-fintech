@@ -20,6 +20,7 @@ cannot see.
 | Unit | 22 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses |
 | Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency, migrations |
 | End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, WCAG AA |
+| Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
 
 Total wall-clock for all three, locally: under fifteen seconds.
 
@@ -89,8 +90,16 @@ Stated openly, because unstated gaps read as oversights:
 - **The live sandbox redirect.** Completing a payment on Stripe's hosted page requires real
   test keys and is covered by the manual charter below, not by automation. Automating a
   third party's hosted UI produces tests that break when they redesign it.
-- **Load and performance.** No throughput target exists for a prototype, so measuring
-  against one would be theatre.
+- **Capacity planning.** `scripts/load-test.mjs` asserts a latency and error-rate baseline
+  under modest concurrency, which is the honest claim available on a single shared free
+  instance. It is not a capacity model, and calling it one would be theatre.
+
+  Current baseline at 10 concurrent, 120 requests per endpoint: p95 of 546ms (health),
+  399ms (metrics), 319ms (transactions), zero errors. The script warms the instance first —
+  the free tier sleeps, and measuring a 22-second cold start as latency would misreport it.
+
+  It runs on a schedule and on demand rather than on every push: a failure on a normal
+  commit would usually mean the instance was cold, not that the commit regressed.
 - **Visual regression.** No baseline screenshots. The layout is not the thing under test.
 
 ## Manual and regression charter
