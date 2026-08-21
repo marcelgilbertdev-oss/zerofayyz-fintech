@@ -28,6 +28,38 @@ about $7/month and never sleeps. Deploy free first; upgrade only if you see it s
 
 ---
 
+## How each piece deploys
+
+| Piece | Platform | Trigger |
+| --- | --- | --- |
+| API | Render | Auto-deploys on push to `main` |
+| Next.js dashboard | Vercel | Auto-deploys on push to `main` |
+| Vue client | Vercel | **Manual** — `./deploy-clients.sh web-vue` |
+| Svelte client | Vercel | **Manual** — `./deploy-clients.sh web-svelte` |
+
+The two SPA clients deploy their prebuilt output rather than building on Vercel,
+and that is a deliberate workaround worth understanding before you touch it.
+
+Vercel scopes a build to its project's root directory. These clients import the
+shared contract in `packages/api-contract`, which sits *above* that root — so the
+files are never uploaded and the build fails with `TS2307`. Pointing the root at
+the repository instead makes Vercel's framework detection scan the whole tree,
+where it finds `apps/api` and builds the Fastify server instead of the client,
+producing a deployment with no static output at all. Both failures happened on
+the way to this working.
+
+So the clients are built locally, where the whole repository is present, and the
+finished `dist/` is deployed with `framework: null` and empty build and install
+commands, so Vercel serves it without trying to rebuild it.
+
+**The cost is real: these two do not auto-deploy.** A push to `main` updates the
+API and the Next.js dashboard but not the SPA clients — run the script after
+changing them. The principled fix is npm workspaces, which Vercel understands
+natively; that is deferred rather than dismissed, because converting the
+lockfiles would disturb two deployments that currently work.
+
+---
+
 ## Step 1 — The database (Neon)
 
 1. Go to **neon.tech** and sign in with GitHub.
