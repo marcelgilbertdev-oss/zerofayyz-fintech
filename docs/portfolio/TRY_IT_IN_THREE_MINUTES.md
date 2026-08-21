@@ -60,6 +60,12 @@ contract:
 
 Same ledger, same numbers, three idioms.
 
+Both clients carry the staff door too: scroll to the **Operator area** at the bottom of
+either page, click **Fill these in for me**, and sign in. The audit trail that appears is
+the same append-only table the admin console reads — your sign-in on the Vue page is the
+newest row when you open the Svelte one. Same session cookie, same rate limiter, same
+refusals, spoken through Pinia on one page and runes on the other.
+
 ---
 
 ## What this demonstrates
@@ -72,11 +78,11 @@ Same ledger, same numbers, three idioms.
 | **Auditability** | Append-only history the application itself cannot rewrite |
 | **Internationalisation** | English and Japanese, with translations enforced by the type system — a missing string is a compile error |
 | **Accessibility** | WCAG 2.1 AA, scanned by axe-core in CI against both locales |
-| **Testing** | 104 automated tests across five suites — unit, integration against real PostgreSQL, and end-to-end against a production build — plus a 20-check smoke suite that verifies the live deployment from outside |
+| **Testing** | 212 automated tests across five suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, and end-to-end against a production build — plus a 24-check smoke suite that verifies the live deployment from outside |
 | **Operations** | Three-tier deployment colocated in Singapore, CI gating every merge, migrations applied before traffic |
 
 **Built by Marcel Gilbert** · [github.com/marcelgilbertdev-oss/zerofayyz-fintech](https://github.com/marcelgilbertdev-oss/zerofayyz-fintech)
 
-For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), nine
+For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), ten
 [decision records](../decisions/), and a [manual acceptance charter](../runbooks/MANUAL_ACCEPTANCE_TEST.md)
 carrying every defect found during development and how each was closed.

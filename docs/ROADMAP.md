@@ -77,7 +77,29 @@ refusing a self-approval even from raw SQL.
 
 ---
 
-## Phase 5 — Operational visibility
+## Phase 5 — The ledger pages and the staff door everywhere ✅ Complete
+
+Shipped and live: Payments (status-filterable, limit/offset pagination with exact
+`COUNT(*) OVER ()` totals), Transactions (the raw Stripe event stream with provider event
+ids visible — the idempotency constraint made inspectable), and Customers (settled volume
+aggregated in SQL, unsettled money shown as $0.00 rather than explained away). Every
+sidebar destination is real; the last PLANNED badges are gone.
+
+Then the staff door reached the other two frameworks: the Vue and Svelte clients each
+carry an **Operator area** — the same sign-in, session cookie, rate limiter and verbatim
+refusals as the admin console, driving the operator-gated audit trail — implemented once
+in Pinia and once in runes against a single behavioural specification
+([ADR 10](decisions/0010-put-the-staff-door-inside-the-spa-clients.md)).
+
+**What proved it works:** the two client suites assert the same contract
+assertion-for-assertion; a live walk in which the Svelte panel's audit trail opened
+showing the Vue panel's sign-in, sign-out and one deliberate failure as its newest rows;
+and a smoke check per client that `/auth/me` answers a clean 401 through each Vercel
+rewrite.
+
+---
+
+## Phase 6 — Operational visibility
 
 **Why next:** Piece's posting asks for "monitoring, alerting and support" by name. The health
 endpoint exists; nothing consumes it yet.
@@ -96,7 +118,7 @@ restore it, confirm recovery. An alert nobody has ever seen fire is not monitori
 
 ---
 
-## Phase 6 — Activity events in MongoDB
+## Phase 7 — Activity events in MongoDB
 
 **Why next:** it demonstrates polyglot persistence with an honest reason rather than
 résumé-driven database collecting. Piece's nice-to-haves name document databases explicitly.
@@ -114,7 +136,7 @@ having two. The wrong version of this phase is moving payments into MongoDB.
 
 ---
 
-## Phase 7 — Infrastructure as code
+## Phase 8 — Infrastructure as code
 
 **Why next:** the current deployment is reproducible for the API (`render.yaml`) but the
 database and dashboard were configured by hand. That gap is the difference between a project
@@ -132,7 +154,7 @@ and infrastructure.
 
 ---
 
-## Phase 8 — Exploratory
+## Phase 9 — Exploratory
 
 Only worth doing if a target role names them, and each should be a genuine slice rather than
 a stub:

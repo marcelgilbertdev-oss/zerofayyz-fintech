@@ -79,10 +79,15 @@ TypeScript throughout, ESM, Node 20+.
   Transactions (the raw Stripe event stream, provider event ids visible — the idempotency
   constraint made inspectable), and Customers (per-customer settled volume aggregated in
   SQL). Every sidebar destination is real; the last PLANNED badges are gone
+- The staff door on all three frontends: the Vue and Svelte clients each carry an operator
+  panel — the same sign-in, session cookie, rate limiter and verbatim refusals as the admin
+  console, driving the same operator-gated audit-trail read — implemented once in Pinia and
+  once in runes against one shared behavioural specification, with the two test suites
+  asserting the same contract line for line
 - Account-enumeration protection: a missing account is verified against a decoy hash, so a
   wrong password and a nonexistent user return byte-identical responses in comparable time
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
-- 104 automated tests across five suites, all gated in CI, plus a twenty-check smoke suite
+- 212 automated tests across five suites, all gated in CI, plus a 24-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture
@@ -110,7 +115,7 @@ everything and changes nothing.
 
 ## Roadmap
 
-Phase 1 and Phase 2 are complete. Later phases are listed because they are planned, not because they exist.
+Phases 1 through 5 are complete. Later phases are listed because they are planned, not because they exist.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
@@ -118,9 +123,11 @@ Phase 1 and Phase 2 are complete. Later phases are listed because they are plann
 | 2 | Public deployment, live webhook registration, three clients, i18n, accessibility | ✅ Complete |
 | 3 | Authentication, roles, audit log, admin console with live presence | ✅ Complete |
 | 4 | Refunds (four-eyes rule, withdrawal, refund webhook) and account management | ✅ Complete |
-| 5 | Payments, Transactions and Customers ledger pages | ✅ Complete |
-| 6 | Infrastructure as code, container deployment | 🔜 Next |
-| 7 | Go service, Solidity settlement experiment, React Native client | Exploratory |
+| 5 | Payments, Transactions and Customers ledger pages; operator sign-in and audit trail on the Vue and Svelte clients | ✅ Complete |
+| 6 | Operational visibility: structured logging, readiness endpoint, alerting | 🔜 Next |
+| 7 | Activity events in MongoDB | Planned |
+| 8 | Infrastructure as code, container deployment | Planned |
+| 9 | Go service, Solidity settlement experiment, React Native client | Exploratory |
 
 Reserved directories exist for the later phases and contain no implementation. They are
 placeholders for planned work, not stubs of missing work.

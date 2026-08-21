@@ -18,12 +18,12 @@ cannot see.
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
 | Unit | 56 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
-| Integration | 29 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation |
-| End-to-end | 34 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
+| Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation |
+| End-to-end | 48 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
-| Vue client unit | 23 | jsdom, fetch mocked at the network seam | Contract validation, store state, partial failure, rendered output |
-| Svelte client unit | 13 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
-| Production smoke | 20 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
+| Vue client unit | 38 | jsdom, fetch mocked at the network seam | Contract validation, store state, sign-in and audit-trail flow, partial failure, rendered output |
+| Svelte client unit | 28 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
+| Production smoke | 24 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
 
 Total wall-clock for all local suites: under thirty seconds.
 

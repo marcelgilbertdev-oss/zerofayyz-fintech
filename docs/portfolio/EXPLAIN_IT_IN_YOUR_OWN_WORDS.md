@@ -118,12 +118,12 @@ costs a join and it's what makes the ledger auditable."*
 | Layer | Count | What it catches | What it's blind to |
 |---|---|---|---|
 | Unit | 56 | Logic, branching, hashing, cookies, rate limiting | Anything involving real SQL |
-| Integration | 29 | Real database: SQL, constraints, triggers, idempotency, auth | Rendering, the user's path |
-| End-to-end | 34 | Real browser: sign-in, roles, accessibility, both locales | Whether the deployed thing works |
-| Client (Vue/Svelte) | 36 | Contract validation, state, partial failure | — |
-| Production smoke | 20 | That what *shipped* actually runs | — |
+| Integration | 42 | Real database: SQL, constraints, triggers, idempotency, auth | Rendering, the user's path |
+| End-to-end | 48 | Real browser: sign-in, roles, accessibility, both locales | Whether the deployed thing works |
+| Client (Vue/Svelte) | 66 | Contract validation, state, sign-in, partial failure | — |
+| Production smoke | 24 | That what *shipped* actually runs | — |
 
-**Say:** *"Around 104 automated tests plus 20 production checks, all gated in CI.
+**Say:** *"212 automated tests plus 24 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
 structurally cannot — the integration suite exists because 19 green unit tests
 never once executed the SQL that was broken."*
@@ -165,6 +165,19 @@ to use unmodified, and that the fundamentals — state, data fetching, validatio
 testing — transfer across frameworks. The Vue and Svelte test suites assert the
 same behavioural contract deliberately, so if they ever disagree, one client has
 drifted."*
+
+### The staff door is on all three now
+
+**Plain:** The Vue and Svelte pages each have an **Operator area** at the bottom.
+Sign in there with the same demo account and you get the audit trail — the
+protected read. Same cookie, same rate limiter, same error messages, written
+once in Pinia and once in runes.
+
+**Say:** *"Authentication isn't a React feature — it's an API feature. The Vue
+and Svelte clients prove that: the session is an HttpOnly cookie the API owns,
+so each client only mirrors what /auth/me admits, and the same sign-in works
+identically from all three frameworks. The refusals are the API's own strings,
+surfaced verbatim — the clients never invent their own security theatre."*
 
 **If asked about Zod:** *"Each client compiles against a copy of the API's types
 — nothing at build time proves the deployed API still matches. Zod turns that

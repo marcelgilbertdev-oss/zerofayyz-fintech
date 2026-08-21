@@ -325,6 +325,44 @@ console tabs), **System health** jumps to the live panel on the overview, and
 
 ---
 
+### A16 · The Vue client's staff door
+
+33. Open https://zerofayyz-fintech-vue.vercel.app and scroll to the bottom.
+    There is an **Operator area** card under the dashboard.
+
+34. Type a wrong password first — any email, any nonsense password, **Sign
+    in**. The refusal reads exactly **"Incorrect email or password"**, with the
+    contact-your-administrator line under it. Start typing again and the error
+    clears immediately.
+
+35. Click **Fill these in for me**, then **Sign in**. You are **Signed in as
+    Demo Operator**, and the **Audit trail** appears — the same append-only
+    table the admin console shows. Your failed attempt from the previous step
+    is one of the newest rows: the system just recorded you testing it.
+
+36. Reload the page. Still signed in — the session is an HttpOnly cookie, not
+    anything the page stored. Click the eye icon on the password field first if
+    you want to see the toggle work.
+
+37. Click **Sign out**. The form returns.
+
+**What this proves:** the API's authentication is framework-independent. The
+session, the rate limiter, the enumeration defence and the audit trail all live
+on the API; Vue only mirrors what `/auth/me` admits.
+
+### A17 · The Svelte client's staff door
+
+38. Open https://zerofayyz-fintech-svelte.vercel.app, scroll to its
+    **Operator area**, and sign in the same way (fill button, then Sign in).
+
+39. Look at the top of the audit trail: **your sign-ins from A16 are there** —
+    the Vue login, the sign-out, and now this Svelte login, in order. Two
+    different clients, one ledger of what happened.
+
+40. Sign out.
+
+---
+
 ## Part B — Verification you can run (terminal)
 
 Open Terminal, then:
@@ -458,6 +496,32 @@ two Vercel failure modes behind it, are in `DEPLOYMENT.md`.
 What was verified by automation before the human run, including what failed and
 how it was fixed. The failures are recorded deliberately: they are the evidence
 the checks are real.
+
+### 2026-08-21 (night) — operator panels on the Vue and Svelte clients (Claude)
+
+**Scope:** A16/A17 exist as of tonight. Both SPA clients grew an Operator area
+— sign-in form with the published demo credentials, password eye toggle,
+verbatim API refusals with the contact-admin line, and the operator-gated audit
+trail with refresh and sign-out. One shared Zod contract addition
+(`sessionUserSchema`, `loginResponseSchema`, `auditLogsSchema`) serves both.
+
+**All suites green before the human walk:** 56 API unit · 42 integration ·
+48 Playwright E2E (1 skipped by design) · 38 Vue · 28 Svelte = **212 automated**.
+
+**Live browser walk (local, real API + real PostgreSQL):** wrong password on
+the Vue panel → byte-exact "Incorrect email or password" + contact line; demo
+fill → sign-in → audit trail rendered with the failed attempt as the newest
+row; reload → still signed in (HttpOnly cookie resume); sign out → form back.
+Svelte panel: signed in and its audit trail showed the whole Vue walk (login,
+logout) above its own login — two clients, one append-only ledger.
+
+**Failures found by the new tests, fixed before commit:** (1) Testing Library
+auto-cleanup is not active without vitest globals, so a second render left two
+"Sign in" buttons in the page — explicit `cleanup()` in afterEach in both new
+component suites. (2) The audit assertion raced the audit fetch (login resolves
+a tick earlier) — `findByText`, not `getByText`. (3) Svelte's `autocomplete`
+prop is typed `FullAutoFill`, not `string` — caught by `svelte-check`, not at
+runtime.
 
 ### 2026-08-21 — full automated pass (Claude)
 

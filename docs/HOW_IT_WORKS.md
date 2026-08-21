@@ -38,7 +38,7 @@ Everything on the dashboard is computed from the database. There are no hardcode
 | Database | **PostgreSQL 18** | Financial records need constraints, transactions and exact numeric types. The idempotency guarantee is enforced *by* the database. |
 | Payments | **Stripe** | The industry standard, and hosted Checkout keeps card data entirely out of this system. |
 | Queries | **Hand-written SQL** (`pg`) | No ORM. The interesting logic is in the SQL, and it should be readable as SQL. |
-| SPA clients | **Vue 3 + Pinia**, **Svelte 5 runes** | Two further frontends consuming the same API unmodified, sharing one Zod contract (`packages/api-contract`) that validates every response at the boundary. The point: the API is demonstrated by three differently-built consumers, not asserted by one. |
+| SPA clients | **Vue 3 + Pinia**, **Svelte 5 runes** | Two further frontends consuming the same API unmodified, sharing one Zod contract (`packages/api-contract`) that validates every response at the boundary — including the staff door: each carries an operator panel using the same session cookie, rate limiter and audit trail as the admin console. The point: the API is demonstrated by three differently-built consumers, not asserted by one. |
 | Languages | **English + Japanese** | Typed dictionaries, no i18n dependency: two locales in server components did not justify one, and `Intl` already handles currency, number and date formatting per locale. |
 | Accessibility | **axe-core in CI** | WCAG 2.1 AA checked on every push, against both locales. |
 
@@ -144,11 +144,11 @@ Three layers, each catching what the layer beneath structurally cannot. Full det
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 22 | Stubbed database and Stripe | Branching, status mapping, guard clauses |
-| Client unit | 30 | jsdom, fetch mocked at the network seam | Contract validation and state logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
-| Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency |
-| End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, accessibility |
-| Production smoke | 9 | The live deployment | That what shipped actually works |
+| Unit | 56 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
+| Client unit | 66 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
+| Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals |
+| End-to-end | 48 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
+| Production smoke | 24 | The live deployment | That what shipped actually works |
 
 **The story worth telling:** the webhook handler once had nineteen passing unit tests and had
 never worked. `JSONB_BUILD_OBJECT` accepts `"any"`, so an uncast bind parameter had no
