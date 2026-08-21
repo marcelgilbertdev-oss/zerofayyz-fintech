@@ -5,6 +5,7 @@ import {
   createDatabase,
   type Database,
 } from "./database/database.js";
+import { authRoutes, sessionResolver } from "./auth/auth.routes.js";
 import { healthRoutes } from "./health/health.routes.js";
 import { metricRoutes } from "./metrics/metrics.routes.js";
 import { paymentRoutes } from "./payments/payments.routes.js";
@@ -42,6 +43,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     field: "rawBody",
     encoding: false,
     runFirst: true,
+  });
+  // On the root instance, so every route in every plugin sees request.session.
+  // Registering it inside the auth plugin would scope it to the auth routes
+  // alone and silently leave every other guard looking at undefined.
+  app.addHook("onRequest", sessionResolver(database));
+  app.register(authRoutes, {
+    prefix: "/api/v1",
+    database,
   });
   app.register(healthRoutes, {
     prefix: "/api/v1",
