@@ -3,8 +3,13 @@
   import HealthPanel from "./lib/HealthPanel.svelte";
   import MetricTiles from "./lib/MetricTiles.svelte";
   import TransactionsTable from "./lib/TransactionsTable.svelte";
+  import { toMinorUnits } from "./lib/schemas";
 
   const dashboard = createDashboard();
+  let amount = $state("42.00");
+  // Runes equivalent of the Vue client's computed: same shared rule, same
+  // behaviour, expressed in this framework's idiom.
+  const amountValid = $derived(toMinorUnits(amount) !== null);
 
   $effect(() => {
     void dashboard.load();
@@ -17,14 +22,37 @@
       <p class="brand">ZEROFAYYZ <span>FINTECH</span></p>
       <p class="tagline">Svelte 5 client · same API, same ledger, different framework</p>
     </div>
-    <button
-      type="button"
-      class="pay"
-      disabled={dashboard.checkoutPending}
-      onclick={() => dashboard.checkout()}
-    >
-      {dashboard.checkoutPending ? "Opening Stripe…" : "+ Test payment"}
-    </button>
+    <div class="pay-group">
+      <label class="amount-label" for="amount">
+        Test payment amount in US dollars
+      </label>
+      <div class="amount-field" class:invalid={!amountValid}>
+        <span aria-hidden="true">$</span>
+        <input
+          id="amount"
+          bind:value={amount}
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          aria-describedby="amount-hint"
+          aria-invalid={!amountValid}
+          onkeyup={(event) => {
+            if (event.key === "Enter") dashboard.checkout(amount);
+          }}
+        />
+      </div>
+      <p id="amount-hint" class="amount-hint" class:invalid={!amountValid}>
+        Any amount from $0.50 to $10,000.00
+      </p>
+      <button
+        type="button"
+        class="pay"
+        disabled={dashboard.checkoutPending}
+        onclick={() => dashboard.checkout(amount)}
+      >
+        {dashboard.checkoutPending ? "Opening Stripe…" : "+ Test payment"}
+      </button>
+    </div>
   </header>
 
   {#if dashboard.checkoutError}
@@ -72,6 +100,67 @@
 </div>
 
 <style>
+  .pay-group {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .amount-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .amount-field {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.75rem;
+    background: #16241f;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .amount-field.invalid {
+    border-color: rgba(253, 164, 175, 0.55);
+  }
+
+  .amount-field input {
+    width: 5rem;
+    padding: 0.6rem 0;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.78rem;
+    outline: none;
+  }
+
+  .amount-field.invalid input {
+    color: #fda4af;
+  }
+
+  /* Visible to everyone, not only to a screen reader: a limit nobody can see
+     is a limit people discover by being refused. */
+  .amount-hint {
+    grid-column: 1 / -1;
+    order: 3;
+    margin: 0;
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .amount-hint.invalid {
+    color: #fda4af;
+  }
+
   .shell {
     display: flex;
     flex-direction: column;

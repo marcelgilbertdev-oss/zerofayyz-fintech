@@ -148,7 +148,9 @@ Singapore, and the dashboard read it back. Card details never touched this syste
 17. Open **https://zerofayyz-fintech-svelte.vercel.app**
 
 **Expect:** both show the *same* gross volume, the same payment you just made,
-and "4 of 4 live" — including the $42.00 from step 10.
+and "4 of 4 live" — including the payment you made in step 12, for the amount
+you chose. All three clients now carry the same amount field, so you can run the
+same test from any of them.
 
 **Proves:** one API, one contract, three independently-built frontends (React /
 Next.js, Vue 3, Svelte 5). The API boundary is clean enough that three different

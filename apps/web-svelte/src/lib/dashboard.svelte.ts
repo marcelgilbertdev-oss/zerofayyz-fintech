@@ -1,4 +1,5 @@
 import { fetchHealth, fetchMetrics, fetchTransactions, startCheckout } from "./api";
+import { toMinorUnits } from "./schemas";
 import type { Health, Metrics, Transactions } from "./schemas";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
@@ -55,12 +56,21 @@ export function createDashboard() {
     state = health || metrics || transactions ? "ready" : "error";
   }
 
-  async function checkout() {
+  async function checkout(amount: string = "42.00") {
+    const amountMinor = toMinorUnits(amount);
+
+    // Refused here rather than round-tripping to the API for a 400 the user
+    // would have to wait through. The route schema still validates it.
+    if (amountMinor === null) {
+      checkoutError = "Enter an amount between $0.50 and $10,000.00";
+      return;
+    }
+
     checkoutPending = true;
     checkoutError = null;
 
     try {
-      window.location.assign(await startCheckout());
+      window.location.assign(await startCheckout(amountMinor));
     } catch (error) {
       checkoutError =
         error instanceof Error ? error.message : "Unable to start checkout";

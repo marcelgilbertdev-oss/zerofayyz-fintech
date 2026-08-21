@@ -119,3 +119,17 @@ test("the amount field is labelled in Japanese too", async ({ page }) => {
 
   await expect(page.getByLabel(/テスト決済の金額/)).toBeVisible();
 });
+
+// Regression guard: the permitted range was originally screen-reader-only, so
+// assistive tech announced the limits and sighted users were left guessing why
+// their number was refused. Visible-to-everyone is the requirement.
+test("the permitted amount range is visible, not only announced", async ({ page }) => {
+  await page.goto("/");
+
+  const amount = page.getByLabel(/test payment amount/i);
+  const hint = page.getByText(/Any amount from \$0\.50 to \$10,000\.00/i);
+
+  await amount.focus();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveCSS("opacity", "1");
+});

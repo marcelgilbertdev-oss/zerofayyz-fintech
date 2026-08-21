@@ -71,3 +71,40 @@ export const checkoutSchema = z.object({
 export type Health = z.infer<typeof healthSchema>;
 export type Metrics = z.infer<typeof metricsSchema>;
 export type Transactions = z.infer<typeof transactionsSchema>;
+
+/**
+ * Money parsing, shared by every client.
+ *
+ * These bounds mirror the API's route schema. The server stays the authority —
+ * a field in a browser can be edited away, a route schema cannot — but three
+ * clients agreeing on one rule beats three clients each inventing their own,
+ * which is how a Vue page and a React page start disagreeing about what
+ * "$1,000" means.
+ *
+ * The floor is Stripe's own USD minimum charge. The ceiling is ours, chosen
+ * because the checkout endpoint is public: an unbounded amount lets one
+ * stranger put nine digits into a shared dashboard's headline figure.
+ */
+export const MIN_AMOUNT_MINOR = 50;
+export const MAX_AMOUNT_MINOR = 1_000_000;
+
+/** Dollars as typed → integer minor units, or null when it is not a valid amount. */
+export function toMinorUnits(input: string): number | null {
+  const trimmed = input.trim().replace(/^\$/, "").replace(/,/g, "");
+
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return null;
+  }
+
+  // Parsed as text rather than by multiplying a float by 100: `17.35 * 100` is
+  // 1734.9999999999998 in IEEE-754, and a payment ledger is the last place to
+  // round someone's money by accident.
+  const [dollars, cents = ""] = trimmed.split(".");
+  const minor = Number(dollars) * 100 + Number(cents.padEnd(2, "0"));
+
+  if (minor < MIN_AMOUNT_MINOR || minor > MAX_AMOUNT_MINOR) {
+    return null;
+  }
+
+  return minor;
+}

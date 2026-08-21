@@ -45,11 +45,11 @@ export const fetchMetrics = () => getValidated("/api/v1/metrics", metricsSchema)
 export const fetchTransactions = () =>
   getValidated("/api/v1/transactions", transactionsSchema);
 
-export async function startCheckout(): Promise<string> {
+export async function startCheckout(amountMinor?: number): Promise<string> {
   const response = await fetch("/api/v1/payments/checkout-session", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify(amountMinor === undefined ? {} : { amountMinor }),
     signal: AbortSignal.timeout(45_000),
   });
 

@@ -152,3 +152,37 @@ describe("dashboard store", () => {
     expect(store.checkoutPending).toBe(false);
   });
 });
+
+describe("checkout amount", () => {
+  it("refuses an out-of-range amount without touching the network", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => respond({}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const store = useDashboardStore();
+    await store.checkout("99999999");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(store.checkoutError).toMatch(/between/i);
+    expect(store.checkoutPending).toBe(false);
+  });
+
+  it("sends the chosen amount to the API in minor units", async () => {
+    // Typed parameters rather than a bare vi.fn(): the build's typecheck is
+    // stricter than the test runner, and an untyped mock records its calls as
+    // an empty tuple that no cast can rescue.
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        respond({
+          checkoutSessionId: "cs_test",
+          url: "https://checkout.stripe.com/c/pay/cs_test",
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const store = useDashboardStore();
+    await store.checkout("173.50");
+
+    const init = fetchMock.mock.calls[0]?.[1];
+    expect(JSON.parse(String(init?.body))).toEqual({ amountMinor: 17_350 });
+  });
+});
