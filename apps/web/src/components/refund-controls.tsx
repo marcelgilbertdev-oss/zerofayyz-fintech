@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { toMinorUnits } from "./checkout-button";
@@ -38,6 +39,7 @@ export function RequestRefundButton({
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function submit() {
     // Empty means the full amount; anything typed must parse as money.
@@ -62,7 +64,15 @@ export function RequestRefundButton({
       return;
     }
 
-    window.location.assign("/admin");
+    // A soft refresh, not a navigation: the server components re-render with
+    // the new queue while scroll position and the open tab survive. The full
+    // reload this replaced dumped the operator back at the top of the page
+    // after every action — found in the live charter run.
+    setOpen(false);
+    setReason("");
+    setAmount("");
+    setBusy(false);
+    router.refresh();
   }
 
   if (!open) {
@@ -135,6 +145,7 @@ export function DecideRefundButtons({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function decide(action: "approve" | "reject") {
     setBusy(true);
@@ -151,7 +162,10 @@ export function DecideRefundButtons({
       return;
     }
 
-    window.location.assign("/admin");
+    setMode("idle");
+    setNote("");
+    setBusy(false);
+    router.refresh();
   }
 
   if (mode === "rejecting") {
@@ -217,6 +231,7 @@ export function WithdrawRefundButton({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function withdraw() {
     setBusy(true);
@@ -230,7 +245,8 @@ export function WithdrawRefundButton({
       return;
     }
 
-    window.location.assign("/admin");
+    setBusy(false);
+    router.refresh();
   }
 
   return (

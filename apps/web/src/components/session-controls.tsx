@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function SignOutButton({ label }: { label: string }) {
@@ -41,6 +42,7 @@ export function RevokeSessionButton({
   busyLabel: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
   async function revoke() {
     setBusy(true);
@@ -48,9 +50,15 @@ export function RevokeSessionButton({
     try {
       await fetch(`/api/admin/sessions/${sessionId}`, { method: "DELETE" });
     } finally {
-      // Revoking your own session signs you out; landing on the dashboard is
-      // honest about that. Revoking someone else's just needs fresh data.
-      window.location.assign(isCurrent ? "/" : "/admin");
+      if (isCurrent) {
+        // Revoking your own session signs you out; landing on the dashboard
+        // is honest about that.
+        window.location.assign("/");
+      } else {
+        // Someone else's session: soft refresh, scroll and tab intact.
+        setBusy(false);
+        router.refresh();
+      }
     }
   }
 

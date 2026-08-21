@@ -14,7 +14,7 @@ const DEMO_PASSWORD = "view-the-ledger";
 async function signInAsDemo(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel(/email address/i).fill(DEMO_EMAIL);
-  await page.getByLabel(/password/i).fill(DEMO_PASSWORD);
+  await page.getByRole("textbox", { name: /^password$/i }).fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
   await page.waitForURL("**/admin");
 }
@@ -38,7 +38,7 @@ test("a wrong password shows an error and stays on the page", async ({ page }) =
   await page.goto("/login");
 
   await page.getByLabel(/email address/i).fill(DEMO_EMAIL);
-  await page.getByLabel(/password/i).fill("not-the-password");
+  await page.getByRole("textbox", { name: /^password$/i }).fill("not-the-password");
   await page.getByRole("button", { name: /sign in/i }).click();
 
   // getByRole("alert") alone is ambiguous here: Next.js injects its own
@@ -48,27 +48,32 @@ test("a wrong password shows an error and stays on the page", async ({ page }) =
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("the demo operator signs in, sees the audit log, and nothing above their role", async ({
+test("the demo operator signs in, sees their tabs, and nothing above their role", async ({
   page,
 }) => {
   await signInAsDemo(page);
 
-  // What an operator gets: the history.
-  await expect(page.getByRole("heading", { name: /audit log/i })).toBeVisible();
-  await expect(page.getByText("auth.login.succeeded").first()).toBeVisible();
+  // The console is tabbed now: an operator gets Refunds and the audit log.
+  const tabBar = page.getByRole("navigation", { name: /admin console/i });
+  await expect(tabBar.getByRole("link", { name: /refunds/i })).toBeVisible();
+  await expect(tabBar.getByRole("link", { name: /audit log/i })).toBeVisible();
 
-  // What an operator does not get. The API refuses these with 403 regardless;
-  // this asserts the page is honest about it instead of showing broken panels.
-  await expect(page.getByRole("heading", { name: /active sessions/i })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: /^accounts$/i })).toHaveCount(0);
+  // And no tabs for what their role cannot read — the API refuses those with
+  // 403 regardless; this asserts the page is honest instead of showing doors
+  // that lead to errors.
+  await expect(tabBar.getByRole("link", { name: /active sessions/i })).toHaveCount(0);
+  await expect(tabBar.getByRole("link", { name: /^accounts$/i })).toHaveCount(0);
   await expect(page.getByText(/signed in as an operator/i)).toBeVisible();
+
+  // The history lives one tab over.
+  await tabBar.getByRole("link", { name: /audit log/i }).click();
+  await expect(page.getByText("auth.login.succeeded").first()).toBeVisible();
 });
 
 test("their own login is the newest entry in the audit log they see", async ({ page }) => {
   await signInAsDemo(page);
+  await page.goto("/admin?tab=audit");
 
-  // Scoped to the audit region — the console has since grown a payments table
-  // above it, so "the first row on the page" is no longer the audit log's.
   const auditRegion = page.getByRole("region", { name: /audit log/i });
   const firstAction = auditRegion.locator("tbody tr").first().locator("td").nth(1);
   await expect(firstAction).toHaveText("auth.login.succeeded");
@@ -94,7 +99,8 @@ test("the header offers sign-in when signed out and the console when signed in",
 
   await signInAsDemo(page);
   await page.goto("/");
-  await expect(page.getByRole("link", { name: /admin console/i })).toBeVisible();
+  // Two matches are correct now: the sidebar destination and the header door.
+  await expect(page.getByRole("link", { name: /admin console/i }).first()).toBeVisible();
 });
 
 test("the login page has no detectable WCAG A/AA violations in either language", async ({
@@ -126,7 +132,7 @@ test("one click fills both demo fields correctly", async ({ page }) => {
   await page.goto("/login");
 
   const email = page.getByLabel(/email address/i);
-  const password = page.getByLabel(/password/i);
+  const password = page.getByRole("textbox", { name: /^password$/i });
 
   await expect(email).toHaveValue("");
 
@@ -141,14 +147,14 @@ test("one click fills both demo fields correctly", async ({ page }) => {
 
   await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL("**/admin");
-  await expect(page.getByRole("heading", { name: /admin console/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /admin console/i, level: 1 })).toBeVisible();
 });
 
 test("the error clears as soon as you start correcting the field", async ({ page }) => {
   await page.goto("/login");
 
   await page.getByLabel(/email address/i).fill("dmin@zerofayyz.test");
-  await page.getByLabel(/password/i).fill("whatever");
+  await page.getByRole("textbox", { name: /^password$/i }).fill("whatever");
   await page.getByRole("button", { name: /^sign in$/i }).click();
 
   const error = page.getByText(/incorrect email or password/i);
@@ -158,4 +164,35 @@ test("the error clears as soon as you start correcting the field", async ({ page
   // field that still reads "Incorrect" makes a correct fix look rejected.
   await page.getByLabel(/email address/i).fill("admin@zerofayyz.test");
   await expect(error).toHaveCount(0);
+});
+
+test("the password field has a working visibility toggle", async ({ page }) => {
+  await page.goto("/login");
+
+  const password = page.getByRole("textbox", { name: /^password$/i });
+  await password.fill("something-secret");
+  await expect(password).toHaveAttribute("type", "password");
+
+  // The first attempt at this feature silently failed to land in the login
+  // form — the component existed, the import existed, the field never changed.
+  // Hence a test that clicks the actual button on the actual page.
+  await page.getByRole("button", { name: /show password/i }).click();
+  await expect(password).toHaveAttribute("type", "text");
+
+  await page.getByRole("button", { name: /hide password/i }).click();
+  await expect(password).toHaveAttribute("type", "password");
+});
+
+test("a refusal offers a next step without confirming anything", async ({ page }) => {
+  await page.goto("/login");
+
+  await page.getByLabel(/email address/i).fill("ghost@zerofayyz.test");
+  await page.getByRole("textbox", { name: /^password$/i }).fill("wrong-password-123");
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+
+  // The compromise: same refusal whether the account is wrong, missing, or
+  // disabled — plus a line telling a confused legitimate person what to do,
+  // which confirms nothing to a stranger probing for real accounts.
+  await expect(page.getByText(/incorrect email or password/i)).toBeVisible();
+  await expect(page.getByText(/contact your administrator/i)).toBeVisible();
 });

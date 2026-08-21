@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 
+import { AppSidebar, BrandMark } from "@/components/app-shell";
 import { CheckoutButton } from "@/components/checkout-button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { getSessionUser } from "@/lib/api-session";
@@ -275,29 +276,6 @@ async function getMetrics(): Promise<DashboardMetrics> {
 
 
 
-const NAV_KEYS = [
-  { key: "overview", glyph: "⌂", active: true },
-  { key: "payments", glyph: "↗" },
-  { key: "transactions", glyph: "⇄" },
-  { key: "customers", glyph: "◎" },
-  { key: "admin", glyph: "◇" },
-] as const;
-
-const SECONDARY_NAV_KEYS = [
-  { key: "systemHealth", glyph: "◉" },
-  { key: "auditLog", glyph: "≡" },
-  { key: "portfolioNotes", glyph: "↗" },
-] as const;
-
-
-function BrandMark() {
-  return (
-    <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10 text-sm font-bold tracking-tight text-emerald-200 shadow-[0_0_30px_rgba(52,211,153,0.08)]">
-      ZF
-    </div>
-  );
-}
-
 const STATUS_STYLES: Record<string, string> = {
   succeeded: "border-emerald-300/20 bg-emerald-300/10 text-emerald-200",
   processing: "border-sky-300/20 bg-sky-300/10 text-sky-200",
@@ -436,74 +414,7 @@ export default async function Home({
     <div className="min-h-screen bg-[#07110f] text-[#edf5f1]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_-10%,rgba(52,211,153,0.11),transparent_35%),radial-gradient(circle_at_10%_90%,rgba(45,212,191,0.06),transparent_28%)]" />
 
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-white/[0.07] bg-[#081310]/95 px-5 py-6 backdrop-blur-xl lg:flex lg:flex-col">
-        <div className="flex items-center gap-3 px-1">
-          <BrandMark />
-          <div>
-            <p className="text-sm font-semibold tracking-[0.08em] text-white">{t.brand.name}</p>
-            <p className="text-[10px] font-medium tracking-[0.24em] text-emerald-300/70">{t.brand.suffix}</p>
-          </div>
-        </div>
-
-        <div className="mt-8 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.06] px-3 py-2.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-medium text-emerald-100">{t.sandbox.label}</span>
-            <span className="rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-200">{t.sandbox.badge}</span>
-          </div>
-          <p className="mt-1 text-[11px] leading-4 text-white/40">{t.sandbox.note}</p>
-        </div>
-
-        <nav className="mt-7 space-y-1" aria-label={t.nav.primaryLabel}>
-          {NAV_KEYS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              aria-current={"active" in item && item.active ? "page" : undefined}
-              aria-disabled={"active" in item && item.active ? undefined : true}
-              disabled={!("active" in item && item.active)}
-              title={"active" in item && item.active ? undefined : t.nav.plannedTitle}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${"active" in item && item.active ? "bg-white/[0.08] font-medium text-white shadow-[inset_3px_0_0_#6ee7b7]" : "cursor-not-allowed text-white/55"}`}
-            >
-              <span className="grid size-5 place-items-center text-sm text-emerald-200/80">{item.glyph}</span>
-              {t.nav[item.key]}
-              {!("active" in item && item.active) && (
-                <span className="ml-auto rounded-full border border-white/[0.07] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/55">
-                  {t.nav.planned}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        <div className="my-5 h-px bg-white/[0.06]" />
-
-        <nav className="space-y-1" aria-label={t.nav.projectLabel}>
-          {SECONDARY_NAV_KEYS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              aria-disabled
-              disabled
-              title={t.nav.plannedTitle}
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/55"
-            >
-              <span className="grid size-5 place-items-center text-sm text-emerald-200/70">{item.glyph}</span>
-              {t.nav[item.key]}
-            </button>
-          ))}
-        </nav>
-
-        <div className="mt-auto rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60">{t.build.label}</p>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-xs text-white/65">{t.build.stage}</span>
-            <span className="text-xs font-semibold text-emerald-300">{t.build.phase}</span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
-            <div className="h-full w-[28%] rounded-full bg-gradient-to-r from-emerald-400 to-teal-300" />
-          </div>
-        </div>
-      </aside>
+      <AppSidebar t={t} active="overview" />
 
       <div className="relative lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-white/[0.07] bg-[#07110f]/80 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-10">

@@ -1,6 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
+
+import { PasswordInput } from "./password-input";
 
 async function send(path: string, method: string, body?: unknown): Promise<string | null> {
   const response = await fetch(path, {
@@ -28,6 +31,8 @@ export function CreateAccountForm({
     password: string;
     submit: string;
     submitting: string;
+    showPassword: string;
+    hidePassword: string;
   };
 }) {
   const [email, setEmail] = useState("");
@@ -40,6 +45,7 @@ export function CreateAccountForm({
   // in its label inherits the option text into its accessible name ("Role
   // viewer operator admin"), which breaks exact-name queries for assistive
   // tech and tests alike.
+  const router = useRouter();
   const emailId = useId();
   const nameId = useId();
   const roleId = useId();
@@ -63,7 +69,15 @@ export function CreateAccountForm({
       return;
     }
 
-    window.location.assign("/admin");
+    // Clear the form and soft-refresh: the new row appears in the table below
+    // without the page jumping to the top — the scroll reset after account
+    // creation was a finding from the live charter run.
+    setEmail("");
+    setDisplayName("");
+    setRole("viewer");
+    setPassword("");
+    setBusy(false);
+    router.refresh();
   }
 
   const field =
@@ -120,15 +134,16 @@ export function CreateAccountForm({
         <label htmlFor={passwordId} className="text-[10px] font-semibold uppercase tracking-wide text-white/50">
           {labels.password}
         </label>
-        <input
+        <PasswordInput
           id={passwordId}
-          type="password"
+          value={password}
+          onChange={setPassword}
           required
           minLength={12}
           autoComplete="new-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className={field}
+          showLabel={labels.showPassword}
+          hideLabel={labels.hidePassword}
+          className={`${field} w-full`}
         />
       </div>
       <div className="flex items-end">
@@ -160,6 +175,7 @@ export function AccountRowControls({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function run(action: () => Promise<string | null>) {
     setBusy(true);
@@ -173,7 +189,8 @@ export function AccountRowControls({
       return;
     }
 
-    window.location.assign("/admin");
+    setBusy(false);
+    router.refresh();
   }
 
   return (

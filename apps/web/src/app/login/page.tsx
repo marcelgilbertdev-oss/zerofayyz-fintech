@@ -32,6 +32,9 @@ export default async function LoginPage() {
         submitLabel={t.auth.signIn}
         submittingLabel={t.auth.submitting}
         fallbackError={t.auth.genericError}
+        contactAdmin={t.auth.contactAdmin}
+        showPassword={t.auth.showPassword}
+        hidePassword={t.auth.hidePassword}
         demo={{
           title: t.auth.demoTitle,
           intro: t.auth.demoIntro,

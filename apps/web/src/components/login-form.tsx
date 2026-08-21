@@ -2,12 +2,17 @@
 
 import { useId, useState } from "react";
 
+import { PasswordInput } from "./password-input";
+
 type LoginFormProps = {
   emailLabel: string;
   passwordLabel: string;
   submitLabel: string;
   submittingLabel: string;
   fallbackError: string;
+  contactAdmin: string;
+  showPassword: string;
+  hidePassword: string;
   demo: {
     title: string;
     intro: string;
@@ -25,6 +30,9 @@ export function LoginForm({
   submitLabel,
   submittingLabel,
   fallbackError,
+  contactAdmin,
+  showPassword,
+  hidePassword,
   demo,
 }: LoginFormProps) {
   const [email, setEmail] = useState("");
@@ -111,13 +119,17 @@ export function LoginForm({
           >
             {passwordLabel}
           </label>
-          <input
+          <PasswordInput
             id={passwordId}
-            type="password"
+            value={password}
+            onChange={(next) => {
+              setPassword(next);
+              setError(null);
+            }}
             autoComplete="current-password"
             required
-            value={password}
-            onChange={edit(setPassword)}
+            showLabel={showPassword}
+            hideLabel={hidePassword}
             className="w-full rounded-xl border border-white/10 bg-[#16241f] px-3.5 py-2.5 text-sm text-white outline-none focus:border-emerald-300/40"
           />
         </div>
@@ -128,12 +140,13 @@ export function LoginForm({
         >
           {submitting ? submittingLabel : submitLabel}
         </button>
-        <p
-          aria-live="polite"
-          className="min-h-4 text-xs text-rose-200"
-        >
+        <p aria-live="polite" className="min-h-4 text-xs text-rose-200">
           {error}
         </p>
+        {/* The compromise on enumeration: the refusal never says whether the
+            account exists or is disabled — this line gives the confused
+            legitimate person a next step while confirming nothing. */}
+        {error && <p className="text-xs leading-5 text-white/50">{contactAdmin}</p>}
       </form>
 
       <section className="mt-8 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-5">

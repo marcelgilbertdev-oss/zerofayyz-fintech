@@ -31,7 +31,7 @@ const en = {
     planned: "Planned",
     plannedTitle: "Planned — see the roadmap in the README",
   },
-  build: { label: "Portfolio build", stage: "MVP foundation", phase: "Phase 1" },
+  build: { label: "Portfolio build", stage: "Refunds & accounts live", phase: "Phase 4" },
   header: {
     overview: "Operations overview",
     apiConnected: "API connected",
@@ -154,6 +154,10 @@ const en = {
     demoFill: "Fill these in for me",
     demoFilled: "Filled in — press Sign in",
     signedInAs: (name: string) => `Signed in as ${name}`,
+    showPassword: "Show password",
+    hidePassword: "Hide password",
+    contactAdmin:
+      "If you believe you should have access, contact your administrator.",
   },
   admin: {
     title: "Admin console",
@@ -238,6 +242,9 @@ const en = {
     createPasswordLabel: "Password (min. 12 characters)",
     createSubmit: "Create account",
     createSubmitting: "Creating…",
+    tabRefunds: "Refunds",
+    tabOverviewNote:
+      "Primary sections live in the sidebar; these tabs are the console's views.",
     accountDisable: "Disable",
     accountEnable: "Enable",
     accountDisabled: "Disabled",
@@ -276,7 +283,7 @@ const ja: Dictionary = {
     planned: "予定",
     plannedTitle: "予定 — README のロードマップを参照",
   },
-  build: { label: "ポートフォリオ構築", stage: "MVP 基盤", phase: "フェーズ 1" },
+  build: { label: "ポートフォリオ構築", stage: "返金・アカウント管理 稼働中", phase: "フェーズ 4" },
   header: {
     overview: "オペレーション概要",
     apiConnected: "API 接続済み",
@@ -399,6 +406,9 @@ const ja: Dictionary = {
     demoFill: "自動入力する",
     demoFilled: "入力しました — サインインを押してください",
     signedInAs: (name: string) => `${name} としてサインイン中`,
+    showPassword: "パスワードを表示",
+    hidePassword: "パスワードを隠す",
+    contactAdmin: "アクセス権があるはずの場合は、管理者にお問い合わせください。",
   },
   admin: {
     title: "管理コンソール",
@@ -483,6 +493,8 @@ const ja: Dictionary = {
     createPasswordLabel: "パスワード（12文字以上）",
     createSubmit: "アカウントを作成",
     createSubmitting: "作成中…",
+    tabRefunds: "返金",
+    tabOverviewNote: "主要セクションはサイドバーに、コンソール内のビューはこのタブにあります。",
     accountDisable: "無効化",
     accountEnable: "有効化",
     accountDisabled: "無効",
