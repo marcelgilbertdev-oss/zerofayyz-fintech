@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 
 import { CheckoutButton } from "@/components/checkout-button";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { getSessionUser } from "@/lib/api-session";
 import { getDictionary } from "@/i18n/dictionaries";
 import {
   DEFAULT_LOCALE,
@@ -332,6 +333,9 @@ export default async function Home({
   const negotiated = requestHeaders.get(LOCALE_HEADER);
   const locale: Locale = isLocale(negotiated) ? negotiated : DEFAULT_LOCALE;
   const t = getDictionary(locale);
+  // Resolved for the header link only. Null (signed out, or API unreachable)
+  // renders the sign-in door; the public page never depends on it.
+  const sessionUser = await getSessionUser();
   const transactions = transactionResult.data;
   const currency = paymentMetrics.currency;
   const metrics = [
@@ -534,6 +538,16 @@ export default async function Home({
                 amountHint={t.checkout.amountHint}
                 amountInvalid={t.checkout.amountInvalid}
               />
+              {/* Plain <a>, not next/link, for the same reason as the language
+                  switcher: /admin and /login are server-rendered from the
+                  session cookie, and a full document request is what carries
+                  it. */}
+              <a
+                href={sessionUser ? "/admin" : "/login"}
+                className="rounded-xl border border-white/15 px-3.5 py-2.5 text-xs font-semibold text-white/80 transition hover:border-emerald-300/40 hover:text-white"
+              >
+                {sessionUser ? t.auth.adminConsole : t.auth.signIn}
+              </a>
               <div className="grid size-9 place-items-center rounded-full border border-white/10 bg-[#16241f] text-xs font-semibold text-emerald-100">MF</div>
             </div>
           </div>

@@ -135,6 +135,66 @@ const en = {
     amountHint: "Any amount from $0.50 to $10,000.00",
     amountInvalid: "Enter an amount between $0.50 and $10,000.00",
   },
+  auth: {
+    signIn: "Sign in",
+    signOut: "Sign out",
+    adminConsole: "Admin console",
+    loginTitle: "Admin console sign-in",
+    loginSubtitle:
+      "The dashboard is public. This door is for the operational half: the audit trail, live sessions, and account management.",
+    emailLabel: "Email address",
+    passwordLabel: "Password",
+    submitting: "Signing in…",
+    genericError: "Unable to sign in",
+    demoTitle: "Reviewer access",
+    demoIntro:
+      "Use the demo operator account — it is published on purpose, so you can walk in without asking anyone:",
+    demoNote:
+      "The operator role can read everything and change nothing. Administration is reserved for the platform owner.",
+    signedInAs: (name: string) => `Signed in as ${name}`,
+  },
+  admin: {
+    title: "Admin console",
+    subtitle:
+      "The privileged half of the platform. Every request on this page is re-checked on the server — hiding a panel is presentation, the API guard is the boundary.",
+    roleLabel: "Role",
+    presenceTitle: "Active sessions",
+    presenceSubtitle: "Everyone signed in right now, straight from the session store.",
+    presenceYou: "This is you",
+    presenceRevoke: "Sign out this session",
+    presenceRevoking: "Signing out…",
+    presenceEmpty: "No one is signed in.",
+    presenceColumns: {
+      who: "Who",
+      role: "Role",
+      signedIn: "Signed in",
+      lastSeen: "Last seen",
+      actions: "Actions",
+    },
+    auditTitle: "Audit log",
+    auditSubtitle:
+      "Append-only history — the database refuses edits and deletions, so what happened stays written.",
+    auditEmpty: "Nothing recorded yet.",
+    auditColumns: {
+      when: "When",
+      action: "Action",
+      actor: "Actor",
+      entity: "Entity",
+    },
+    auditSystem: "system",
+    usersTitle: "Accounts",
+    usersSubtitle: "Staff and sandbox customers, with how many payments each customer has made.",
+    usersColumns: {
+      who: "Who",
+      role: "Role",
+      payments: "Payments",
+      lastLogin: "Last login",
+    },
+    usersNever: "Never",
+    operatorNotice:
+      "You are signed in as an operator: the audit log is readable, but session and account management are reserved for administrators.",
+    loadError: "This panel could not be loaded from the API.",
+  },
 };
 
 // Deliberately not `as const`: the English dictionary defines the *shape*, not
@@ -271,6 +331,66 @@ const ja: Dictionary = {
     amountLabel: "テスト決済の金額（米ドル）",
     amountHint: "$0.50 〜 $10,000.00 の範囲で入力できます",
     amountInvalid: "$0.50 〜 $10,000.00 の範囲で入力してください",
+  },
+  auth: {
+    signIn: "サインイン",
+    signOut: "サインアウト",
+    adminConsole: "管理コンソール",
+    loginTitle: "管理コンソールへのサインイン",
+    loginSubtitle:
+      "ダッシュボードは公開されています。この先は運用側の領域です：監査ログ、アクティブセッション、アカウント管理。",
+    emailLabel: "メールアドレス",
+    passwordLabel: "パスワード",
+    submitting: "サインイン中…",
+    genericError: "サインインできませんでした",
+    demoTitle: "レビュアー用アクセス",
+    demoIntro:
+      "デモ用オペレーターアカウントをご利用ください。誰にも許可を求めずに入れるよう、意図的に公開しています：",
+    demoNote:
+      "オペレーター権限はすべて閲覧できますが、何も変更できません。管理操作はプラットフォーム所有者に限定されています。",
+    signedInAs: (name: string) => `${name} としてサインイン中`,
+  },
+  admin: {
+    title: "管理コンソール",
+    subtitle:
+      "プラットフォームの特権領域です。このページのすべてのリクエストはサーバー側で再検証されます。パネルの非表示は見た目に過ぎず、境界は API のガードです。",
+    roleLabel: "権限",
+    presenceTitle: "アクティブセッション",
+    presenceSubtitle: "現在サインイン中の全員を、セッションストアから直接表示しています。",
+    presenceYou: "これはあなたです",
+    presenceRevoke: "このセッションをサインアウト",
+    presenceRevoking: "サインアウト中…",
+    presenceEmpty: "現在サインイン中のユーザーはいません。",
+    presenceColumns: {
+      who: "ユーザー",
+      role: "権限",
+      signedIn: "サインイン時刻",
+      lastSeen: "最終アクセス",
+      actions: "操作",
+    },
+    auditTitle: "監査ログ",
+    auditSubtitle:
+      "追記専用の履歴です。データベースが編集と削除を拒否するため、起きたことは書かれたまま残ります。",
+    auditEmpty: "まだ記録はありません。",
+    auditColumns: {
+      when: "日時",
+      action: "アクション",
+      actor: "実行者",
+      entity: "対象",
+    },
+    auditSystem: "システム",
+    usersTitle: "アカウント",
+    usersSubtitle: "スタッフとサンドボックスの顧客、および各顧客の決済回数。",
+    usersColumns: {
+      who: "ユーザー",
+      role: "権限",
+      payments: "決済数",
+      lastLogin: "最終ログイン",
+    },
+    usersNever: "なし",
+    operatorNotice:
+      "オペレーターとしてサインインしています。監査ログは閲覧できますが、セッションとアカウントの管理は管理者に限定されています。",
+    loadError: "このパネルを API から読み込めませんでした。",
   },
 };
 

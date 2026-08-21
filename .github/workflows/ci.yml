@@ -216,6 +216,15 @@ jobs:
       - name: Load demo data
         run: psql "$DATABASE_URL" -f database/postgres/seeds/001_demo_data.sql
 
+      - name: Seed staff accounts
+        working-directory: apps/api
+        env:
+          # A CI-only value for a CI-only database that is destroyed with the
+          # job. The real admin password is set by a person, never by a
+          # pipeline.
+          ADMIN_PASSWORD: ci-throwaway-admin-password
+        run: npm run seed:staff
+
       - name: Install Playwright browser
         working-directory: apps/web
         run: npx playwright install --with-deps chromium
