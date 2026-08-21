@@ -1,0 +1,18 @@
+{
+  "services": {
+    "zerofayyz-fintech-api": {
+      "root": "apps/api",
+      "entrypoint": "src/app.ts",
+      "buildCommand": "npm ci --include=dev && npm run build"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "zerofayyz-fintech-api"
+      }
+    }
+  ]
+}

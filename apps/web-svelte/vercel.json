@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
+  "installCommand": "npm --prefix packages/api-contract ci && npm --prefix apps/web-svelte ci",
+  "buildCommand": "npm --prefix apps/web-svelte run build",
+  "outputDirectory": "apps/web-svelte/dist",
   "rewrites": [
     {
       "source": "/api/:path*",

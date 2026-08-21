@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
+  "installCommand": "npm --prefix packages/api-contract ci && npm --prefix apps/web-vue ci",
+  "buildCommand": "npm --prefix apps/web-vue run build",
+  "outputDirectory": "apps/web-vue/dist",
   "rewrites": [
     {
       "source": "/api/:path*",

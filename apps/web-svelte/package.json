@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "relock": "rm -rf node_modules package-lock.json && npm install",
-    "postinstall": "npm --prefix ../../packages/api-contract ci"
+    "relock": "rm -rf node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "svelte": "^5.0.0",

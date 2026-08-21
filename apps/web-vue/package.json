@@ -10,8 +10,7 @@
     "typecheck": "vue-tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "relock": "rm -rf node_modules package-lock.json && npm install",
-    "postinstall": "npm --prefix ../../packages/api-contract ci"
+    "relock": "rm -rf node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "pinia": "^3.0.0",

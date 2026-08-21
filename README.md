@@ -11,7 +11,9 @@ append-only transaction ledger in PostgreSQL, and a server-rendered operations d
 Built to be read as much as run — the decisions are documented, the tests are structured
 around how payment systems actually fail, and everything is gated by CI.
 
-- **Live demo:** **https://zerofayyz-fintech.vercel.app**
+- **Live demo (Next.js):** **https://zerofayyz-fintech.vercel.app**
+- **Same API, Vue 3 client:** https://zerofayyz-fintech-vue.vercel.app
+- **Same API, Svelte 5 client:** https://zerofayyz-fintech-svelte.vercel.app
 - **Architecture:** [docs/architecture/SYSTEM_OVERVIEW.md](docs/architecture/SYSTEM_OVERVIEW.md)
 - **Quality strategy:** [docs/QUALITY_STRATEGY.md](docs/QUALITY_STRATEGY.md)
 - **Decision records:** [docs/decisions/](docs/decisions/)

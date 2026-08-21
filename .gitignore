@@ -41,3 +41,8 @@ test-results/
 
 # Internal session notes — never publish
 docs/runbooks/HANDOFF.md
+.vercel
+.env*
+
+# Vercel CLI link state (per-deploy, not shared)
+.vercel/
