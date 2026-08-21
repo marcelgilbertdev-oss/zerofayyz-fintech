@@ -8,6 +8,7 @@ type TransactionRouteOptions = {
 
 type TransactionRow = {
   id: string;
+  payment_id: string;
   display_name: string;
   email: string;
   amount_minor: string;
@@ -29,6 +30,7 @@ const transactionListSchema = {
         additionalProperties: false,
         required: [
           "id",
+          "paymentId",
           "customer",
           "amountMinor",
           "currency",
@@ -38,6 +40,9 @@ const transactionListSchema = {
         ],
         properties: {
           id: { type: "string", format: "uuid" },
+          // The payment the event belongs to. The admin console's refund
+          // request is raised against the payment, not the event.
+          paymentId: { type: "string", format: "uuid" },
           customer: {
             type: "object",
             additionalProperties: false,
@@ -88,6 +93,7 @@ export const transactionRoutes: FastifyPluginAsync<TransactionRouteOptions> = as
         FROM (
           SELECT DISTINCT ON (payments.id)
             transactions.id,
+            payments.id AS payment_id,
             users.display_name,
             users.email,
             payments.amount_minor::TEXT AS amount_minor,
@@ -109,6 +115,7 @@ export const transactionRoutes: FastifyPluginAsync<TransactionRouteOptions> = as
 
       const data = result.rows.map((row) => ({
         id: row.id,
+        paymentId: row.payment_id,
         customer: {
           displayName: row.display_name,
           email: row.email,

@@ -30,6 +30,7 @@ function createTransactionDatabaseStub(): Database {
         rows: [
           {
             id: "20000000-0000-4000-8000-000000000001",
+            payment_id: "10000000-0000-4000-8000-000000000001",
             display_name: "Nadia Al-Sabah",
             email: "nadia@example.test",
             amount_minor: "42000",
@@ -62,6 +63,7 @@ test("GET /api/v1/transactions maps PostgreSQL rows to the public response", asy
     data: [
       {
         id: "20000000-0000-4000-8000-000000000001",
+        paymentId: "10000000-0000-4000-8000-000000000001",
         customer: {
           displayName: "Nadia Al-Sabah",
           email: "nadia@example.test",

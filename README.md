@@ -66,6 +66,15 @@ TypeScript throughout, ESM, Node 20+.
   trigger rather than by convention
 - Login rate limiting that counts failures only, so a shared demo account cannot be locked
   out of its own demo by a burst of successful sign-ins
+- Refunds with a four-eyes rule: an operator requests, an administrator approves, and the
+  same account can never do both — enforced by the API and again by a CHECK constraint.
+  Approval calls Stripe with the request id as its idempotency key; the ledger is updated
+  only by the signed charge.refunded webhook, idempotently, like every other event
+- Requesters can withdraw their own pending request; one pending request per payment is
+  enforced by a partial unique index
+- Account management from the console: create staff, change roles, disable and enable —
+  never against your own account, and disabling revokes every live session in the same
+  statement
 - Account-enumeration protection: a missing account is verified against a decoy hash, so a
   wrong password and a nonexistent user return byte-identical responses in comparable time
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
@@ -104,8 +113,8 @@ Phase 1 and Phase 2 are complete. Later phases are listed because they are plann
 | 1 | Payments, webhooks, ledger, dashboard, tests, CI | ✅ Complete |
 | 2 | Public deployment, live webhook registration, three clients, i18n, accessibility | ✅ Complete |
 | 3 | Authentication, roles, audit log, admin console with live presence | ✅ Complete |
-| 4 | Refunds and account management from the console | 🔜 Next |
-| 5 | Payments, Transactions and Customers views (currently badged PLANNED in the sidebar) | Planned |
+| 4 | Refunds (four-eyes rule, withdrawal, refund webhook) and account management | ✅ Complete |
+| 5 | Payments, Transactions and Customers views (currently badged PLANNED in the sidebar) | 🔜 Next |
 | 6 | Infrastructure as code, container deployment | Planned |
 | 7 | Go service, Solidity settlement experiment, React Native client | Exploratory |
 

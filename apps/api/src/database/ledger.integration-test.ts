@@ -103,6 +103,10 @@ before(async () => {
   // through users took every staff account and every session with it, and the
   // other files' logins started failing with the decoy-hash timing signature.
   // A test's cleanup may reach exactly as far as the rows it owns.
+  // Refund requests reference payments with ON DELETE RESTRICT, and anyone —
+  // including the e2e suite driving the real console — may have raised one
+  // against this payment since the last run.
+  await database.query("DELETE FROM refund_requests WHERE payment_id = $1", [PAYMENT_ID]);
   await database.query("DELETE FROM transactions WHERE payment_id = $1", [PAYMENT_ID]);
   await database.query("DELETE FROM payments WHERE id = $1", [PAYMENT_ID]);
   await database.query("DELETE FROM users WHERE id = $1", [USER_ID]);

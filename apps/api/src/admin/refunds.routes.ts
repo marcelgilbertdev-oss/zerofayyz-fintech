@@ -322,6 +322,58 @@ export const refundRoutes: FastifyPluginAsync<RefundRouteOptions> = async (
     },
   );
 
+  /**
+   * The requester withdraws their own pending request. The one decision a
+   * requester makes about their own ask — without it, a request nobody else
+   * has decided occupies the payment's single pending slot forever.
+   */
+  app.post<{ Params: { id: string } }>(
+    "/admin/refund-requests/:id/withdraw",
+    {
+      preHandler: requireRole("operator"),
+      schema: {
+        params: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id"],
+          properties: { id: { type: "string", format: "uuid" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await database.query<{ payment_id: string }>(
+        `
+          UPDATE refund_requests
+             SET status = 'withdrawn',
+                 decided_by = $2,
+                 decided_at = NOW()
+           WHERE id = $1
+             AND status = 'pending'
+             AND requested_by = $2
+          RETURNING payment_id
+        `,
+        [request.params.id, request.session?.userId ?? null],
+      );
+
+      if ((result.rowCount ?? 0) === 0) {
+        // Pending-but-not-yours and simply-not-there answer identically: which
+        // of the two it was is not this caller's business.
+        return reply.code(404).send({ error: "No pending refund request of yours with that id" });
+      }
+
+      await recordAudit(database, {
+        action: "refund.withdrawn",
+        entityType: "refund_request",
+        entityId: request.params.id,
+        actorUserId: request.session?.userId ?? null,
+        sessionId: request.session?.sessionId ?? null,
+        metadata: { paymentId: result.rows[0]?.payment_id },
+      });
+
+      return reply.send({ withdrawn: true });
+    },
+  );
+
   /** Admin only: reject, with a note the requester will read. */
   app.post<{ Params: { id: string }; Body: { note: string } }>(
     "/admin/refund-requests/:id/reject",

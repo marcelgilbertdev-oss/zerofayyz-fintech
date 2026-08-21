@@ -67,7 +67,10 @@ test("the demo operator signs in, sees the audit log, and nothing above their ro
 test("their own login is the newest entry in the audit log they see", async ({ page }) => {
   await signInAsDemo(page);
 
-  const firstAction = page.locator("tbody tr").first().locator("td").nth(1);
+  // Scoped to the audit region — the console has since grown a payments table
+  // above it, so "the first row on the page" is no longer the audit log's.
+  const auditRegion = page.getByRole("region", { name: /audit log/i });
+  const firstAction = auditRegion.locator("tbody tr").first().locator("td").nth(1);
   await expect(firstAction).toHaveText("auth.login.succeeded");
 });
 

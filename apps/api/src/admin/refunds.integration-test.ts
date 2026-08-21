@@ -334,3 +334,52 @@ test("the charge.refunded webhook updates the ledger idempotently", async (conte
   );
   assert.equal(rows.rows[0]?.count, "1");
 });
+
+test("a requester withdraws their own pending request; nobody else can", async (context) => {
+  const app = buildApp({ database, logger: false, stripe: stripeStub([]) });
+  context.after(async () => app.close());
+
+  const operatorCookie = await login(app, "refund.operator@zerofayyz.test");
+  const requested = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/payments/${PAYMENT_ID}/refund-requests`,
+    headers: { cookie: operatorCookie },
+    payload: { reason: "Changed my mind shortly" },
+  });
+  const requestId = requested.json().id as string;
+
+  // Another staff member cannot withdraw it — withdrawal is the requester's
+  // own decision, exactly inverted from approval.
+  const adminCookie = await login(app, "refund.admin@zerofayyz.test");
+  const notYours = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/refund-requests/${requestId}/withdraw`,
+    headers: { cookie: adminCookie },
+  });
+  assert.equal(notYours.statusCode, 404);
+
+  const withdrawn = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/refund-requests/${requestId}/withdraw`,
+    headers: { cookie: operatorCookie },
+  });
+  assert.equal(withdrawn.statusCode, 200);
+
+  // The slot reopens: a new request for the same payment is accepted.
+  const again = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/payments/${PAYMENT_ID}/refund-requests`,
+    headers: { cookie: operatorCookie },
+    payload: { reason: "Second thoughts, second request" },
+  });
+  assert.equal(again.statusCode, 201);
+
+  // And a withdrawn request cannot be approved afterwards.
+  const late = await app.inject({
+    method: "POST",
+    url: `/api/v1/admin/refund-requests/${requestId}/approve`,
+    headers: { cookie: adminCookie },
+    payload: {},
+  });
+  assert.equal(late.statusCode, 404);
+});
