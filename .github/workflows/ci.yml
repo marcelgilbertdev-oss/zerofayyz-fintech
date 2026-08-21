@@ -86,6 +86,13 @@ jobs:
         working-directory: apps/web
         run: npm ci
 
+      # The e2e typecheck (tsconfig.e2e.json) follows contract-parity.spec.ts
+      # into the shared package, so its dependencies must exist here too — the
+      # same install the Vue and Svelte jobs already carry.
+      - name: Install shared contract dependencies
+        working-directory: packages/api-contract
+        run: npm ci
+
       - name: Lint
         working-directory: apps/web
         run: npm run lint

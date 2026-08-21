@@ -11,6 +11,13 @@ import { toMinorUnits as contractParse } from "../../../packages/api-contract/sc
  * It lives in the Playwright suite on purpose: these tests run in CI and
  * locally, never inside a Vercel build, so they may import across the boundary
  * the bundler cannot cross.
+ *
+ * That boundary is also why e2e/ is excluded from the main tsconfig: the Next
+ * build typechecks everything the tsconfig includes, follows this file's
+ * import into packages/api-contract, and fails on Vercel where that package's
+ * dependencies are never installed — which is exactly how this file broke two
+ * production deploys before anyone noticed. CI typechecks e2e/ through
+ * tsconfig.e2e.json, where the dependencies exist.
  */
 const CASES = [
   "42.00", "0.50", "0.49", "10000.00", "10000.01", "1,234.56", "$17.35",

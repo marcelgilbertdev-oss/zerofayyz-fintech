@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
     "test:e2e": "playwright test",
     "relock": "rm -rf node_modules package-lock.json && npm install"
   },
