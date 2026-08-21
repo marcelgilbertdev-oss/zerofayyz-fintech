@@ -245,6 +245,51 @@ delete button, and none possible: the table's trigger refuses UPDATE and DELETE
 from every connection, including the application's own. Part B proves it from
 the terminal.
 
+### A13 · A refund, decided by four eyes
+
+Requires A9's accounts, and works best in production where payments carry a
+real Stripe payment intent.
+
+28. Sign in as the **demo operator**. In **Payments**, click **Request refund**
+    on a succeeded payment, give a reason you'll recognise, leave the amount
+    empty (full refund), and submit.
+
+**Expect:** the request appears in the **Refund queue** as **Pending**, with a
+**Withdraw** button — a requester may always take back their own ask.
+
+29. Sign out, sign in as **admin**, and find the request.
+
+**Expect:** **Approve** and **Reject** buttons. Had you raised it yourself, the
+page would instead say *"Yours — someone else must decide"* — the four-eyes
+rule, visible rather than hidden.
+
+30. Click **Approve**.
+
+**Expect:** the request flips to **Approved**. Within a few seconds Stripe
+processes the sandbox refund and sends `charge.refunded`; refresh and the
+payment's status reads **refunded**, with `refund.requested`, `refund.approved`
+and `stripe.webhook.processed` stacked in the audit log.
+
+**Proves — and this is the strongest thing the platform demonstrates:** money
+moving backwards required two different people, produced an immutable trail
+naming both, went out to Stripe exactly once (the request id is the idempotency
+key, so even a retried approval cannot double-refund), and the ledger changed
+only when Stripe's signed webhook confirmed it — not when the button was
+clicked.
+
+### A14 · Accounts from the console
+
+31. Still as admin, create a staff account in **Accounts** (any role, a
+    12+ character password), then **Disable** it.
+
+**Expect:** the row gains a **Disabled** badge. Signing in as that account now
+fails with the *same* "Incorrect email or password" a wrong password gets —
+whether an account exists or is disabled is nobody's business but the admin's.
+Your own row shows **You** and offers no controls: self-demotion and
+self-disabling are how a platform loses its last administrator.
+
+---
+
 ## Part B — Verification you can run (terminal)
 
 Open Terminal, then:
@@ -426,6 +471,28 @@ rows; admin login → presence with “This is you”; one live remote sign-out
 watched removing a session from the list.
 
 **Awaiting the human pass:** A9 (your seed), A10–A12, B5.
+
+### 2026-08-21 (night) — Phase 4 automated pass (Claude)
+
+**All suites green:** 56 API unit · 36 integration · 37 Playwright (the refund
+story runs serial — parallel workers would collide on exactly the
+one-pending-per-payment constraint the feature enforces) · 36 client = **165
+automated**, plus 20/20 smoke.
+
+**Proven by making the refused request:** self-approval answers 403 and the raw
+SQL is refused by the schema's CHECK; a viewer cannot read the queue; a
+withdrawn request cannot be approved afterwards; a second request while one is
+pending answers 409; the charge.refunded webhook applied twice writes once.
+
+**Found by the e2e suite, fixed as product:** an admin-raised request that no
+second admin existed to decide sat pending forever, blocking the payment's
+single pending slot — withdrawal now exists because the suite proved its
+absence. Also: a label-wrapped <select> announces its options as part of its
+own name ("Role viewer operator admin") to tests and screen readers alike.
+
+**Awaiting the human pass:** A13–A14 — the production approve is the one step
+automation deliberately leaves to a person, because it moves real sandbox money
+back through Stripe.
 
 ### Failures found and fixed along the way (keep these — they are the story)
 
