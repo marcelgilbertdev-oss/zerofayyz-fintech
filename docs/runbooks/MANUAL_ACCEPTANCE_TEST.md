@@ -168,6 +168,81 @@ of admitting it is worth more than the inch you would gain by hiding it.
 
 ---
 
+### A9 · One-time setup for the admin steps (you, once)
+
+The production database ships with no accounts. Before A11 can work, run this
+with your Neon connection string and a password only you know:
+
+```bash
+cd "/Users/marcel/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM/apps/api" && DATABASE_URL='paste-your-neon-connection-string' ADMIN_PASSWORD='choose-your-own-password' npm run seed:staff
+```
+
+**Expect:** `seeded demo@zerofayyz.test (operator) and admin@zerofayyz.test (admin)`.
+
+Nobody else ever sees or sets that password — the script refuses to run without
+it and never records it.
+
+### A10 · The reviewer's door: demo sign-in
+
+19. Click **Sign in** in the dashboard header.
+20. On the login page, read the **Reviewer access** box — the demo credentials
+    are printed there on purpose.
+21. Sign in as `demo@zerofayyz.test` / `view-the-ledger`.
+
+**Expect:** the sign-in takes a few seconds — that is the password hash doing
+real work (memory-hard scrypt) on a free-tier CPU, not a hang. You land on the
+**Admin console** as *Demo Operator* with an **OPERATOR** badge.
+
+**Expect on the page:** the **Audit log** table, newest first — your own
+`auth.login.succeeded` is the top row. A blue notice says session and account
+management are reserved for administrators, and there is **no** Active sessions
+panel and **no** Accounts panel.
+
+**Proves:** roles are real. The operator can read history and change nothing.
+And the refusal is not cosmetic — Part B shows the API refuses an operator with
+403 even if they craft the request by hand.
+
+### A11 · The owner's view: presence and remote sign-out
+
+22. Sign out, then sign in as `admin@zerofayyz.test` with your own password.
+
+**Expect:** two more panels the operator never saw: **Active sessions** and
+**Accounts**.
+
+23. In Active sessions, find your own row.
+
+**Expect:** it is marked **“This is you.”** Any recruiter using the demo login
+appears here as *Demo Operator*, live, while they are looking at your work.
+
+24. From another browser (or a private window), sign in as the demo operator,
+    then refresh the console in your first browser.
+
+**Expect:** the demo session appears in your presence list.
+
+25. Click **Sign out this session** on that demo row, then switch to the other
+    browser and refresh.
+
+**Expect:** the other browser is signed out — bounced to the login page. Its
+cookie did not change and had not expired; the session was ended in the
+database, which is the only place ending it actually works.
+
+26. Back in your console, check the audit log.
+
+**Expect:** `admin.session.revoked` at the top, attributed to you.
+
+**Proves:** sessions are revocable server-side (a JWT cannot do this), presence
+is read from the same store that admits people, and a forced sign-out that the
+history cannot record would refuse to happen at all.
+
+### A12 · What the audit log will not do
+
+27. Read the audit log's caption: append-only, enforced by the database.
+
+There is nothing to click here, and that is the point — no edit button, no
+delete button, and none possible: the table's trigger refuses UPDATE and DELETE
+from every connection, including the application's own. Part B proves it from
+the terminal.
+
 ## Part B — Verification you can run (terminal)
 
 Open Terminal, then:
@@ -182,7 +257,7 @@ cd "/Users/marcel/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM"
 node scripts/production-smoke.mjs
 ```
 
-**Expect:** `15/15 checks passed`.
+**Expect:** `20/20 checks passed`.
 
 **What it checks:** every dependency reported healthy, metrics internally
 consistent, transactions genuinely from PostgreSQL with unique ids, unsigned and
@@ -200,7 +275,7 @@ system the way a stranger reaches it, using only the public URLs.
 cd apps/api && npm run test:unit && npm run test:integration && cd ../..
 ```
 
-**Expect:** `22 pass` then `7 pass`.
+**Expect:** `54 pass` then `24 pass`.
 
 Integration needs the local database running. If it fails to connect:
 
@@ -212,7 +287,7 @@ docker compose -f infrastructure/docker/compose.yaml up -d postgres
 cd apps/web-vue && npx vitest run && cd ../web-svelte && npx vitest run && cd ../..
 ```
 
-**Expect:** `20 passed` then `10 passed`.
+**Expect:** `23 passed` then `13 passed`.
 
 **The point to make:** the integration tests run against a *real* PostgreSQL.
 That distinction is not academic — it is how the defect below was found.
@@ -246,6 +321,38 @@ concurrency, across restarts, and across any number of servers, because it is a
 property of an index rather than of code someone might later edit.
 
 ---
+
+### B5 · The auth surface, attacked politely from outside
+
+No credentials needed for any of these.
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://zerofayyz-fintech-api.onrender.com/api/v1/admin/sessions
+```
+
+**Expect:** `401`. Same for `/api/v1/admin/audit-logs`, `/api/v1/admin/users`
+and `/api/v1/auth/me` — the guard is on the API, not in the page.
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://zerofayyz-fintech.vercel.app/admin
+```
+
+**Expect:** `307` — the console redirects the signed-out to the login page.
+
+```bash
+for i in 1 2 3 4 5 6; do curl -s -o /dev/null -w "attempt $i: %{http_code}\n" -X POST https://zerofayyz-fintech-api.onrender.com/api/v1/auth/login -H 'content-type: application/json' -d '{"email":"charter-probe@zerofayyz.test","password":"wrong"}'; done
+```
+
+**Expect:** five `401`s, then `429` — five wrong guesses close that account's
+login for fifteen minutes. Use a made-up email like the one above: the lock is
+per-account, so probing with a fake name locks nothing real. (Deliberately
+per-account rather than per-IP: an attacker can forge the address a request
+claims to come from, but not the account they are attacking.)
+
+**Also worth saying in an interview:** a wrong password and a nonexistent
+account return byte-identical responses in near-identical time — missing
+accounts are verified against a decoy hash so response timing cannot be used to
+discover which emails exist.
 
 ## Part C — If you change the SPA clients
 
@@ -296,6 +403,28 @@ outline at `3px` offset. A5 in this charter was rewritten from those measured
 values, so the step now states the exact number of Tab presses rather than
 "press Tab repeatedly".
 
+### 2026-08-21 (evening) — Phase 2 automated pass (Claude)
+
+**All suites green after two review passes:** 54 API unit · 24 integration
+(real PostgreSQL) · 23 Vue · 13 Svelte · 32 Playwright E2E = **146 automated**,
+plus **20/20 production smoke** (5 new checks that assert content existing only
+in the Phase 2 build — see failure #12 for why that wording matters).
+
+**Verified live on production, not assumed:** /login 200 in both languages with
+the demo credentials visible; /admin 307 for the signed-out; all four
+privileged API routes 401 anonymous; the per-account rate limit proven in both
+directions against the deployed build — six wrong passwords across six
+different accounts all verified (401, no shared bucket), six against one
+account refused on the sixth (429). The second probe is also how the deploy
+itself was confirmed: the old build would have 429'd the six-distinct-emails
+case, so the probe distinguishes the builds by behaviour.
+
+**Verified in a real browser:** demo login → operator console with live audit
+rows; admin login → presence with “This is you”; one live remote sign-out
+watched removing a session from the list.
+
+**Awaiting the human pass:** A9 (your seed), A10–A12, B5.
+
 ### Failures found and fixed along the way (keep these — they are the story)
 
 | # | Failure | Root cause | Fix | Guard now |
@@ -308,6 +437,11 @@ values, so the step now states the exact number of Tab presses rather than
 | 6 | Verified Svelte deploy overwritten with a 500 minutes later | `vercel link` silently git-connected the project; a docs push rebuilt it wrong | `vercel git disconnect` on both SPA projects; re-ran the trigger | 6 per-client smoke checks |
 | 7 | CI red: nothing installed the shared contract | Two individually-safe cleanups composed (removed "redundant" CI installs, then removed the postinstall they were redundant with) | Restored installs with a comment naming why | Comment in ci.yml |
 | 8 | Vue client dead on arrival: "API unreachable · signal timed out ×3", no recovery path | 15s client timeout < ~22s free-tier cold start; keep-warm cron observed drifting to 33–43 min | 45s timeouts, honest wake-from-sleep message, **Try again** button, retry-recovery tests in both clients | Retry tests; redeployed and re-verified |
+| 9 | Amount limits announced to screen readers, invisible to sighted users | Hint lived in an `sr-only` element — axe passed while the UX was backwards | Visible microcopy on focus, red when out of range | E2E asserts the hint is genuinely visible |
+| 10 | Old API silently charged $42 whatever amount the client sent | Fastify's validator strips unknown body fields instead of rejecting them — deploy-order hazard with every status green | Deploy verification asserts the field is *enforced* (400 out of range), not merely accepted | Bounds probed live on every deploy |
+| 11 | `promisify(scrypt)` silently dropped the cost options — password hashing would have run at defaults while types said otherwise | promisify picks the overload without options; a cast would have hidden it | Hand-written promise wrapper | Typecheck; parameter string asserted in unit tests |
+| 12 | Two Vercel deploys failed in 13s while CI and smoke stayed green; production served a stale dashboard unnoticed | Build typecheck followed a Playwright spec's import across the package boundary; smoke greps matched text present in the old build too | tsconfig split (build excludes e2e; CI typechecks it where deps exist); smoke gained checks unique to the new build | 5 build-unique smoke checks |
+| 13 | Every session fingerprint identical in production; login limiter was one global bucket — 5 failed attempts by anyone locked everyone out | No `trustProxy` behind Render's balancer, and `::ffff:` IPv4-mapped addresses all sliced to one prefix | trustProxy + forwarded client address; limiter re-keyed per attempted account; mapped addresses unwrapped | Unit + integration tests; both limiter directions probed live |
 
 ## Human result log
 
