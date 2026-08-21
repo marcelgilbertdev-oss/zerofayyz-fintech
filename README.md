@@ -47,8 +47,11 @@ TypeScript throughout, ESM, Node 20+.
   enforced by the type system — a missing string is a compile error, not an English
   word in a Japanese page
 - WCAG 2.1 AA verified by axe-core in CI against both locales
+- A second frontend in Vue 3 (Composition API, Pinia, Vitest with Testing Library, Zod
+  validating every response at the boundary) consuming the same API unmodified — the API
+  contract proven by a second, differently-built consumer
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
-- 46 automated tests across three layers, all gated in CI, plus a nine-check smoke suite
+- 66 automated tests across four suites, all gated in CI, plus a nine-check smoke suite
   that verifies the live deployment from outside
 
 ## Roadmap
@@ -81,6 +84,10 @@ cd apps/api && npm install && npm run migrate && npm run dev
 
 ```bash
 cd apps/web && npm install && npm run dev
+```
+
+```bash
+cd apps/web-vue && npm install && npm run dev     # Vue client on http://localhost:3001
 ```
 
 Copy `.env.example` to `.env` and fill in Stripe test keys. Use a **restricted** test key
@@ -117,6 +124,7 @@ themselves.
 ```text
 apps/api           Fastify API — health, metrics, transactions, payments, webhooks
 apps/web           Next.js dashboard and checkout proxy
+apps/web-vue       Vue 3 client — same API, Composition API + Pinia + Zod + Vitest
 database/postgres  Migrations and demo seed data
 docs/              Architecture, decisions, quality strategy, runbooks, case study
 infrastructure/    Docker compose for local PostgreSQL

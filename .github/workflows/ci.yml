@@ -98,6 +98,35 @@ jobs:
         working-directory: apps/web
         run: npm run build
 
+  web-vue:
+    name: Vue client — typecheck, unit, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web-vue/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web-vue
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: apps/web-vue
+        run: npm run typecheck
+
+      - name: Unit tests
+        working-directory: apps/web-vue
+        run: npm test
+
+      - name: Build
+        working-directory: apps/web-vue
+        run: npm run build
+
   e2e:
     name: End-to-end — reviewer path
     runs-on: ubuntu-latest

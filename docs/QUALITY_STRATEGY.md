@@ -21,6 +21,7 @@ cannot see.
 | Integration | 7 | Real PostgreSQL | SQL validity, constraints, idempotency, migrations |
 | End-to-end | 17 | Built servers in a real browser | Rendering, hydration, both locales, WCAG AA |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
+| Vue client unit | 20 | jsdom, fetch mocked at the network seam | Contract validation, store state, partial failure, rendered output |
 
 Total wall-clock for all three, locally: under fifteen seconds.
 
