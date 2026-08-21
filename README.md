@@ -20,6 +20,7 @@ around how payment systems actually fail, and everything is gated by CI.
 - **How it works (full walkthrough):** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
 - **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 - **Case study (non-technical):** [docs/portfolio/CASE_STUDY.md](docs/portfolio/CASE_STUDY.md)
+- **Manual acceptance test:** [docs/runbooks/MANUAL_ACCEPTANCE_TEST.md](docs/runbooks/MANUAL_ACCEPTANCE_TEST.md)
 
 ## Stack
 
