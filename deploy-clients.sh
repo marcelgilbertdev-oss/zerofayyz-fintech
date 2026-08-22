@@ -7,10 +7,17 @@ client="${1:?usage: ./deploy-clients.sh web-vue|web-svelte}"
 project="zerofayyz-fintech-${client#web-}"
 root="$(cd "$(dirname "$0")" && pwd)"
 
+# SvelteKit's static adapter writes to build/; the Vue client's plain Vite
+# build writes to dist/. One script, two output conventions.
+case "$client" in
+  web-svelte) out="build" ;;
+  *)          out="dist" ;;
+esac
+
 echo "Building $client locally (the shared contract lives above its root)…"
 npm --prefix "$root/apps/$client" run build
 
-cat > "$root/apps/$client/dist/vercel.json" <<'JSON'
+cat > "$root/apps/$client/$out/vercel.json" <<'JSON'
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
@@ -26,8 +33,8 @@ JSON
 
 cd "$root"
 npx --yes vercel@latest link --yes --project "$project" >/dev/null
-mkdir -p "apps/$client/dist/.vercel"
-cp .vercel/project.json "apps/$client/dist/.vercel/project.json"
+mkdir -p "apps/$client/$out/.vercel"
+cp .vercel/project.json "apps/$client/$out/.vercel/project.json"
 
-cd "apps/$client/dist"
+cd "apps/$client/$out"
 npx --yes vercel@latest --yes --prod

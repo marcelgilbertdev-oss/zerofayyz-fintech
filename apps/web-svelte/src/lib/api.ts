@@ -11,16 +11,26 @@ import {
 } from "./schemas";
 import type { AuditLogs, SessionUser } from "./schemas";
 
-/** Same-origin paths only; see vite.config.ts for the proxy and rewrite posture. */
+/**
+ * Same-origin paths only; see vite.config.ts for the proxy and rewrite posture.
+ *
+ * `fetcher` is injectable because SvelteKit's `load` receives its own
+ * instrumented `fetch`, and reaching for the global inside a load function
+ * bypasses the framework. Everywhere else the global is the default, so
+ * nothing outside `load` had to change.
+ */
+export type Fetcher = typeof globalThis.fetch;
+
 async function getValidated<Schema extends z.ZodTypeAny>(
   path: string,
   schema: Schema,
+  fetcher: Fetcher = globalThis.fetch,
 ): Promise<z.infer<Schema>> {
   // 45s, not 15: the API runs on a free tier that sleeps, the scheduled
   // keep-warm drifts (observed running every 33-43 minutes against a 10-minute
   // cron), and a cold start takes ~22s. A timeout shorter than the wake-up
   // turns every cold start into a dead error page.
-  const response = await fetch(path, { signal: AbortSignal.timeout(45_000) });
+  const response = await fetcher(path, { signal: AbortSignal.timeout(45_000) });
 
   if (!response.ok) {
     throw new Error(`${path} responded ${response.status}`);
@@ -38,10 +48,12 @@ async function getValidated<Schema extends z.ZodTypeAny>(
   return parsed.data;
 }
 
-export const fetchHealth = () => getValidated("/api/v1/health", healthSchema);
-export const fetchMetrics = () => getValidated("/api/v1/metrics", metricsSchema);
-export const fetchTransactions = () =>
-  getValidated("/api/v1/transactions", transactionsSchema);
+export const fetchHealth = (fetcher?: Fetcher) =>
+  getValidated("/api/v1/health", healthSchema, fetcher);
+export const fetchMetrics = (fetcher?: Fetcher) =>
+  getValidated("/api/v1/metrics", metricsSchema, fetcher);
+export const fetchTransactions = (fetcher?: Fetcher) =>
+  getValidated("/api/v1/transactions", transactionsSchema, fetcher);
 
 export async function startCheckout(amountMinor?: number): Promise<string> {
   const response = await fetch("/api/v1/payments/checkout-session", {

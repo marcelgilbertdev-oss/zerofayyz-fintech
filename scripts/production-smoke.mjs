@@ -219,8 +219,19 @@ await check("the checkout return allowlist reached production", async () => {
  * a test run, never again by a failure email.
  */
 const CLIENTS = [
-  { name: "vue client", url: process.env.SMOKE_VUE_URL ?? "https://zerofayyz-fintech-vue.vercel.app", title: "Vue Client" },
-  { name: "svelte client", url: process.env.SMOKE_SVELTE_URL ?? "https://zerofayyz-fintech-svelte.vercel.app", title: "Svelte Client" },
+  {
+    name: "vue client",
+    url: process.env.SMOKE_VUE_URL ?? "https://zerofayyz-fintech-vue.vercel.app",
+    title: "Vue Client",
+    buildMarker: '<script[^>]+type="module"',
+  },
+  {
+    name: "svelte client",
+    url: process.env.SMOKE_SVELTE_URL ?? "https://zerofayyz-fintech-svelte.vercel.app",
+    title: "Svelte Client",
+    // SvelteKit's static adapter, not Vite's plain build.
+    buildMarker: "__sveltekit",
+  },
 ];
 
 for (const client of CLIENTS) {
@@ -232,7 +243,15 @@ for (const client of CLIENTS) {
     // The wrong-context build served the API's output here once; the title is
     // the cheapest proof the right artifact is behind the alias.
     assert(html.includes(client.title), `page title does not identify the ${client.name}`);
-    assert(/<script[^>]+type="module"/.test(html), "no module script tag — not a built SPA page");
+    // Proof that a BUILT bundle is behind the alias, not a source page or the
+    // wrong project's output. The marker differs by toolchain — Vite emits a
+    // module script tag, SvelteKit's static adapter emits modulepreload links
+    // into /_app/ plus its own bootstrap — so each client declares the marker
+    // that proves its own build ran.
+    assert(
+      new RegExp(client.buildMarker).test(html),
+      `no build marker (${client.buildMarker}) — not a built SPA page`,
+    );
 
     return "correct artifact";
   });

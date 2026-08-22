@@ -10,12 +10,30 @@ type LoadState = "idle" | "loading" | "ready" | "error";
  * comparable: three fetches settle independently, and a single failing
  * endpoint degrades one panel rather than blanking the page.
  */
-export function createDashboard() {
-  let state = $state<LoadState>("idle");
-  let health = $state<Health | null>(null);
-  let metrics = $state<Metrics | null>(null);
-  let transactions = $state<Transactions | null>(null);
-  let errors = $state<string[]>([]);
+/**
+ * Optional seed from SvelteKit's `load`.
+ *
+ * When the framework has already fetched the page's data there is nothing to
+ * wait for, so the store starts in "ready" rather than replaying the same
+ * three requests on mount. Called with no argument it behaves exactly as
+ * before, which is what keeps the store testable without a framework around
+ * it — and what let the existing suite carry over unchanged.
+ */
+export type DashboardSeed = {
+  health: Health | null;
+  metrics: Metrics | null;
+  transactions: Transactions | null;
+  errors: string[];
+};
+
+export function createDashboard(seed?: DashboardSeed) {
+  let state = $state<LoadState>(
+    seed ? (seed.health || seed.metrics || seed.transactions ? "ready" : "error") : "idle",
+  );
+  let health = $state<Health | null>(seed?.health ?? null);
+  let metrics = $state<Metrics | null>(seed?.metrics ?? null);
+  let transactions = $state<Transactions | null>(seed?.transactions ?? null);
+  let errors = $state<string[]>(seed?.errors ?? []);
   let checkoutPending = $state(false);
   let checkoutError = $state<string | null>(null);
 

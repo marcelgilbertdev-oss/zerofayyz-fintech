@@ -1,9 +1,9 @@
 /// <reference types="vitest/config" />
-import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [svelte({ hot: false })],
+  plugins: [sveltekit()],
   server: {
     port: 3002,
     // The shared API contract lives above this package's root.

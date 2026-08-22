@@ -5,7 +5,7 @@
   ],
   "installCommand": "npm --prefix packages/api-contract ci && npm --prefix apps/web-svelte ci",
   "buildCommand": "npm --prefix apps/web-svelte run build",
-  "outputDirectory": "apps/web-svelte/dist",
+  "outputDirectory": "apps/web-svelte/build",
   "rewrites": [
     {
       "source": "/api/:path*",

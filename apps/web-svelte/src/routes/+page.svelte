@@ -1,30 +1,42 @@
 <script lang="ts">
-  import { createDashboard } from "./lib/dashboard.svelte";
-  import HealthPanel from "./lib/HealthPanel.svelte";
-  import OperatorPanel from "./lib/OperatorPanel.svelte";
-  import MetricTiles from "./lib/MetricTiles.svelte";
-  import TransactionsTable from "./lib/TransactionsTable.svelte";
-  import { toMinorUnits } from "./lib/schemas";
+  import type { PageData } from "./$types";
 
-  const dashboard = createDashboard();
+  import { createDashboard } from "$lib/dashboard.svelte";
+  import HealthPanel from "$lib/HealthPanel.svelte";
+  import MetricTiles from "$lib/MetricTiles.svelte";
+  import OperatorPanel from "$lib/OperatorPanel.svelte";
+  import TransactionsTable from "$lib/TransactionsTable.svelte";
+  import { toMinorUnits } from "$lib/schemas";
+
+  let { data }: { data: PageData } = $props();
+
+  // Seeded from the framework's load rather than fetched again on mount: the
+  // data is already present when this renders, so there is no first paint of
+  // an empty shell and no loading branch to write.
+  //
+  // The initial value is captured deliberately. `load` runs once for this
+  // route, and from that moment the store owns this data — it is what refresh
+  // and the post-checkout reload write into. Tracking `data` reactively here
+  // would give two owners to one piece of state, and the store would lose to
+  // whichever ran last.
+  // svelte-ignore state_referenced_locally
+  const dashboard = createDashboard(data);
+
   // Same memory as the other clients: pre-filled for the zero-typing path,
   // but a chosen amount survives the Stripe round trip.
-  const storedAmount = window.sessionStorage.getItem("zf_last_amount");
+  const storedAmount = globalThis.sessionStorage?.getItem("zf_last_amount");
   let amount = $state(
     storedAmount && toMinorUnits(storedAmount) !== null ? storedAmount : "42.00",
   );
 
   function rememberAndCheckout() {
-    window.sessionStorage.setItem("zf_last_amount", amount.trim());
+    globalThis.sessionStorage?.setItem("zf_last_amount", amount.trim());
     dashboard.checkout(amount);
   }
+
   // Runes equivalent of the Vue client's computed: same shared rule, same
   // behaviour, expressed in this framework's idiom.
   const amountValid = $derived(toMinorUnits(amount) !== null);
-
-  $effect(() => {
-    void dashboard.load();
-  });
 </script>
 
 <div class="shell">
