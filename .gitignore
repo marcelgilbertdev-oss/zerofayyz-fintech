@@ -46,3 +46,7 @@ docs/runbooks/HANDOFF.md
 
 # Vercel CLI link state (per-deploy, not shared)
 .vercel/
+
+# Go build output
+services/reconciler/reconciler
+services/reconciler/cmd/reconcile/reconcile

@@ -112,6 +112,60 @@ jobs:
           test "$(docker exec api whoami)" = "node"
           test "$(docker exec api sh -c 'ls node_modules | grep -c "^typescript$"')" = "0"
 
+  reconciler:
+    name: Reconciler (Go) — vet, test, and check the ledger
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_DB: zerofayyz_fintech
+          POSTGRES_USER: zerofayyz_fintech
+          POSTGRES_PASSWORD: zerofayyz_fintech
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zerofayyz_fintech -d zerofayyz_fintech"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.27"
+          cache-dependency-path: services/reconciler/go.sum
+
+      - name: Vet
+        working-directory: services/reconciler
+        run: go vet ./...
+
+      - name: Unit tests
+        working-directory: services/reconciler
+        run: go test ./... -v
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Prepare a database to reconcile
+        working-directory: apps/api
+        run: npm ci && npm run migrate && npm run seed:demo
+
+      # The real assertion: run it against a seeded ledger and require a clean
+      # report. Exit code 1 means the payments table and the event log
+      # disagree, which on seeded data would mean the seed itself is wrong.
+      - name: Reconcile the seeded ledger
+        working-directory: services/reconciler
+        run: go run ./cmd/reconcile
+
   web:
     name: Web — lint, typecheck, build
     runs-on: ubuntu-latest
