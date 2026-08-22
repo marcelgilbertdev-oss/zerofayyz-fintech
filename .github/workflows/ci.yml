@@ -220,6 +220,80 @@ jobs:
         working-directory: apps/web-svelte
         run: npm run build
 
+  visual:
+    name: Visual regression — layout has not shifted
+    # Runs INSIDE the same image the baselines were recorded in. Screenshot
+    # comparison is only meaningful against a matching renderer; on a plain
+    # runner the font rasterisation differs and every snapshot fails for
+    # reasons that have nothing to do with the layout.
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    needs: [api, web]
+
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_DB: zerofayyz_fintech
+          POSTGRES_USER: zerofayyz_fintech
+          POSTGRES_PASSWORD: zerofayyz_fintech
+        options: >-
+          --health-cmd "pg_isready -U zerofayyz_fintech -d zerofayyz_fintech"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Inside a job container, services are reachable by name rather than on
+      # localhost.
+      DATABASE_URL: postgresql://zerofayyz_fintech:zerofayyz_fintech@postgres:5432/zerofayyz_fintech
+      SESSION_SECRET: ci-throwaway-session-secret-0123456789
+      PLAYWRIGHT_VISUAL: "1"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: npm ci
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Install shared contract dependencies
+        working-directory: packages/api-contract
+        run: npm ci
+
+      - name: Apply migrations
+        working-directory: apps/api
+        run: npm run migrate
+
+      - name: Load demo data
+        working-directory: apps/api
+        run: npm run seed:demo
+
+      - name: Seed staff accounts
+        working-directory: apps/api
+        env:
+          ADMIN_PASSWORD: ci-throwaway-admin-password
+        run: npm run seed:staff
+
+      - name: Compare against the committed baselines
+        working-directory: apps/web
+        run: npm run test:visual
+
+      # The diff images are the whole point of a failure here: a reviewer needs
+      # to see what moved, not read that something did.
+      - name: Upload the visual diff
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-diff
+          path: apps/web/test-results
+          retention-days: 7
+
   e2e:
     name: End-to-end — reviewer path
     runs-on: ubuntu-latest

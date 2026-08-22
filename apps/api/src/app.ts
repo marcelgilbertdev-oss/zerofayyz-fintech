@@ -11,6 +11,10 @@ import { accountRoutes, adminRoutes } from "./admin/admin.routes.js";
 import { refundRoutes } from "./admin/refunds.routes.js";
 import { authRoutes, sessionResolver } from "./auth/auth.routes.js";
 import { healthRoutes } from "./health/health.routes.js";
+import {
+  initialiseErrorTracking,
+  reportError,
+} from "./observability/error-tracking.js";
 import { ledgerRoutes } from "./ledger/ledger.routes.js";
 import { metricRoutes } from "./metrics/metrics.routes.js";
 import { paymentRoutes } from "./payments/payments.routes.js";
@@ -101,6 +105,19 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
               res: (reply) => ({ statusCode: reply.statusCode }),
             },
           },
+  });
+
+  // Wired at boot, inert without a DSN. Called here rather than in server.ts so
+  // that any process building an app — including a test — exercises the same
+  // path, and so the no-DSN branch is the one every suite runs.
+  initialiseErrorTracking();
+
+  // Unhandled route errors reach the tracker tagged with the request id, so a
+  // Sentry issue and a log line are the same incident rather than two.
+  // Fastify's default reply behaviour is preserved: this observes, it does not
+  // change what the caller receives.
+  app.addHook("onError", async (request, _reply, error) => {
+    reportError(error, { requestId: String(request.id) });
   });
 
   // The caller gets the id too. Without this the correlation id exists only

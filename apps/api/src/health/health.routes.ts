@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 
 import type { Database } from "../database/database.js";
+import { errorTrackingStatus } from "../observability/error-tracking.js";
 
 type HealthRouteOptions = {
   database: Database;
@@ -62,6 +63,16 @@ const healthResponseSchema = {
             count: { type: "integer", minimum: 0 },
           },
         },
+        // Reported for the same reason as clientOrigins: an integration that
+        // silently is not wired looks identical, from outside, to one that is.
+        errorTracking: {
+          type: "object",
+          additionalProperties: false,
+          required: ["status"],
+          properties: {
+            status: { type: "string", enum: ["configured", "unconfigured"] },
+          },
+        },
       },
     },
   },
@@ -115,6 +126,7 @@ export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (
             // health endpoint should not become a directory of deployed hosts.
             count: configuredClientOrigins.length,
           },
+          errorTracking: { status: errorTrackingStatus() },
         },
       };
     },

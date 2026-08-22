@@ -1,0 +1,9 @@
+# Non-secret configuration. The allowlist of origins a payer may be returned to
+# after Stripe Checkout is deliberately here rather than in the Secret: it is
+# not confidential, and keeping it visible makes it reviewable.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zerofayyz-api-config
+data:
+  CLIENT_ORIGINS: "https://zerofayyz-fintech-vue.vercel.app,https://zerofayyz-fintech-svelte.vercel.app"

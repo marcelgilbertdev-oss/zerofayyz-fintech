@@ -1,0 +1,61 @@
+# PostgreSQL for a local cluster only.
+#
+# Explicitly NOT a production database manifest: no persistence, no backups, no
+# tuning, credentials in plain env. Production uses Neon, a managed service —
+# running your own stateful Postgres is a decision with an operations bill
+# attached, and this platform has not made it. This exists so the API's
+# readiness probe has something real to answer for.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: dev-only
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: zerofayyz_fintech
+            - name: POSTGRES_PASSWORD
+              value: zerofayyz_fintech
+            - name: POSTGRES_DB
+              value: zerofayyz_fintech
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "zerofayyz_fintech"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - port: 5432
+      targetPort: postgres

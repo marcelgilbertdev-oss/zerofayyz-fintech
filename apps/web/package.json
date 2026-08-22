@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
     "test:e2e": "playwright test",
-    "relock": "rm -rf node_modules package-lock.json && npm install"
+    "relock": "rm -rf node_modules package-lock.json && npm install",
+    "test:visual": "PLAYWRIGHT_VISUAL=1 playwright test e2e/visual-regression.spec.ts",
+    "test:visual:update": "PLAYWRIGHT_VISUAL=1 playwright test e2e/visual-regression.spec.ts --update-snapshots"
   },
   "dependencies": {
     "next": "16.3.1",

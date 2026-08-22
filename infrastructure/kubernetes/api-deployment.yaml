@@ -1,0 +1,122 @@
+# The API as a Kubernetes workload.
+#
+# Written to be applied, not admired: every manifest here has been deployed to
+# a real cluster and observed reaching Ready. See docs/runbooks/KUBERNETES.md
+# for the transcript.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zerofayyz-api
+  labels:
+    app.kubernetes.io/name: zerofayyz-api
+    app.kubernetes.io/part-of: zerofayyz-fintech
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zerofayyz-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Never fewer than the current replica count during a rollout, and only
+      # one extra pod at a time. A payments API that drops below capacity
+      # mid-deploy is a deploy that costs transactions.
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zerofayyz-api
+    spec:
+      securityContext:
+        # Defence in depth: the image already declares USER node, but a
+        # manifest that does not say so will happily run a future image that
+        # forgot to.
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: zerofayyz-api:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "4000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: zerofayyz-api-secrets
+                  key: DATABASE_URL
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: zerofayyz-api-secrets
+                  key: SESSION_SECRET
+            - name: CLIENT_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: zerofayyz-api-config
+                  key: CLIENT_ORIGINS
+          # The two probes ask different questions, and wiring both to the same
+          # endpoint is the mistake this platform deliberately avoids:
+          #
+          #   readiness -> /ready  : may traffic come here? 503 when the ledger
+          #                          is unreachable, so the pod leaves the
+          #                          Service's endpoints instead of taking
+          #                          payments it cannot record.
+          #   liveness  -> /health : is this process worth keeping? It answers
+          #                          200 while degraded on purpose, because a
+          #                          process that can describe its own
+          #                          degradation should be inspected, not
+          #                          killed. Pointing liveness at /ready would
+          #                          restart every pod during a database blip
+          #                          and turn an outage into a crashloop.
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          # A startup probe so a slow first boot is not mistaken for a hung
+          # process by the liveness probe.
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # readOnlyRootFilesystem means /tmp has to come from somewhere.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
