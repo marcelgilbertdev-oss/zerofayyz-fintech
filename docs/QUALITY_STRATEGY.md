@@ -27,6 +27,31 @@ cannot see.
 
 Total wall-clock for all local suites: under thirty seconds.
 
+### Visual regression is scoped to what does not move
+
+Two layout defects reached production this week and neither failed a test: a
+password field overflowed its column and slid under the card beside it, and the
+header pushed the document 124px wider than a phone viewport. Every functional
+assertion passed, because every functional assertion asks whether something is
+*present*.
+
+Screenshot comparison closes that gap — but only where the content is
+deterministic. The first attempt captured the dashboard full-page and failed
+in CI immediately: 1488px against 1422px, because a developer's database holds
+more payments than a freshly seeded one and the row count changes the page's
+geometry. Masking the figures does not help; the height is wrong before any
+pixel inside it is compared.
+
+So the suite covers the chrome — the sign-in page, the sidebar, the navigation
+drawer — at desktop and phone width, and leaves data-driven pages to the
+functional tests. That is where both real defects actually were. A visual suite
+that fails whenever the ledger moves is one people learn to ignore, and an
+ignored suite is worse than none: it is a green tick that means nothing.
+
+Baselines are per-renderer, so the Linux set is recorded inside the same
+container image CI runs, and the suite is opt-in (`PLAYWRIGHT_VISUAL=1`) so it
+never runs on a mismatched renderer where every failure would be noise.
+
 ### Authorisation is tested by making the refused request
 
 The auth suites are worth calling out because of *how* they assert. A guard written beside a
