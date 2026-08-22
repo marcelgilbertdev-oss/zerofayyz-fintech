@@ -87,7 +87,7 @@ TypeScript throughout, ESM, Node 20+.
 - Account-enumeration protection: a missing account is verified against a decoy hash, so a
   wrong password and a nonexistent user return byte-identical responses in comparable time
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
-- 212 automated tests across five suites, all gated in CI, plus a 24-check smoke suite
+- 221 automated tests across five suites, all gated in CI, plus a 25-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture
