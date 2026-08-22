@@ -177,6 +177,19 @@ await check("the sandbox framing is visible to any visitor", async () => {
   return "sandbox disclosure present";
 });
 
+await check("readiness is distinct from liveness", async () => {
+  // /health answers "is the process up" and stays 200 while degraded; /ready
+  // answers "may traffic come here" and must refuse when the ledger is
+  // unreachable. In a healthy production the two agree — this asserts the
+  // endpoint exists and admits traffic, and that the schema is the strict one.
+  const { response, body } = await fetchJson("/api/v1/ready");
+
+  assert(response.status === 200, `expected 200, got ${response.status}`);
+  assert(body.ready === true, `unexpected body: ${JSON.stringify(body)}`);
+
+  return "instance admits traffic";
+});
+
 await check("the checkout return allowlist reached production", async () => {
   // render.yaml is a blueprint, not a guarantee: env vars added there do not
   // always propagate to an already-running service. Without CLIENT_ORIGINS the

@@ -99,16 +99,26 @@ rewrite.
 
 ---
 
-## Phase 6 — Operational visibility
+## Phase 6 — Operational visibility 🟡 First slice shipped
 
 **Why next:** Piece's posting asks for "monitoring, alerting and support" by name. The health
-endpoint exists; nothing consumes it yet.
+endpoint exists; nothing consumed it until the first slice below.
 
-**Scope:**
+**Shipped early (2026-08-22):**
+
+- `/api/v1/ready` distinct from `/health` — liveness and readiness are different questions.
+  `/health` stays 200 while degraded, because a process that can describe its own
+  degradation is alive; `/ready` returns 503 the moment the database is unreachable, so an
+  orchestrator drains the instance instead of routing payments into a dead ledger. Tested
+  on both branches, including the divergence itself: database down asserts 503 from one
+  endpoint and 200 from the other in the same test.
+- Scheduled monitoring with alerting: the 26-check smoke suite now runs hourly against the
+  live deployment (`production-watch.yml`), and a failed scheduled run is GitHub's own
+  email to the owner — an alert with a person on the end of it and no new infrastructure.
+
+**Remaining scope:**
 
 - Structured JSON logging with a request id threaded through every log line
-- An `/api/v1/ready` endpoint distinct from `/health` — liveness and readiness are different
-  questions and conflating them causes bad restarts
 - Error tracking, and an alert when the webhook endpoint starts returning non-2xx
 - Alert routing, so a broken webhook reaches a person rather than a log file
   (the audit log panel this phase originally planned shipped in Phase 3)

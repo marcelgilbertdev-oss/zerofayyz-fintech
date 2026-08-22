@@ -119,4 +119,55 @@ export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (
       };
     },
   );
+
+  /**
+   * Readiness, as distinct from liveness.
+   *
+   * /health answers "is the process up and what does it know about its
+   * dependencies" — it returns 200 even when the database is down, because a
+   * process that can describe its own degradation is alive. A load balancer
+   * asking "may I send traffic here" needs the opposite bias: this endpoint
+   * returns 503 the moment the database is unreachable, so an orchestrator
+   * drains the instance instead of routing payments into a dead ledger.
+   * Conflating the two is how a deploy passes its health check and then
+   * serves 500s.
+   */
+  app.get(
+    "/ready",
+    {
+      schema: {
+        tags: ["health"],
+        summary: "Report whether this instance should receive traffic",
+        response: {
+          200: {
+            type: "object",
+            additionalProperties: false,
+            required: ["ready"],
+            properties: { ready: { type: "boolean", enum: [true] } },
+          },
+          503: {
+            type: "object",
+            additionalProperties: false,
+            required: ["ready", "reason"],
+            properties: {
+              ready: { type: "boolean", enum: [false] },
+              reason: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const databaseHealth = await database.checkHealth();
+
+      if (!databaseHealth.operational) {
+        return reply.code(503).send({
+          ready: false,
+          reason: "database unreachable",
+        });
+      }
+
+      return reply.send({ ready: true });
+    },
+  );
 };

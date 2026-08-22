@@ -1,0 +1,25 @@
+name: Production watch
+
+# Monitoring with a person on the end of it. The smoke suite already knows how
+# to interrogate the live deployment from outside; running it on a schedule
+# turns it from a release gate into a monitor, and a failed scheduled run is
+# GitHub's own notification to the repository owner — alerting with no new
+# infrastructure to operate or pay for. An alert nobody receives is a log line;
+# this one lands in email.
+on:
+  schedule:
+    - cron: "17 * * * *" # hourly, off the hour to avoid the top-of-hour thundering herd
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    name: Smoke the live deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the production smoke suite
+        run: node scripts/production-smoke.mjs
