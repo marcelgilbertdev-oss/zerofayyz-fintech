@@ -144,7 +144,7 @@ Three layers, each catching what the layer beneath structurally cannot. Full det
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 77 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
+| Unit | 79 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
 | Client unit | 66 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
 | Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals |
 | End-to-end | 61 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
