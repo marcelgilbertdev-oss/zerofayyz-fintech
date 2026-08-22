@@ -24,6 +24,14 @@ export const healthSchema = z.object({
     }),
     stripe: z.object({ status: z.enum(["configured", "unconfigured"]) }),
     webhook: z.object({ status: z.enum(["configured", "unconfigured"]) }),
+    // Optional on purpose: the clients deploy separately from the API, so a
+    // client built before the API rolls this out must still validate.
+    clientOrigins: z
+      .object({
+        status: z.enum(["configured", "unconfigured"]),
+        count: z.number().int().nonnegative(),
+      })
+      .optional(),
   }),
 });
 

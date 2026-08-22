@@ -177,6 +177,27 @@ await check("the sandbox framing is visible to any visitor", async () => {
   return "sandbox disclosure present";
 });
 
+await check("the checkout return allowlist reached production", async () => {
+  // render.yaml is a blueprint, not a guarantee: env vars added there do not
+  // always propagate to an already-running service. Without CLIENT_ORIGINS the
+  // API silently falls back to sending every payer to the dashboard, which is
+  // invisible from outside until somebody completes a real payment on the Vue
+  // or Svelte client. This check is the difference between "deployed" and
+  // "configured".
+  const { body } = await fetchJson(`${API_URL}/api/v1/health`);
+  const origins = body.checks?.clientOrigins;
+
+  assert(origins !== undefined, "health does not report clientOrigins — API not redeployed yet");
+  assert(
+    origins.status === "configured",
+    "CLIENT_ORIGINS is unset in production: payers will be returned to the dashboard " +
+      "no matter which client they started from",
+  );
+  assert(origins.count >= 2, `expected at least 2 allowed client origins, got ${origins.count}`);
+
+  return `${origins.count} client origins allowed`;
+});
+
 /**
  * The SPA clients deploy separately from the API and dashboard (prebuilt
  * output, no auto-deploy — see docs/runbooks/DEPLOYMENT.md). A stray platform

@@ -49,6 +49,19 @@ const healthResponseSchema = {
             status: { type: "string", enum: ["configured", "unconfigured"] },
           },
         },
+        // Reported because a deploy is not a configuration change: env vars added
+        // to render.yaml do not always reach an already-running service, and the
+        // symptom — payers returning to the wrong client — is invisible from
+        // outside until someone completes a real payment. This makes it checkable.
+        clientOrigins: {
+          type: "object",
+          additionalProperties: false,
+          required: ["status", "count"],
+          properties: {
+            status: { type: "string", enum: ["configured", "unconfigured"] },
+            count: { type: "integer", minimum: 0 },
+          },
+        },
       },
     },
   },
@@ -71,6 +84,10 @@ export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (
     },
     async () => {
       const databaseHealth = await database.checkHealth();
+      const configuredClientOrigins = (process.env.CLIENT_ORIGINS ?? "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
 
       return {
         service: "zerofayyz-fintech-api",
@@ -89,6 +106,14 @@ export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (
           },
           webhook: {
             status: webhookConfigured ? ("configured" as const) : ("unconfigured" as const),
+          },
+          clientOrigins: {
+            status: configuredClientOrigins.length > 0
+              ? ("configured" as const)
+              : ("unconfigured" as const),
+            // The count, never the values: an allowlist is not a secret, but a
+            // health endpoint should not become a directory of deployed hosts.
+            count: configuredClientOrigins.length,
           },
         },
       };
