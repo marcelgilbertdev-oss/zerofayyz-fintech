@@ -177,6 +177,53 @@ await check("the sandbox framing is visible to any visitor", async () => {
   return "sandbox disclosure present";
 });
 
+await check("the API sends its security headers", async () => {
+  // Static and exact, mirroring the unit test: a policy that drifts one
+  // directive at a time is how "we send a CSP" stops meaning anything. The
+  // check runs against production because headers are configuration as much as
+  // code — a proxy or platform layer can strip them, and only the wire says so.
+  const response = await fetch(`${API}/api/v1/health`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+
+  const expected = {
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "cross-origin-resource-policy": "same-origin",
+  };
+
+  for (const [header, value] of Object.entries(expected)) {
+    assert(
+      response.headers.get(header) === value,
+      `${header}: expected ${JSON.stringify(value)}, got ${JSON.stringify(response.headers.get(header))}`,
+    );
+  }
+
+  return "all five present and exact";
+});
+
+await check("the dashboard and clients refuse framing", async () => {
+  // The one directive every origin here agrees on. An authenticated console
+  // that can be framed is the clickjacking setup.
+  for (const url of [WEB, "https://zerofayyz-fintech-vue.vercel.app", "https://zerofayyz-fintech-svelte.vercel.app"]) {
+    const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const csp = response.headers.get("content-security-policy") ?? "";
+
+    assert(
+      csp.includes("frame-ancestors 'none'"),
+      `${url} does not forbid framing (csp: ${JSON.stringify(csp)})`,
+    );
+    assert(
+      response.headers.get("x-content-type-options") === "nosniff",
+      `${url} is missing nosniff`,
+    );
+  }
+
+  return "all three frontends refuse framing";
+});
+
 await check("readiness is distinct from liveness", async () => {
   // /health answers "is the process up" and stays 200 while degraded; /ready
   // answers "may traffic come here" and must refuse when the ledger is

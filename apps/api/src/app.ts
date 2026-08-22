@@ -127,6 +127,35 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     reply.header("x-request-id", String(request.id));
   });
 
+  // Security headers, by hand — same reasoning as cookies.ts: a handful of
+  // static headers is a dependency-free thirty lines, and thirty lines that
+  // cannot go missing on a Linux runner are worth more than a plugin.
+  //
+  // This service returns JSON to programs. That makes the right policy
+  // unusually strict and unusually cheap: nothing here is ever a document a
+  // browser should render, script, style, or frame.
+  app.addHook("onRequest", async (_request, reply) => {
+    // A JSON body served with a sniffable type can be reinterpreted by an
+    // old browser as HTML; nosniff closes the whole class.
+    reply.header("x-content-type-options", "nosniff");
+    // default-src 'none' is the entire policy a pure-JSON origin needs, and
+    // frame-ancestors 'none' means no page anywhere may embed an API response.
+    reply.header("content-security-policy", "default-src 'none'; frame-ancestors 'none'");
+    // Belt for browsers that predate frame-ancestors.
+    reply.header("x-frame-options", "DENY");
+    // API URLs can carry query strings; no referrer ever needs to leak them.
+    reply.header("referrer-policy", "no-referrer");
+    // Sent unconditionally, like the Secure cookie attribute and for the same
+    // reason: a header that exists in one environment and not another is a
+    // difference discovered in the wrong one. Browsers ignore HSTS over http,
+    // so local development is unaffected.
+    reply.header("strict-transport-security", "max-age=63072000; includeSubDomains");
+    // Responses are for the requester, not for embedding by other origins.
+    // Browser traffic arrives same-origin through the platform rewrites, and
+    // webhook/server callers are not subject to CORP at all.
+    reply.header("cross-origin-resource-policy", "same-origin");
+  });
+
   app.register(rawBody, {
     global: false,
     field: "rawBody",
