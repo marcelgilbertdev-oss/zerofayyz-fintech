@@ -53,7 +53,7 @@ TypeScript throughout, ESM, Node 20+.
   word in a Japanese page
 - WCAG 2.1 AA verified by axe-core in CI against both locales
 - Three independent frontends on one API — Next.js 16, Vue 3 (Composition API + Pinia) and
-  Svelte 5 (runes) — sharing one Zod contract that validates every response at the boundary.
+  Svelte 5 (SvelteKit, runes) — sharing one Zod contract that validates every response at the boundary.
   The API is consumed unmodified by all three, so the contract is demonstrated rather than
   asserted
 - Authentication and roles: scrypt password hashing with cost parameters stored inside each
@@ -102,7 +102,20 @@ TypeScript throughout, ESM, Node 20+.
   narrow viewport immediately found a WCAG A failure that had been shipping under a green
   suite: the ledger tables only become scroll containers when they overflow, so a keyboard
   user could not scroll them and no desktop-width scan could see it
-- 242 automated tests across five suites, all gated in CI, plus a 26-check smoke suite
+- An independent ledger reconciler in **Go** — a separate process that re-derives every
+  payment's state from the append-only event log and exits non-zero when it disagrees with the
+  payments table. In a different language on purpose: a checker that shares code with the thing
+  it checks agrees with its bugs. It reads and never writes, because something able to "fix" a
+  discrepancy is also able to destroy the evidence of it
+- Kubernetes manifests that have been **applied, not just linted** — two replicas, non-root,
+  read-only root filesystem, `maxUnavailable: 0`, and readiness and liveness probes pointed at
+  different endpoints. Removing the database took both pods out of the Service's endpoints with
+  zero restarts, which is the whole argument for having two health endpoints, demonstrated
+- Error tracking wired but inert without a DSN, with credential-bearing headers scrubbed before
+  any event leaves the process
+- Visual regression on the chrome at desktop and phone width, deliberately excluding
+  data-driven pages: a suite that fails whenever the ledger moves is one people learn to ignore
+- 265 automated tests across seven suites, all gated in CI, plus a 26-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture
@@ -141,8 +154,8 @@ Phases 1 through 6 are complete. Later phases are listed because they are planne
 | 5 | Payments, Transactions and Customers ledger pages; operator sign-in and audit trail on the Vue and Svelte clients | ✅ Complete |
 | 6 | Operational visibility: structured logging, readiness endpoint, alerting | ✅ Complete |
 | 7 | Activity events in MongoDB | Planned |
-| 8 | Infrastructure as code, container deployment | 🟡 Container shipped; IaC planned |
-| 9 | Go service, Solidity settlement experiment, React Native client | Exploratory |
+| 8 | Infrastructure as code, container deployment | ✅ Container and Kubernetes manifests shipped |
+| 9 | Solidity settlement experiment, React Native client | Exploratory (Go service shipped early — see the reconciler) |
 
 Reserved directories exist for the later phases and contain no implementation. They are
 placeholders for planned work, not stubs of missing work.
