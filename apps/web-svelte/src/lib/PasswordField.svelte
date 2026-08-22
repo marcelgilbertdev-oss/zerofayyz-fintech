@@ -46,6 +46,10 @@
     position: relative;
   }
   input {
+    /* Without this the 14px + 40px horizontal padding is added ON TOP of width:100%,
+       so the field overflows its grid column and slides under the card beside it.
+       Found in a live charter run on the deployed Vue client. */
+    box-sizing: border-box;
     background: #16241f;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;

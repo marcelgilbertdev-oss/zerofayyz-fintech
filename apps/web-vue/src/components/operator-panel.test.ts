@@ -1,5 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import { createPinia } from "pinia";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AuditTrail from "./AuditTrail.vue";
@@ -105,6 +109,24 @@ describe("OperatorPanel", () => {
     expect(input.type).toBe("text");
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
   });
+
+  it("every text input declares box-sizing (layout-overflow regression)", () => {
+    // A live charter run on the deployed Vue client found the password input
+    // overflowing its grid column and sliding under the reviewer-access card:
+    // width:100% plus 54px of horizontal padding, and this app has no global
+    // box-sizing reset. jsdom neither lays out nor injects scoped SFC styles, so
+    // this asserts the declaration in the source — the thing whose absence caused
+    // the bug — rather than pretending to measure pixels.
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    for (const file of ["PasswordField.vue", "OperatorPanel.vue"]) {
+      const source = readFileSync(path.join(here, file), "utf8");
+      expect(
+        source.slice(source.indexOf("<style")),
+        `${file} lost its box-sizing declaration`,
+      ).toContain("box-sizing: border-box");
+    }
+  });
+
 
   it("shows the API's refusal and the contact-admin line, then clears on edit", async () => {
     renderPanel((path) => {

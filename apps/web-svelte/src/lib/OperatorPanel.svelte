@@ -185,6 +185,7 @@
     margin-bottom: 6px;
   }
   .login input[type="email"] {
+    box-sizing: border-box;
     background: #16241f;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
