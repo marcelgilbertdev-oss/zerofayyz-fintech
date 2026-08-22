@@ -117,13 +117,13 @@ costs a join and it's what makes the ledger auditable."*
 
 | Layer | Count | What it catches | What it's blind to |
 |---|---|---|---|
-| Unit | 64 | Logic, branching, hashing, cookies, rate limiting | Anything involving real SQL |
+| Unit | 66 | Logic, branching, hashing, cookies, rate limiting | Anything involving real SQL |
 | Integration | 42 | Real database: SQL, constraints, triggers, idempotency, auth | Rendering, the user's path |
 | End-to-end | 48 | Real browser: sign-in, roles, accessibility, both locales | Whether the deployed thing works |
 | Client (Vue/Svelte) | 67 | Contract validation, state, sign-in, partial failure | — |
-| Production smoke | 25 | That what *shipped* actually runs | — |
+| Production smoke | 26 | That what *shipped* actually runs | — |
 
-**Say:** *"221 automated tests plus 25 production checks, all gated in CI.
+**Say:** *"223 automated tests plus 26 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
 structurally cannot — the integration suite exists because 19 green unit tests
 never once executed the SQL that was broken."*

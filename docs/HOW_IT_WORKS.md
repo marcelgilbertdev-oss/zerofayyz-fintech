@@ -144,11 +144,11 @@ Three layers, each catching what the layer beneath structurally cannot. Full det
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 64 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
+| Unit | 66 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
 | Client unit | 66 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
 | Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals |
 | End-to-end | 48 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
-| Production smoke | 25 | The live deployment | That what shipped actually works |
+| Production smoke | 26 | The live deployment | That what shipped actually works |
 
 **The story worth telling:** the webhook handler once had nineteen passing unit tests and had
 never worked. `JSONB_BUILD_OBJECT` accepts `"any"`, so an uncast bind parameter had no
