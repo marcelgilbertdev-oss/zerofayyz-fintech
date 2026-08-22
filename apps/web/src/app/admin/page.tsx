@@ -2,7 +2,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AccountRowControls, CreateAccountForm } from "@/components/account-controls";
-import { AppSidebar, BrandMark } from "@/components/app-shell";
+import { AppSidebar, BrandMark, primaryDestinations, ScrollableTable } from "@/components/app-shell";
+import { MobileNav } from "@/components/mobile-nav";
 import { DecideRefundButtons, RequestRefundButton, WithdrawRefundButton } from "@/components/refund-controls";
 import { RevokeSessionButton, SignOutButton } from "@/components/session-controls";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -117,7 +118,6 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-const TABLE_WRAP = "overflow-x-auto rounded-2xl border border-white/10";
 const TABLE = "w-full text-left text-xs";
 const THEAD = "bg-white/[0.04] text-[10px] uppercase tracking-wider text-white/50";
 const TBODY = "divide-y divide-white/5";
@@ -189,8 +189,19 @@ export default async function AdminPage({
 
       <div className="relative lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-white/[0.07] bg-[#07110f]/80 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-10">
-          <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
+          <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <div className="flex items-center gap-3 lg:hidden">
+              <MobileNav
+                destinations={primaryDestinations(t)}
+                active="admin"
+                labels={{
+                  primaryLabel: t.nav.primaryLabel,
+                  closeMenu: t.nav.closeMenu,
+                  brandName: t.brand.name,
+                  brandSuffix: t.brand.suffix,
+                  portfolioNotes: t.nav.portfolioNotes,
+                }}
+              />
               <BrandMark />
               <div>
                 <p className="text-xs font-semibold tracking-[0.08em]">{t.brand.name}</p>
@@ -257,7 +268,7 @@ export default async function AdminPage({
                 {payments === null ? (
                   <p className="text-xs text-rose-200">{t.admin.loadError}</p>
                 ) : (
-                  <div className={TABLE_WRAP}>
+                  <ScrollableTable label={t.admin.paymentsTitle}>
                     <table className={TABLE}>
                       <thead className={THEAD}>
                         <tr>
@@ -301,7 +312,7 @@ export default async function AdminPage({
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </ScrollableTable>
                 )}
               </section>
 
@@ -315,7 +326,7 @@ export default async function AdminPage({
                 ) : refunds.data.length === 0 ? (
                   <p className="text-xs text-white/50">{t.admin.refundsEmpty}</p>
                 ) : (
-                  <div className={TABLE_WRAP}>
+                  <ScrollableTable label={t.admin.refundsTitle}>
                     <table className={TABLE}>
                       <thead className={THEAD}>
                         <tr>
@@ -391,7 +402,7 @@ export default async function AdminPage({
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </ScrollableTable>
                 )}
               </section>
             </>
@@ -408,7 +419,7 @@ export default async function AdminPage({
               ) : sessions.data.length === 0 ? (
                 <p className="text-xs text-white/50">{t.admin.presenceEmpty}</p>
               ) : (
-                <div className={TABLE_WRAP}>
+                <ScrollableTable label={t.admin.presenceTitle}>
                   <table className={TABLE}>
                     <thead className={THEAD}>
                       <tr>
@@ -448,7 +459,7 @@ export default async function AdminPage({
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
               )}
             </section>
           )}
@@ -475,7 +486,7 @@ export default async function AdminPage({
               {users === null ? (
                 <p className="text-xs text-rose-200">{t.admin.loadError}</p>
               ) : (
-                <div className={TABLE_WRAP}>
+                <ScrollableTable label={t.admin.usersTitle}>
                   <table className={TABLE}>
                     <thead className={THEAD}>
                       <tr>
@@ -526,7 +537,7 @@ export default async function AdminPage({
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
               )}
             </section>
           )}
@@ -542,7 +553,7 @@ export default async function AdminPage({
               ) : audit.data.length === 0 ? (
                 <p className="text-xs text-white/50">{t.admin.auditEmpty}</p>
               ) : (
-                <div className={TABLE_WRAP}>
+                <ScrollableTable label={t.admin.auditTitle}>
                   <table className={TABLE}>
                     <thead className={THEAD}>
                       <tr>
@@ -567,7 +578,7 @@ export default async function AdminPage({
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
               )}
             </section>
           )}

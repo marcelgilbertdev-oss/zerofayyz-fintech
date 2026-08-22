@@ -78,3 +78,45 @@ test("the sidebar marks the current page for assistive tech", async ({ page }) =
     "page",
   );
 });
+
+/**
+ * The same pages at a phone viewport.
+ *
+ * Everything above runs at the project's default desktop width, and that was a
+ * blind spot rather than a choice: at desktop the ledger tables fit, so they
+ * never become scroll containers, so `scrollable-region-focusable` never fired.
+ * At phone width they scroll and a keyboard could not reach them — a WCAG A
+ * failure that had been shipping under a green suite. Viewport is part of the
+ * test matrix now, not an assumption.
+ */
+test.describe("at a phone viewport", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  for (const [name, path] of [
+    ["dashboard", "/?lang=en"],
+    ["payments", "/payments?lang=en"],
+    ["transactions", "/transactions?lang=en"],
+    ["customers", "/customers?lang=en"],
+    ["login", "/login?lang=en"],
+  ] as const) {
+    test(`the ${name} has no detectable WCAG A/AA violations on a phone`, async ({ page }) => {
+      await page.goto(path);
+
+      const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+
+      expect(
+        results.violations.map((violation) => `${violation.id}: ${violation.help}`),
+      ).toEqual([]);
+    });
+  }
+
+  test("the Japanese dashboard is clean on a phone too", async ({ page }) => {
+    await page.goto("/?lang=ja");
+
+    const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+
+    expect(
+      results.violations.map((violation) => `${violation.id}: ${violation.help}`),
+    ).toEqual([]);
+  });
+});

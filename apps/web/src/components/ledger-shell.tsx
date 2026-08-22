@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 
-import { AppSidebar, BrandMark } from "@/components/app-shell";
+import { AppSidebar, BrandMark, primaryDestinations } from "@/components/app-shell";
+import { MobileNav } from "@/components/mobile-nav";
 import { getDictionary, type Dictionary } from "@/i18n/dictionaries";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/locale";
 import { LOCALE_HEADER } from "@/proxy";
@@ -40,8 +41,19 @@ export function LedgerFrame({
 
       <div className="relative lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-white/[0.07] bg-[#07110f]/80 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-10">
-          <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
+          <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <div className="flex items-center gap-3 lg:hidden">
+              <MobileNav
+                destinations={primaryDestinations(t)}
+                active={active}
+                labels={{
+                  primaryLabel: t.nav.primaryLabel,
+                  closeMenu: t.nav.closeMenu,
+                  brandName: t.brand.name,
+                  brandSuffix: t.brand.suffix,
+                  portfolioNotes: t.nav.portfolioNotes,
+                }}
+              />
               <BrandMark />
               <div>
                 <p className="text-xs font-semibold tracking-[0.08em]">{t.brand.name}</p>
@@ -125,7 +137,6 @@ export function Pagination({
   );
 }
 
-export const LEDGER_TABLE_WRAP = "overflow-x-auto rounded-2xl border border-white/10";
 export const LEDGER_TABLE = "w-full text-left text-xs";
 export const LEDGER_THEAD = "bg-white/[0.04] text-[10px] uppercase tracking-wider text-white/50";
 export const LEDGER_TBODY = "divide-y divide-white/5";

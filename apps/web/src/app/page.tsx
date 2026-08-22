@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 
-import { AppSidebar, BrandMark } from "@/components/app-shell";
+import { AppSidebar, BrandMark, primaryDestinations, ScrollableTable } from "@/components/app-shell";
+import { MobileNav } from "@/components/mobile-nav";
 import { CheckoutButton } from "@/components/checkout-button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { getSessionUser } from "@/lib/api-session";
@@ -418,8 +419,19 @@ export default async function Home({
 
       <div className="relative lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-white/[0.07] bg-[#07110f]/80 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-10">
-          <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
+          <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <div className="flex items-center gap-3 lg:hidden">
+              <MobileNav
+                destinations={primaryDestinations(t)}
+                active="overview"
+                labels={{
+                  primaryLabel: t.nav.primaryLabel,
+                  closeMenu: t.nav.closeMenu,
+                  brandName: t.brand.name,
+                  brandSuffix: t.brand.suffix,
+                  portfolioNotes: t.nav.portfolioNotes,
+                }}
+              />
               <BrandMark />
               <div>
                 <p className="text-xs font-semibold tracking-[0.08em]">{t.brand.name}</p>
@@ -595,7 +607,7 @@ export default async function Home({
               </div>
               <span className="w-fit text-xs text-white/55">{t.transactions.showing}</span>
             </div>
-            <div className="overflow-x-auto">
+            <ScrollableTable label={t.transactions.title}>
               <table className="w-full min-w-[760px] text-left">
                 <thead>
                   <tr className="border-b border-white/[0.055] text-[10px] font-semibold uppercase tracking-[0.12em] text-white/55">
@@ -631,7 +643,7 @@ export default async function Home({
                   )}
                 </tbody>
               </table>
-            </div>
+            </ScrollableTable>
           </section>
 
           <section className="mt-4 rounded-2xl border border-white/[0.075] bg-[#0d1a17]/70 px-5 py-5 sm:px-6">

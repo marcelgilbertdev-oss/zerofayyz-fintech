@@ -19,6 +19,7 @@ const en = {
   },
   nav: {
     primaryLabel: "Primary navigation",
+    closeMenu: "Close menu",
     projectLabel: "Project navigation",
     overview: "Overview",
     payments: "Payments",
@@ -31,7 +32,7 @@ const en = {
     planned: "Planned",
     plannedTitle: "Planned — see the roadmap in the README",
   },
-  build: { label: "Portfolio build", stage: "Refunds & accounts live", phase: "Phase 4" },
+  build: { label: "Portfolio build", stage: "Ledger, clients & monitoring live", phase: "Phase 6" },
   header: {
     overview: "Operations overview",
     apiConnected: "API connected",
@@ -44,9 +45,9 @@ const en = {
   },
   hero: {
     eyebrow: "Payment operations",
-    morning: "Good morning, Marcel.",
-    afternoon: "Good afternoon, Marcel.",
-    evening: "Good evening, Marcel.",
+    morning: "Good morning.",
+    afternoon: "Good afternoon.",
+    evening: "Good evening.",
     blurb:
       "Monitor the sandbox payment lifecycle, review recent activity, and verify platform health from one workspace.",
     live: "Live sandbox data",
@@ -309,6 +310,7 @@ const ja: Dictionary = {
   },
   nav: {
     primaryLabel: "メインナビゲーション",
+    closeMenu: "メニューを閉じる",
     projectLabel: "プロジェクトナビゲーション",
     overview: "概要",
     payments: "決済",
@@ -321,7 +323,7 @@ const ja: Dictionary = {
     planned: "予定",
     plannedTitle: "予定 — README のロードマップを参照",
   },
-  build: { label: "ポートフォリオ構築", stage: "返金・アカウント管理 稼働中", phase: "フェーズ 4" },
+  build: { label: "ポートフォリオ構築", stage: "台帳・クライアント・監視 稼働中", phase: "フェーズ 6" },
   header: {
     overview: "オペレーション概要",
     apiConnected: "API 接続済み",
@@ -334,9 +336,9 @@ const ja: Dictionary = {
   },
   hero: {
     eyebrow: "決済オペレーション",
-    morning: "おはようございます、Marcel さん。",
-    afternoon: "こんにちは、Marcel さん。",
-    evening: "こんばんは、Marcel さん。",
+    morning: "おはようございます。",
+    afternoon: "こんにちは。",
+    evening: "こんばんは。",
     blurb:
       "サンドボックスの決済ライフサイクルを監視し、最近のアクティビティを確認し、プラットフォームの稼働状況を一つの画面で検証します。",
     live: "ライブ・サンドボックスデータ",

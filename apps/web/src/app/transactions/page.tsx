@@ -2,12 +2,12 @@ import {
   fetchLedger,
   LedgerFrame,
   LEDGER_TABLE,
-  LEDGER_TABLE_WRAP,
   LEDGER_TBODY,
   LEDGER_THEAD,
   Pagination,
   resolvePage,
 } from "@/components/ledger-shell";
+import { ScrollableTable } from "@/components/app-shell";
 import { formatMoney } from "@/i18n/locale";
 
 const LIMIT = 20;
@@ -53,7 +53,7 @@ export default async function TransactionsPage({
         <p className="text-xs text-white/50">{t.pages.events.empty}</p>
       ) : (
         <>
-          <div className={LEDGER_TABLE_WRAP}>
+          <ScrollableTable label={t.nav.transactions}>
             <table className={LEDGER_TABLE}>
               <thead className={LEDGER_THEAD}>
                 <tr>
@@ -89,7 +89,7 @@ export default async function TransactionsPage({
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollableTable>
 
           <Pagination
             t={t}

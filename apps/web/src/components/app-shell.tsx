@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { Dictionary } from "@/i18n/dictionaries";
 
 /**
@@ -11,6 +13,35 @@ import type { Dictionary } from "@/i18n/dictionaries";
  * the serious dashboards — Stripe, Linear, Vercel — all converge on.)
  */
 
+/**
+ * A horizontally scrollable table container that a keyboard can actually reach.
+ *
+ * These wrappers scroll at narrow widths, and a scroll container that is not
+ * focusable strands keyboard users at whatever the viewport happens to show —
+ * axe's `scrollable-region-focusable`, a WCAG A failure. It shipped undetected
+ * because the accessibility suite only ran at desktop width, where the tables
+ * do not overflow and therefore do not scroll. The suite now runs at a phone
+ * viewport too, which is what surfaced it.
+ */
+export function ScrollableTable({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="overflow-x-auto rounded-2xl border border-white/10"
+      tabIndex={0}
+      role="region"
+      aria-label={label}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function BrandMark() {
   return (
     <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10 text-sm font-bold tracking-tight text-emerald-200 shadow-[0_0_30px_rgba(52,211,153,0.08)]">
@@ -19,10 +50,34 @@ export function BrandMark() {
   );
 }
 
+export type NavSection = "overview" | "payments" | "transactions" | "customers" | "admin";
+
 type SidebarProps = {
   t: Dictionary;
-  active: "overview" | "payments" | "transactions" | "customers" | "admin";
+  active: NavSection;
 };
+
+/**
+ * The primary destinations, defined once.
+ *
+ * The desktop rail and the mobile drawer both render from this list, because
+ * two hand-maintained copies of a navigation drift — and a mobile menu missing
+ * the section a reviewer was told to open is worse than no mobile menu at all.
+ */
+export function primaryDestinations(t: Dictionary): {
+  href: string;
+  glyph: string;
+  label: string;
+  section: NavSection;
+}[] {
+  return [
+    { href: "/", glyph: "⌂", label: t.nav.overview, section: "overview" },
+    { href: "/payments", glyph: "↗", label: t.nav.payments, section: "payments" },
+    { href: "/transactions", glyph: "⇄", label: t.nav.transactions, section: "transactions" },
+    { href: "/customers", glyph: "◎", label: t.nav.customers, section: "customers" },
+    { href: "/admin", glyph: "◇", label: t.nav.admin, section: "admin" },
+  ];
+}
 
 function NavLink({
   href,
@@ -74,11 +129,15 @@ export function AppSidebar({ t, active }: SidebarProps) {
           off when the ledger pages shipped — a sidebar advertising three
           unbuilt sections read as unfinished work, and it was. */}
       <nav className="mt-7 space-y-1" aria-label={t.nav.primaryLabel}>
-        <NavLink href="/" glyph="⌂" label={t.nav.overview} current={active === "overview"} />
-        <NavLink href="/payments" glyph="↗" label={t.nav.payments} current={active === "payments"} />
-        <NavLink href="/transactions" glyph="⇄" label={t.nav.transactions} current={active === "transactions"} />
-        <NavLink href="/customers" glyph="◎" label={t.nav.customers} current={active === "customers"} />
-        <NavLink href="/admin" glyph="◇" label={t.nav.admin} current={active === "admin"} />
+        {primaryDestinations(t).map((destination) => (
+          <NavLink
+            key={destination.href}
+            href={destination.href}
+            glyph={destination.glyph}
+            label={destination.label}
+            current={active === destination.section}
+          />
+        ))}
       </nav>
 
       <div className="my-5 h-px bg-white/[0.06]" />

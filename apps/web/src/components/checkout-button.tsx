@@ -181,7 +181,7 @@ export function CheckoutButton({
       </button>
       <p
         aria-live="polite"
-        className="absolute right-0 top-full mt-2 w-64 text-right text-[10px] leading-4 text-rose-200"
+        className="absolute right-0 top-full mt-2 w-64 max-w-[min(16rem,70vw)] text-right text-[10px] leading-4 text-rose-200"
       >
         {error}
       </p>
