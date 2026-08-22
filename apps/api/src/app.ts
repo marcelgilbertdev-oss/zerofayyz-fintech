@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import Fastify, { type FastifyInstance } from "fastify";
 import rawBody from "fastify-raw-body";
 
@@ -42,12 +44,70 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     // why nothing security-critical keys on it — the login limiter keys on
     // the attempted account instead.
     trustProxy: true,
+    // A request id on every line, and the same id returned to the caller.
+    //
+    // Pino already emits JSON, which is what a log aggregator wants. What was
+    // missing is correlation: with a shared demo account and concurrent
+    // reviewers, "the failing request" is not identifiable from a timestamp.
+    // Fastify stamps every log line for a request with its reqId, so one id
+    // ties the route log, the audit write and the error together — and the
+    // id also goes back in a response header, so a user reporting a failure
+    // can hand over the exact string to grep for.
+    genReqId: (request) => {
+      // Honour an upstream id when one exists, so a trace that began at the
+      // proxy is not broken here; otherwise mint one.
+      const forwarded = request.headers["x-request-id"];
+      const candidate = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+
+      // Bounded and sanitised: this value is echoed in a response header and
+      // written to logs, and an unbounded caller-controlled string in either
+      // is how log injection and header-splitting bugs start.
+      if (typeof candidate === "string" && /^[A-Za-z0-9._-]{8,128}$/.test(candidate)) {
+        return candidate;
+      }
+
+      return randomUUID();
+    },
     logger:
       options.logger === false
         ? false
         : {
             level: process.env.LOG_LEVEL ?? "info",
+            // Structured fields rather than an interpolated sentence: a log
+            // line is data for a query, not prose for a person.
+            formatters: {
+              level: (label) => ({ level: label }),
+            },
+            base: {
+              service: "zerofayyz-fintech-api",
+              env: process.env.NODE_ENV ?? "development",
+            },
+            redact: {
+              // Never log what would turn the log store into a second copy of
+              // the credential store.
+              paths: [
+                "req.headers.authorization",
+                "req.headers.cookie",
+                "req.headers['stripe-signature']",
+                "res.headers['set-cookie']",
+              ],
+              remove: true,
+            },
+            serializers: {
+              req: (request) => ({
+                method: request.method,
+                url: request.url,
+              }),
+              res: (reply) => ({ statusCode: reply.statusCode }),
+            },
           },
+  });
+
+  // The caller gets the id too. Without this the correlation id exists only
+  // where the operator can already see it, which is the half that does not
+  // need help.
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("x-request-id", String(request.id));
   });
 
   app.register(rawBody, {

@@ -69,6 +69,49 @@ jobs:
           DATABASE_URL: postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech
         run: npm run test:integration
 
+  container:
+    name: API — container builds and serves
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: zerofayyz_fintech
+          POSTGRES_PASSWORD: zerofayyz_fintech
+          POSTGRES_DB: zerofayyz_fintech
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t zerofayyz-api apps/api
+      # A Dockerfile that has never been started is decoration. This starts it
+      # and waits for the container's OWN healthcheck to report healthy, which
+      # exercises /api/v1/ready from inside the image.
+      - name: Run it and wait for the container healthcheck
+        run: |
+          docker run -d --name api --network host \
+            -e DATABASE_URL="postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech" \
+            -e SESSION_SECRET="ci-throwaway-session-secret-0123456789" \
+            zerofayyz-api
+          for i in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' api)
+            echo "attempt $i: $status"
+            [ "$status" = "healthy" ] && exit 0
+            [ "$status" = "unhealthy" ] && { docker logs api; exit 1; }
+            sleep 5
+          done
+          docker logs api
+          exit 1
+      - name: It must run unprivileged, without the build toolchain
+        run: |
+          test "$(docker exec api whoami)" = "node"
+          test "$(docker exec api sh -c 'ls node_modules | grep -c "^typescript$"')" = "0"
+
   web:
     name: Web — lint, typecheck, build
     runs-on: ubuntu-latest
