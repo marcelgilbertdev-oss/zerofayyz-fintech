@@ -655,6 +655,44 @@ day the wolf comes.
 
 ## Human result log
 
+### 2026-08-22 — A16 / A17 walked by Marcel · PASSED, two defects found
+
+Both operator panels walked on the deployed clients. **Two real defects found by the
+founder that every automated suite had missed**, both fixed and verified the same session:
+
+1. **The password field overflowed its column and slid under the reviewer-access card.**
+   `width:100%` plus 54px of horizontal padding, and the app has no global `box-sizing`
+   reset. Invisible to jsdom, which does not lay out. Fixed in both clients
+   (`box-sizing: border-box`), verified live by measuring the rendered geometry — the field
+   now ends 20px before the card begins — and pinned by a source-level regression test.
+
+2. **A payment started on a client returned the payer to a different app.** `success_url`
+   was built from a single `APP_URL`, so every checkout landed on the Next.js dashboard
+   regardless of origin. Fixed by deriving the return origin from the request's `Origin`
+   header **matched against an allowlist** — a caller-chosen redirect target on a public
+   endpoint is an open redirect, so exact whole-origin equality with a fallback to
+   `APP_URL`, never the raw header. Tests cover the look-alike (`…vercel.app.attacker.test`),
+   the subdomain, and the http-downgrade cases. `CLIENT_ORIGINS` added to `render.yaml`, and
+   health now reports whether it actually reached production because a blueprint entry is
+   not a guarantee on an already-running service.
+
+**Founder verification, live production:** payment of $115.00 started on the Svelte client
+returned to `zerofayyz-fintech-svelte.vercel.app/?checkout=success`, recorded Succeeded
+within the minute, `stripe.webhook.processed` in the audit trail, 4 of 4 integrations live.
+Sign-in, audit trail, reload-persistence and sign-out all confirmed on both clients; the
+Svelte trail showed the Vue session's rows above its own, which is the append-only story
+demonstrating itself across two origins.
+
+**A third lesson, logged because it repeated:** the new smoke check shipped referencing an
+undefined constant and failed with a `ReferenceError` rather than a verdict — the second
+time that exact mistake has landed in that file. A new check must be watched failing for
+the *right* reason before it counts as coverage.
+
+Charter status after this walk: **Part A complete through A17.**
+
+### Earlier entries
+
+
 Fill this in yourself — the automated log above is not a substitute for a person
 walking the journey.
 
