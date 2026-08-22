@@ -184,7 +184,7 @@ await check("the checkout return allowlist reached production", async () => {
   // invisible from outside until somebody completes a real payment on the Vue
   // or Svelte client. This check is the difference between "deployed" and
   // "configured".
-  const { body } = await fetchJson(`${API_URL}/api/v1/health`);
+  const { body } = await fetchJson("/api/v1/health");
   const origins = body.checks?.clientOrigins;
 
   assert(origins !== undefined, "health does not report clientOrigins — API not redeployed yet");
