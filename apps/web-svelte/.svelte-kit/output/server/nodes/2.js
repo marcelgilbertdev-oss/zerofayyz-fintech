@@ -7,6 +7,6 @@ export const universal = {
   "load": null
 };
 export const universal_id = "src/routes/+page.ts";
-export const imports = ["_app/immutable/nodes/2.rW7OE8T4.js","_app/immutable/chunks/CY63BMgb.js","_app/immutable/chunks/BMNRicTd.js","_app/immutable/chunks/BR73ucus.js","_app/immutable/chunks/BKQDtKw3.js","_app/immutable/chunks/C6jOTLj7.js"];
-export const stylesheets = ["_app/immutable/assets/2.CH8St05X.css"];
+export const imports = ["_app/immutable/nodes/2.BVesm1Zx.js","_app/immutable/chunks/CY63BMgb.js","_app/immutable/chunks/BMNRicTd.js","_app/immutable/chunks/BR73ucus.js","_app/immutable/chunks/BKQDtKw3.js","_app/immutable/chunks/C6jOTLj7.js"];
+export const stylesheets = ["_app/immutable/assets/2.CH4BmUbT.css"];
 export const fonts = [];

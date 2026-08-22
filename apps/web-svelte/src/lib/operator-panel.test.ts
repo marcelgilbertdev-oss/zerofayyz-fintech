@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -102,6 +106,24 @@ describe("OperatorPanel", () => {
       "text",
     );
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  });
+
+it("no mobile grid collapse uses a bare 1fr (grid-blowout regression)", () => {
+    // A bare `1fr` track's implied minimum is the item's min-content, and the
+    // transactions table is 640px wide inside its scroll wrapper — so on the
+    // deployed client at 375px the "collapsed" single column was 682px and the
+    // whole page scrolled sideways. minmax(0, 1fr) is the difference. jsdom
+    // does no layout, so this pins the declaration in source, where the bug
+    // lived. Mirrors the Vue suite's assertion, like everything else here.
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    for (const file of ["../routes/+page.svelte", "OperatorPanel.svelte"]) {
+      const source = readFileSync(path.join(here, file), "utf8");
+      const styles = source.slice(source.indexOf("<style"));
+      expect(
+        /grid-template-columns:\s*1fr\s*;/.test(styles),
+        `${file} collapses a grid to a bare 1fr — use minmax(0, 1fr)`,
+      ).toBe(false);
+    }
   });
 
   it("shows the API's refusal and the contact-admin line, then clears on edit", async () => {

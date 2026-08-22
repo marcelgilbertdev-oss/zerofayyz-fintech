@@ -110,6 +110,24 @@ describe("OperatorPanel", () => {
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
   });
 
+
+  it("no mobile grid collapse uses a bare 1fr (grid-blowout regression)", () => {
+    // A bare `1fr` track's implied minimum is the item's min-content, and the
+    // transactions table is 640px wide inside its scroll wrapper — so on the
+    // deployed client at 375px the "collapsed" single column was 682px and the
+    // whole page scrolled sideways. minmax(0, 1fr) is the difference. jsdom does
+    // no layout, so this pins the declaration in source, where the bug lived.
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    for (const file of ["../App.vue", "OperatorPanel.vue"]) {
+      const source = readFileSync(path.join(here, file), "utf8");
+      const styles = source.slice(source.indexOf("<style"));
+      expect(
+        /grid-template-columns:\s*1fr\s*;/.test(styles),
+        `${file} collapses a grid to a bare 1fr — use minmax(0, 1fr)`,
+      ).toBe(false);
+    }
+  });
+
   it("every text input declares box-sizing (layout-overflow regression)", () => {
     // A live charter run on the deployed Vue client found the password input
     // overflowing its grid column and sliding under the reviewer-access card:

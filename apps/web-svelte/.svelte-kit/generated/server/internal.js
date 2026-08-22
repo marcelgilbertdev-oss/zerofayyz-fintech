@@ -26,7 +26,7 @@ export const options = {
 		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>ZEROFAYYZ FINTECH | Svelte Client</title>\n    " + head + "\n  </head>\n  <body style=\"margin:0;background:#07110f;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif\">\n    <div style=\"display:contents\">" + body + "</div>\n  </body>\n</html>\n",
 		error
 	},
-	version_hash: "im3m9k"
+	version_hash: "1l94s58"
 };
 
 export async function get_hooks() {

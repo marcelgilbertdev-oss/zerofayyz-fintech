@@ -178,7 +178,7 @@ onMounted(() => {
 }
 @media (max-width: 720px) {
   .doors {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .row {

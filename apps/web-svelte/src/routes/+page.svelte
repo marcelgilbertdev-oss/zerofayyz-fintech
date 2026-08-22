@@ -235,8 +235,13 @@
     grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
   }
   @media (max-width: 860px) {
-    .columns {
-      grid-template-columns: 1fr;
+  .columns {
+      /* minmax(0, …) here too, not just in the wide template above: a bare 1fr's
+         implied minimum is the item's min-content, and the transactions table is
+         640px wide inside its scroll wrapper — so on a phone the single column
+         became 682px and the whole page scrolled sideways. Found on the deployed
+         client at 375px, 2026-08-22. */
+      grid-template-columns: minmax(0, 1fr);
     }
   }
   .loading,

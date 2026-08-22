@@ -106,7 +106,7 @@ const options = {
     <div style="display:contents">` + body + "</div>\n  </body>\n</html>\n",
     error
   },
-  version_hash: "i2l33"
+  version_hash: "v3r93p"
 };
 async function get_hooks() {
   let handle;
