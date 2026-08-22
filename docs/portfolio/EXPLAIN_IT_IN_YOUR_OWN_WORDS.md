@@ -117,13 +117,13 @@ costs a join and it's what makes the ledger auditable."*
 
 | Layer | Count | What it catches | What it's blind to |
 |---|---|---|---|
-| Unit | 66 | Logic, branching, hashing, cookies, rate limiting | Anything involving real SQL |
+| Unit | 72 | Logic, branching, hashing, cookies, rate limiting | Anything involving real SQL |
 | Integration | 42 | Real database: SQL, constraints, triggers, idempotency, auth | Rendering, the user's path |
-| End-to-end | 48 | Real browser: sign-in, roles, accessibility, both locales | Whether the deployed thing works |
+| End-to-end | 61 | Real browser: sign-in, roles, accessibility, both locales | Whether the deployed thing works |
 | Client (Vue/Svelte) | 67 | Contract validation, state, sign-in, partial failure | — |
 | Production smoke | 26 | That what *shipped* actually runs | — |
 
-**Say:** *"223 automated tests plus 26 production checks, all gated in CI.
+**Say:** *"242 automated tests plus 26 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
 structurally cannot — the integration suite exists because 19 green unit tests
 never once executed the SQL that was broken."*
@@ -287,6 +287,58 @@ like an IP address."*
 **Why it matters at HENNGE:** they build data-loss prevention. A candidate who
 minimised what they collected *on purpose*, and can explain the reasoning, is
 speaking directly to what they do.
+
+---
+
+## 10b. Running it in production (the operations half)
+
+**Plain:** Building it is half. The other half is knowing when it breaks and
+being able to find out why.
+
+**Say:** *"Every log line is JSON with a request id, and the same id comes back
+to the caller in a header — so if someone tells me a request failed, they hand
+me the exact string to search for instead of a rough time. Authorization,
+cookie and signature headers are redacted at the logger, because a log store
+that quietly becomes a second copy of your credentials is a breach waiting for
+an audience."*
+
+**On the two health endpoints — this one lands well:** *"`/health` and `/ready`
+answer different questions. `/health` stays 200 even when the database is down,
+because a process that can describe its own degradation is alive and worth
+inspecting. `/ready` returns 503 the moment the database is unreachable,
+because a load balancer asking 'may I send traffic here' needs the answer no.
+Conflating them is how a deploy passes its health check and then serves 500s.
+The test I'm proudest of takes the database down and asserts both at once —
+503 from one, 200 from the other — because the divergence is the whole design."*
+
+**On alerting:** *"The smoke suite already interrogated the live deployment
+from outside, so I scheduled it hourly. A failed scheduled run is an email to
+me. That's monitoring with a person on the end of it, and it needed no new
+infrastructure to operate or pay for."*
+
+**On the container:** *"Multi-stage, so the toolchain that built it doesn't
+ship. Production dependencies re-resolved, so TypeScript and the test tooling
+aren't in the runtime. Runs as a non-root user. Health-checked against /ready,
+not /health, for the reason above. And CI starts it on every push and waits for
+the container's own healthcheck — a Dockerfile nobody has run is decoration."*
+
+---
+
+## 10c. The bug that taught me about coverage dimensions
+
+**Plain:** My accessibility tests passed for months while a real accessibility
+failure shipped, because every test ran at one screen size.
+
+**Say:** *"The tables scroll sideways when they don't fit. A scroll container
+that isn't focusable strands keyboard users — that's a WCAG A failure. But at
+desktop width the tables fit, so they never scrolled, so the rule never fired.
+Adding a phone viewport to the suite found it in the first run. The lesson
+isn't 'test more'. It's that coverage has dimensions beyond which assertions
+you wrote — viewport was one I'd assumed instead of tested, and the same pass
+found the app had no navigation at all below the desktop breakpoint."*
+
+**Why this is a good story to tell:** it's the same shape as the webhook
+defect. Green tests are evidence about what was tested, never about what wasn't.
 
 ---
 

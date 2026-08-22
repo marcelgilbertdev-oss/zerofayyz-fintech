@@ -17,9 +17,9 @@ cannot see.
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 66 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
+| Unit | 72 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
 | Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation |
-| End-to-end | 48 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
+| End-to-end | 61 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
 | Vue client unit | 39 | jsdom, fetch mocked at the network seam | Contract validation, store state, sign-in and audit-trail flow, partial failure, rendered output |
 | Svelte client unit | 28 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |

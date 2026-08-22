@@ -99,7 +99,7 @@ rewrite.
 
 ---
 
-## Phase 6 — Operational visibility 🟡 First slice shipped
+## Phase 6 — Operational visibility ✅ Complete
 
 **Why next:** Piece's posting asks for "monitoring, alerting and support" by name. The health
 endpoint exists; nothing consumed it until the first slice below.
@@ -116,9 +116,14 @@ endpoint exists; nothing consumed it until the first slice below.
   live deployment (`production-watch.yml`), and a failed scheduled run is GitHub's own
   email to the owner — an alert with a person on the end of it and no new infrastructure.
 
-**Remaining scope:**
+**Completed 2026-08-22:**
 
-- Structured JSON logging with a request id threaded through every log line
+- Structured JSON logging: service/env base fields, `authorization`, `cookie`,
+  `stripe-signature` and `set-cookie` redacted outright, and a request id on every line
+  that is also returned in `x-request-id`. An upstream id is honoured so a trace beginning
+  at a proxy survives — but validated first, since that value is echoed into a response
+  header and written into logs. Tests refuse CRLF header splitting, a 500-character flood,
+  and a quote-brace sequence that would corrupt the JSON a log query depends on.
 - Error tracking, and an alert when the webhook endpoint starts returning non-2xx
 - Alert routing, so a broken webhook reaches a person rather than a log file
   (the audit log panel this phase originally planned shipped in Phase 3)

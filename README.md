@@ -87,7 +87,22 @@ TypeScript throughout, ESM, Node 20+.
 - Account-enumeration protection: a missing account is verified against a decoy hash, so a
   wrong password and a nonexistent user return byte-identical responses in comparable time
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
-- 223 automated tests across five suites, all gated in CI, plus a 26-check smoke suite
+- Structured JSON logging with a request id on every line and returned to the caller in
+  `x-request-id` — an upstream id is honoured so a trace is not broken here, but only after
+  validation, because that value is echoed into a header and written into logs
+- Readiness separated from liveness: `/health` stays 200 while degraded because a process
+  that can describe its own degradation is alive, while `/ready` returns 503 the moment the
+  ledger is unreachable, so an orchestrator drains the instance instead of routing payments
+  into it
+- Monitoring with a person on the end of it: the smoke suite runs hourly against production,
+  and a failed scheduled run is an email rather than a log line
+- A container image that has actually served traffic — multi-stage, production dependencies
+  only, unprivileged, health-checked against `/ready`, and started in CI on every push
+- Accessibility verified at phone width as well as desktop, in both locales. Adding the
+  narrow viewport immediately found a WCAG A failure that had been shipping under a green
+  suite: the ledger tables only become scroll containers when they overflow, so a keyboard
+  user could not scroll them and no desktop-width scan could see it
+- 242 automated tests across five suites, all gated in CI, plus a 26-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture
@@ -115,7 +130,7 @@ everything and changes nothing.
 
 ## Roadmap
 
-Phases 1 through 5 are complete. Later phases are listed because they are planned, not because they exist.
+Phases 1 through 6 are complete. Later phases are listed because they are planned, not because they exist.
 
 | Phase | Scope | Status |
 | --- | --- | --- |
@@ -124,9 +139,9 @@ Phases 1 through 5 are complete. Later phases are listed because they are planne
 | 3 | Authentication, roles, audit log, admin console with live presence | ✅ Complete |
 | 4 | Refunds (four-eyes rule, withdrawal, refund webhook) and account management | ✅ Complete |
 | 5 | Payments, Transactions and Customers ledger pages; operator sign-in and audit trail on the Vue and Svelte clients | ✅ Complete |
-| 6 | Operational visibility: structured logging, readiness endpoint, alerting | 🔜 Next |
+| 6 | Operational visibility: structured logging, readiness endpoint, alerting | ✅ Complete |
 | 7 | Activity events in MongoDB | Planned |
-| 8 | Infrastructure as code, container deployment | Planned |
+| 8 | Infrastructure as code, container deployment | 🟡 Container shipped; IaC planned |
 | 9 | Go service, Solidity settlement experiment, React Native client | Exploratory |
 
 Reserved directories exist for the later phases and contain no implementation. They are
