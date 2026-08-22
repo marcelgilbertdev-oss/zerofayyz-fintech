@@ -45,6 +45,48 @@ function paymentIntentId(
   return paymentIntent?.id ?? null;
 }
 
+/**
+ * The origins a payer may be returned to after Stripe.
+ *
+ * APP_URL is always allowed. CLIENT_ORIGINS carries the SPA clients as a
+ * comma-separated list, so adding a client is configuration rather than a code
+ * change. Localhost ports are allowed too, because the same flow has to work in
+ * development without a second code path.
+ */
+function allowedReturnOrigins(): string[] {
+  const configured = (process.env.CLIENT_ORIGINS ?? "")
+    .split(",")
+    .map((entry) => entry.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+
+  return [
+    (process.env.APP_URL ?? "http://127.0.0.1:3000").replace(/\/$/, ""),
+    ...configured,
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3001",
+    "http://localhost:3001",
+    "http://127.0.0.1:3002",
+    "http://localhost:3002",
+  ];
+}
+
+/** An exact allowlist match, or APP_URL. Never the caller's raw header. */
+export function returnOriginFor(origin: string | undefined): string {
+  const fallback = (process.env.APP_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+
+  if (!origin) {
+    return fallback;
+  }
+
+  const candidate = origin.trim().replace(/\/$/, "");
+
+  // Exact string equality on the whole origin — not startsWith, not includes.
+  // "https://zerofayyz-fintech.vercel.app.attacker.test" passes a prefix check
+  // and is a different site.
+  return allowedReturnOrigins().includes(candidate) ? candidate : fallback;
+}
+
 export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
   app,
   { database, stripe },
@@ -90,7 +132,18 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
         "portfolio.customer@zerofayyz.test";
       const amountMinor = request.body?.amountMinor ?? DEMO_AMOUNT_MINOR;
       const paymentId = randomUUID();
-      const appUrl = process.env.APP_URL ?? "http://127.0.0.1:3000";
+      // Return the payer to the client they started from.
+      //
+      // A single APP_URL sent every checkout back to the Next.js dashboard, so a
+      // reviewer testing the Vue client paid and landed in a different app —
+      // found in a live charter run. The origin has to come from the request.
+      //
+      // But an origin taken from a request header and handed to Stripe as a
+      // redirect target is an open redirect: whoever calls this endpoint chooses
+      // where the payer lands, and this endpoint is deliberately public. So the
+      // header is matched against an allowlist and anything unrecognised falls
+      // back to APP_URL. Never the raw header.
+      const appUrl = returnOriginFor(request.headers.origin);
 
       const userResult = await database.query<UserRow, [string, string]>(
         `
