@@ -53,6 +53,14 @@ services:
         sync: false
       - key: APP_URL
         sync: false
+      # A DSN is a write endpoint for the error stream, so the value is set in
+      # the dashboard and never in this file. Declared here anyway with
+      # sync: false so the Blueprint knows the variable exists — the same
+      # reason plan: starter is declared rather than left to the dashboard.
+      # Absent, the tracker stays inert and /health reports "unconfigured"
+      # rather than pretending.
+      - key: SENTRY_DSN
+        sync: false
       # The SPA clients a payer may be returned to after Stripe Checkout, as an
       # allowlist. The return origin is chosen by the caller's Origin header so
       # that a payment started on the Vue client comes back to the Vue client —

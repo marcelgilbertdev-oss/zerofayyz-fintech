@@ -274,6 +274,33 @@ site down. Restricting it to 00:00–21:00 UTC brings that to ~682 hours and lea
 
 ---
 
+## Turning on error tracking (optional)
+
+`/health` reports `errorTracking: unconfigured` until a DSN is set. That is honest rather
+than broken — with no DSN the subsystem is inert, and the API behaves identically. Structured
+logs already answer "what happened to this request"; an error tracker answers "is this new,
+how often, and did the last deploy cause it".
+
+To wire it up:
+
+1. Create a free account at **sentry.io** and a new project of type **Node.js**
+2. Copy the **DSN** it shows you — it looks like `https://<key>@<org>.ingest.sentry.io/<id>`
+3. In Render → `zerofayyz-fintech-api` → **Environment**, add `SENTRY_DSN` and paste it
+4. Save; the service redeploys, and `/health` flips to `errorTracking: configured`
+
+**The DSN is a write endpoint for your error stream.** It belongs in the dashboard only —
+never in this repository, never in a commit, never pasted into a chat. `render.yaml` declares
+the variable with `sync: false`, which tells the Blueprint the variable exists without
+carrying its value.
+
+Scrubbing is already configured in `apps/api/src/observability/error-tracking.ts`, and it is
+not left to the SDK's defaults: cookies, `authorization`, `stripe-signature`, `set-cookie` and
+the entire query string are stripped before anything leaves the process. This is a payments
+API — session tokens live in cookies and the Stripe signature is a shared secret, so an
+unscrubbed error report would turn an incident dashboard into a credential store.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
