@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { NavSection } from "./app-shell";
 
@@ -47,6 +48,10 @@ export function MobileNav({
     portfolioNotes: string;
   };
 }) {
+  // `open` is the mount guard the portal needs, without a second flag: it
+  // starts false, so the server render and the first client render both skip
+  // the portal, and the only thing that can set it true is a click — which
+  // never happens anywhere but a browser with a document.body.
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -98,21 +103,38 @@ export function MobileNav({
         </svg>
       </button>
 
-      {open && (
-        // `isolate` keeps the z-indexes below scoped to this overlay rather
-        // than competing with anything the page sets.
-        <div className="fixed inset-0 isolate z-50">
+      {open &&
+        createPortal(
+          // Rendered into document.body, deliberately, and this is the whole
+          // fix rather than a tidiness preference.
+          //
+          // MobileNav is used inside the page header, and that header carries
+          // `bg-[#07110f]/80 backdrop-blur-xl`. An element with a backdrop-filter
+          // establishes a stacking context AND a containing block for
+          // fixed-position descendants — so a drawer rendered in place was never
+          // a top-level overlay. It was composited inside a parent that is itself
+          // 80% transparent and blurring whatever sits behind it, which is
+          // exactly what a reviewer saw on an iPhone: the page showing through
+          // the menu, with the menu text painted on top.
+          //
+          // An earlier attempt gave the panel and the scrim explicit z-indexes.
+          // Those are correct and have been kept, but they could not have fixed
+          // this: they ordered two siblings correctly *within* the trapped
+          // context. The trap was the ancestor, so the overlay has to leave it.
+          //
+          // Chromium composites the nested case in a way that happens to look
+          // right, which is why every desktop browser and the whole CI pipeline
+          // showed a working drawer.
+          <div className="fixed inset-0 isolate z-50">
           {/* Inert background: a click anywhere outside dismisses, and
               aria-hidden keeps the page behind out of the reader's path.
 
-              The explicit z-0 is load-bearing, not tidiness. `backdrop-blur`
-              promotes this element to its own compositing layer, and iOS Safari
-              then composites that layer above a sibling that has no z-index of
-              its own — so the drawer's opaque background disappeared underneath
-              the blurred page while its text kept painting on top. The drawer
-              was unreadable on an iPhone and correct in every desktop browser,
-              because Chromium paints positioned siblings in DOM order and never
-              reproduces it. Found on a real phone; see the pairing z-10 below. */}
+              z-0 pairs with the panel's z-10 so the two state their order
+              rather than inheriting it from DOM position. Worth keeping — an
+              element with backdrop-filter is promoted to its own compositing
+              layer, and leaving a promoted sibling's order implied is asking
+              for trouble — but see the note on the portal above: this was not
+              what made the drawer transparent. */}
           <button
             type="button"
             aria-hidden="true"
@@ -185,8 +207,9 @@ export function MobileNav({
               {labels.portfolioNotes}
             </a>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

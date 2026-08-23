@@ -141,3 +141,55 @@ test("the drawer declares its stacking order rather than relying on DOM order", 
   // rgb() with no alpha channel — anything with transparency fails here.
   expect(layers.panelBackground).toMatch(/^rgb\(/);
 });
+
+test("the drawer escapes every filtered ancestor, so it is a real overlay", async ({
+  page,
+}) => {
+  // The bug this exists for, and the reason the previous fix was not enough.
+  //
+  // MobileNav sits inside the page header, and that header carries
+  // `bg-[#07110f]/80 backdrop-blur-xl`. An element with a backdrop-filter
+  // establishes a stacking context *and* a containing block for fixed-position
+  // descendants, so a drawer rendered in place is not a top-level overlay at
+  // all — it is composited inside a parent that is 80% transparent and blurring
+  // what sits behind it. On an iPhone the page showed straight through the
+  // menu. The panel's own background was opaque the whole time.
+  //
+  // Giving the panel and scrim explicit z-indexes did not fix it: that ordered
+  // two siblings correctly *inside* the trap. The overlay has to leave the
+  // subtree, which is what the portal to document.body does.
+  //
+  // Chromium composites the nested case in a way that happens to look correct,
+  // so this asserts the structure rather than the appearance — and structure is
+  // what actually differs between the broken and fixed versions.
+  await page.goto("/?lang=en");
+  await page.getByRole("button", { name: "Primary navigation" }).click();
+
+  const drawer = page.getByRole("dialog", { name: "Primary navigation" });
+  await expect(drawer).toBeVisible();
+
+  const ancestry = await drawer.evaluate((panel) => {
+    const offenders: string[] = [];
+    let node = panel.parentElement;
+
+    while (node && node !== document.documentElement) {
+      const style = getComputedStyle(node);
+      // Any of these three creates a containing block for fixed descendants
+      // and would re-trap the overlay.
+      const traps =
+        style.backdropFilter !== "none" ||
+        style.filter !== "none" ||
+        style.transform !== "none";
+
+      if (traps) {
+        offenders.push(`${node.tagName.toLowerCase()}.${node.className}`.slice(0, 80));
+      }
+      node = node.parentElement;
+    }
+
+    return { offenders, parentIsBody: panel.parentElement?.parentElement === document.body };
+  });
+
+  expect(ancestry.offenders).toEqual([]);
+  expect(ancestry.parentIsBody).toBe(true);
+});
