@@ -1,15 +1,41 @@
-name: Keep the demo warm
+name: API liveness canary
 
-# Free hosting tiers idle a service out after inactivity, and the first request
-# afterwards can take the better part of a minute. A reviewer opening the demo
-# would see "Unavailable" tiles over a healthy backend. A cheap scheduled ping
-# keeps it responsive.
+# This workflow used to be called "Keep the demo warm", and it did not work.
+#
+# The reasoning was sound — a free hosting tier idles a service out after 15
+# minutes, so ping it more often than that. The flaw was assuming GitHub's
+# scheduled runner honours the interval it is given. It does not: `schedule` is
+# best-effort, queued behind everyone else's work. Measuring 60 consecutive runs
+# of a `*/10` cron on this repository gave:
+#
+#     scheduled interval                    : 10 min
+#     actual gap, median                    : 27 min
+#     actual gap, worst                     : 92 min
+#     gaps exceeding the 15-min threshold   : 59/59  (100%)
+#     pings arriving to a cold service      : 41/60  (68%)
+#
+# Every single gap was longer than the sleep threshold. This was not keeping
+# anything warm; two thirds of the time it was waking a service that had already
+# fallen asleep, then leaving it to fall asleep again. A reviewer arriving at a
+# random moment had roughly a two-in-three chance of a 30-second wait.
+#
+# The real fix was to stop depending on this: the API now runs on a paid
+# instance that does not spin down. The other half of the fix was in the
+# dashboard, which used to report a cold start as "PostgreSQL — Unavailable" —
+# a diagnosis of a database it had never managed to reach. See
+# apps/web/src/lib/api-reachability.ts.
+#
+# What remains here is what this workflow can honestly do: notice, eventually,
+# if the API stops answering. That is a canary, not a keep-warm, and the name
+# now says so. The measurement is kept in the comment rather than deleted along
+# with the wrong idea, because "the scheduler quietly did not run when I told it
+# to" is worth leaving where the next person will find it.
 #
 # Set the repository variable API_HEALTH_URL once the API is deployed:
 #   gh variable set API_HEALTH_URL --body "https://<service>.onrender.com/api/v1/health"
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -27,7 +53,8 @@ jobs:
           fi
           code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API_HEALTH_URL")
           echo "health returned $code"
-          # A cold start counts as success; the point is to wake it, not to gate on it.
-          if [ "$code" = "000" ]; then
-            echo "::warning::No response within 90s"
+          # Warn rather than fail: a red X on a schedule nobody is watching
+          # trains you to ignore red Xs.
+          if [ "$code" != "200" ]; then
+            echo "::warning::Health endpoint returned $code (000 = no response within 90s)"
           fi

@@ -2,9 +2,11 @@ import { headers } from "next/headers";
 
 import { AppSidebar, BrandMark, primaryDestinations, ScrollableTable } from "@/components/app-shell";
 import { MobileNav } from "@/components/mobile-nav";
+import { WakeWatcher } from "@/components/wake-watcher";
 import { CheckoutButton } from "@/components/checkout-button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { getSessionUser } from "@/lib/api-session";
+import { probe, worstOf, type Reachability } from "@/lib/api-reachability";
 import { getDictionary } from "@/i18n/dictionaries";
 import {
   DEFAULT_LOCALE,
@@ -19,17 +21,34 @@ import {
 import { LOCALE_HEADER } from "@/proxy";
 
 const API_BASE_URL = process.env.API_URL ?? "http://127.0.0.1:4000";
-const API_TIMEOUT_MS = Number.parseInt(process.env.API_TIMEOUT_MS ?? "8000", 10);
 
 type ApiHealth = {
   operational: boolean;
+  /** How the request itself went, independent of what the answer said. */
+  reachability: Reachability;
   /** Raw version string; the label around it is localised at render time. */
   version: string | null;
-  databaseOperational: boolean;
+  /**
+   * Tri-state on purpose. `null` means the API never answered, so we have no
+   * information about the database — which is not the same as knowing it is
+   * down, and must not be rendered as though it were.
+   */
+  databaseOperational: boolean | null;
   databaseLatencyMs: number | null;
   stripeConfigured: boolean;
   webhookConfigured: boolean;
 };
+
+/** What we know when the API did not answer: nothing. */
+const unknownHealth = (reachability: Reachability): ApiHealth => ({
+  operational: false,
+  reachability,
+  version: null,
+  databaseOperational: reachability === "waking" ? null : false,
+  databaseLatencyMs: null,
+  stripeConfigured: false,
+  webhookConfigured: false,
+});
 
 type DashboardTransaction = {
   id: string;
@@ -47,28 +66,18 @@ type DashboardTransaction = {
 type TransactionResult = {
   data: DashboardTransaction[];
   source: "postgresql" | "unavailable";
+  reachability: Reachability;
 };
 
 async function getApiHealth(): Promise<ApiHealth> {
+  const result = await probe(`${API_BASE_URL}/api/v1/health`);
+
+  if (result.reachability !== "reachable") {
+    return unknownHealth(result.reachability);
+  }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/health`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      return {
-        operational: false,
-        version: null,
-        databaseOperational: false,
-        databaseLatencyMs: null,
-        stripeConfigured: false,
-        webhookConfigured: false,
-      };
-    }
-
-    const payload = (await response.json()) as {
+    const payload = (await result.response.json()) as {
       status?: unknown;
       version?: unknown;
       checks?: {
@@ -87,6 +96,9 @@ async function getApiHealth(): Promise<ApiHealth> {
 
     return {
       operational: apiOperational,
+      // It answered; if it reports itself unwell that is a real fault, not a
+      // cold start.
+      reachability: apiOperational ? "reachable" : "down",
       version: typeof payload.version === "string" ? payload.version : null,
       databaseOperational,
       databaseLatencyMs:
@@ -97,30 +109,20 @@ async function getApiHealth(): Promise<ApiHealth> {
       webhookConfigured: payload.checks?.webhook?.status === "configured",
     };
   } catch {
-    return {
-      operational: false,
-      version: null,
-      databaseOperational: false,
-      databaseLatencyMs: null,
-      stripeConfigured: false,
-      webhookConfigured: false,
-    };
+    // The server answered and we could not read it. That is a genuine fault.
+    return unknownHealth("down");
   }
 }
 
 async function getRecentTransactions(): Promise<TransactionResult> {
+  const result = await probe(`${API_BASE_URL}/api/v1/transactions`);
+
+  if (result.reachability !== "reachable") {
+    return { data: [], source: "unavailable", reachability: result.reachability };
+  }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/transactions`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      return { data: [], source: "unavailable" };
-    }
-
-    const payload = (await response.json()) as {
+    const payload = (await result.response.json()) as {
       data?: Array<{
         id?: unknown;
         customer?: { displayName?: unknown; email?: unknown };
@@ -134,7 +136,7 @@ async function getRecentTransactions(): Promise<TransactionResult> {
     };
 
     if (!Array.isArray(payload.data) || payload.meta?.source !== "postgresql") {
-      return { data: [], source: "unavailable" };
+      return { data: [], source: "unavailable", reachability: "down" };
     }
 
     const data = payload.data.flatMap((transaction) => {
@@ -187,9 +189,9 @@ async function getRecentTransactions(): Promise<TransactionResult> {
       ];
     });
 
-    return { data, source: "postgresql" };
+    return { data, source: "postgresql", reachability: "reachable" };
   } catch {
-    return { data: [], source: "unavailable" };
+    return { data: [], source: "unavailable", reachability: "down" };
   }
 }
 
@@ -203,6 +205,7 @@ type DashboardMetrics = {
   eventsRecorded: number;
   dailyVolume: Array<{ date: string; amountMinor: number }>;
   live: boolean;
+  reachability: Reachability;
 };
 
 const unavailableMetrics: DashboardMetrics = {
@@ -215,21 +218,18 @@ const unavailableMetrics: DashboardMetrics = {
   eventsRecorded: 0,
   dailyVolume: [],
   live: false,
+  reachability: "down",
 };
 
 async function getMetrics(): Promise<DashboardMetrics> {
+  const result = await probe(`${API_BASE_URL}/api/v1/metrics`);
+
+  if (result.reachability !== "reachable") {
+    return { ...unavailableMetrics, reachability: result.reachability };
+  }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/metrics`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-      return unavailableMetrics;
-    }
-
-    const payload = (await response.json()) as {
+    const payload = (await result.response.json()) as {
       currency?: unknown;
       grossVolumeMinor?: unknown;
       succeededCount?: unknown;
@@ -261,6 +261,7 @@ async function getMetrics(): Promise<DashboardMetrics> {
       pendingCount:
         typeof payload.pending?.count === "number" ? payload.pending.count : 0,
       eventsRecorded: payload.eventsRecorded,
+      reachability: "reachable",
       dailyVolume: Array.isArray(payload.dailyVolume)
         ? payload.dailyVolume.flatMap((bucket) =>
             typeof bucket.date === "string" && typeof bucket.amountMinor === "number"
@@ -316,6 +317,14 @@ export default async function Home({
   // renders the sign-in door; the public page never depends on it.
   const sessionUser = await getSessionUser();
   const transactions = transactionResult.data;
+  // One verdict for the page. `down` outranks `waking`: a reported fault is a
+  // fact, and the absence of an answer is not.
+  const reachability = worstOf([
+    apiHealth.reachability,
+    transactionResult.reachability,
+    paymentMetrics.reachability,
+  ]);
+  const starting = reachability === "waking";
   const currency = paymentMetrics.currency;
   const metrics = [
     {
@@ -378,8 +387,14 @@ export default async function Home({
           ? `v${apiHealth.version}`
           : apiHealth.operational
             ? t.health.connected
-            : t.health.unavailable,
-      status: apiHealth.operational ? t.health.operational : t.health.unavailable,
+            : starting
+              ? t.health.startingDetail
+              : t.health.unavailable,
+      status: apiHealth.operational
+        ? t.health.operational
+        : starting
+          ? t.health.starting
+          : t.health.unavailable,
       healthy: apiHealth.operational,
     },
     {
@@ -387,9 +402,19 @@ export default async function Home({
       detail:
         apiHealth.databaseLatencyMs !== null
           ? `${formatCount(apiHealth.databaseLatencyMs, locale)} ms`
-          : t.health.unavailable,
-      status: apiHealth.databaseOperational ? t.health.operational : t.health.unavailable,
-      healthy: apiHealth.databaseOperational,
+          : // No answer from the API means no information about the database.
+            // Reporting "Unavailable" here would be diagnosing a system we never
+            // reached.
+            apiHealth.databaseOperational === null
+            ? t.health.notYetReported
+            : t.health.unavailable,
+      status:
+        apiHealth.databaseOperational === true
+          ? t.health.operational
+          : apiHealth.databaseOperational === null
+            ? t.health.unknown
+            : t.health.unavailable,
+      healthy: apiHealth.databaseOperational === true,
     },
     {
       label: t.health.stripe,
@@ -445,7 +470,11 @@ export default async function Home({
             <div className="flex items-center gap-2.5 sm:gap-3">
               <span className="hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-xs text-white/50 md:flex">
                 <span className={`size-1.5 rounded-full ${apiHealth.operational ? "bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" : "bg-amber-300"}`} />
-                {apiHealth.operational ? t.header.apiConnected : t.header.apiUnavailable}
+                {apiHealth.operational
+                  ? t.header.apiConnected
+                  : starting
+                    ? t.header.apiStarting
+                    : t.header.apiUnavailable}
               </span>
               <LanguageSwitcher
                 locale={locale}
@@ -477,6 +506,8 @@ export default async function Home({
         </header>
 
         <main className="mx-auto max-w-[1500px] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+          {starting && <WakeWatcher copy={t.waking} />}
+
           {checkoutStatus && (
             <div
               className={`mb-5 rounded-xl border px-4 py-3 text-xs ${checkoutStatus === "success" ? "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-100" : "border-amber-300/20 bg-amber-300/[0.08] text-amber-100"}`}
@@ -589,7 +620,7 @@ export default async function Home({
               <div className="mt-1 rounded-xl border border-white/[0.06] bg-black/10 p-3">
                 <div className="flex items-center justify-between gap-3 text-[10px] text-white/60">
                   <span>{t.health.responseSource}</span>
-                  <span className={`font-medium ${apiHealth.operational ? "text-emerald-300/75" : "text-amber-200/75"}`}>{apiHealth.operational ? t.health.liveEndpoint : t.health.fallbackState}</span>
+                  <span className={`font-medium ${apiHealth.operational ? "text-emerald-300/75" : "text-amber-200/75"}`}>{apiHealth.operational ? t.health.liveEndpoint : starting ? t.health.startingState : t.health.fallbackState}</span>
                 </div>
               </div>
             </article>

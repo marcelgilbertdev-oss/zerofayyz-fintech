@@ -37,6 +37,7 @@ const en = {
     overview: "Operations overview",
     apiConnected: "API connected",
     apiUnavailable: "API unavailable",
+    apiStarting: "API starting",
     testPayment: "+ Test payment",
     openingStripe: "Opening Stripe…",
     languageLabel: "Language",
@@ -87,6 +88,12 @@ const en = {
     webhook: "Webhook queue",
     operational: "Operational",
     unavailable: "Unavailable",
+    starting: "Starting",
+    // Rendered where the API never answered. We know nothing about what sits
+    // behind it, and saying "Unavailable" there would be a claim we cannot make.
+    unknown: "Unknown",
+    notYetReported: "Not yet reported",
+    startingDetail: "Waiting for first response",
     configured: "Configured",
     notConnected: "Not connected",
     connected: "Connected",
@@ -97,6 +104,15 @@ const en = {
     responseSource: "API response source",
     liveEndpoint: "Live endpoint",
     fallbackState: "Fallback state",
+    startingState: "Awaiting first response",
+  },
+  waking: {
+    title: "Connecting to the API",
+    body:
+      "The API may still be starting. This page will fill in on its own as soon as it answers — no need to reload.",
+    retrying: "Checking again…",
+    gaveUp: "The API has not answered yet.",
+    reload: "Try again",
   },
   transactions: {
     title: "Recent transactions",
@@ -328,6 +344,7 @@ const ja: Dictionary = {
     overview: "オペレーション概要",
     apiConnected: "API 接続済み",
     apiUnavailable: "API 利用不可",
+    apiStarting: "API 起動中",
     testPayment: "＋ テスト決済",
     openingStripe: "Stripe を開いています…",
     languageLabel: "言語",
@@ -378,6 +395,10 @@ const ja: Dictionary = {
     webhook: "Webhook キュー",
     operational: "正常稼働",
     unavailable: "利用不可",
+    starting: "起動中",
+    unknown: "不明",
+    notYetReported: "未報告",
+    startingDetail: "最初の応答を待機中",
     configured: "設定済み",
     notConnected: "未接続",
     connected: "接続済み",
@@ -388,6 +409,15 @@ const ja: Dictionary = {
     responseSource: "API レスポンス元",
     liveEndpoint: "ライブエンドポイント",
     fallbackState: "フォールバック状態",
+    startingState: "最初の応答を待機中",
+  },
+  waking: {
+    title: "API に接続しています",
+    body:
+      "API がまだ起動中の可能性があります。応答があり次第、この画面は自動的に更新されます。再読み込みの必要はありません。",
+    retrying: "再確認しています…",
+    gaveUp: "API からまだ応答がありません。",
+    reload: "再試行",
   },
   transactions: {
     title: "最近の取引",

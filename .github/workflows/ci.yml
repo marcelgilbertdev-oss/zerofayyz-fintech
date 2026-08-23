@@ -167,7 +167,7 @@ jobs:
         run: go run ./cmd/reconcile
 
   web:
-    name: Web — lint, typecheck, build
+    name: Web — lint, typecheck, unit, build
     runs-on: ubuntu-latest
 
     steps:
@@ -197,6 +197,12 @@ jobs:
       - name: Typecheck
         working-directory: apps/web
         run: npm run typecheck
+
+      # Covers the reachability classification the dashboard renders from: a
+      # server that never answered must not be reported as a server that failed.
+      - name: Unit tests
+        working-directory: apps/web
+        run: npm test
 
       - name: Build
         working-directory: apps/web

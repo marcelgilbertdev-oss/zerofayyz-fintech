@@ -11,7 +11,9 @@
     "test:e2e": "playwright test",
     "relock": "rm -rf node_modules package-lock.json && npm install",
     "test:visual": "PLAYWRIGHT_VISUAL=1 playwright test e2e/visual-regression.spec.ts",
-    "test:visual:update": "PLAYWRIGHT_VISUAL=1 playwright test e2e/visual-regression.spec.ts --update-snapshots"
+    "test:visual:update": "PLAYWRIGHT_VISUAL=1 playwright test e2e/visual-regression.spec.ts --update-snapshots",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "next": "16.3.1",
@@ -29,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

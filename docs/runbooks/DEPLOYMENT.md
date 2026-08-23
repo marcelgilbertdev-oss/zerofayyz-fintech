@@ -15,16 +15,29 @@ does not expire.
 | Piece | Provider | Why | Cost |
 | --- | --- | --- | --- |
 | PostgreSQL | **Neon** | Free tier is permanent and needs no card | Free |
-| Fastify API | **Render** | Free web service, deploys from GitHub | Free |
+| Fastify API | **Render** | Deploys from GitHub | $7/mo (see below) |
 | Next.js dashboard | **Vercel** | Built by the Next.js team; free Hobby tier | Free |
 
-All three sign in with your GitHub account. None of them need a payment card for this setup.
+All three sign in with your GitHub account.
 
-**One caveat, stated up front:** Render's free tier puts a service to sleep after about
-fifteen minutes of no traffic, and waking it takes roughly fifty seconds. A recruiter would
-see a loading page. `.github/workflows/keep-warm.yml` pings the API every ten minutes to
-prevent that, and it is enough. If you would rather not rely on it, Render's Starter plan is
-about $7/month and never sleeps. Deploy free first; upgrade only if you see it sleeping.
+**One caveat, stated up front, and one correction.**
+
+Render's free tier puts a service to sleep after fifteen minutes without traffic, and waking
+it takes 27–50 seconds. A reviewer arriving cold would wait.
+
+This document used to claim that `.github/workflows/keep-warm.yml` prevented that, "and it is
+enough." It was not. Measuring sixty consecutive runs of that `*/10` cron showed GitHub's
+scheduler is best-effort and drifts badly — median gap **27 minutes**, worst **92**, and
+**every one of the fifty-nine gaps exceeded the fifteen-minute sleep threshold**. Two thirds
+of the pings arrived to find a service that had already gone to sleep. The workflow was not
+keeping anything warm; it was periodically waking something that then slept again.
+
+So the API runs on **Render Starter, about $7/month**, which does not spin down. That
+workflow has been renamed to what it can honestly do — notice if the API stops answering —
+and the measurement is preserved in its header comment.
+
+Two lessons worth carrying: a scheduled job is not evidence that the job ran on schedule, and
+a mitigation nobody measured is a belief rather than a control.
 
 ---
 
@@ -124,7 +137,7 @@ If the database block says `unavailable`, the connection string is wrong or is m
 
 Copy your API's URL. You need it in the next step.
 
-### Turn on the keep-warm ping
+### Turn on the liveness canary
 
 From the project root, once you have the URL:
 
@@ -247,12 +260,17 @@ That link is the single most important thing in the repository for a reviewer.
 | Provider | Plan | Cost | Limit that matters |
 | --- | --- | --- | --- |
 | Neon | Free | $0 | 0.5 GB storage — this project uses a fraction of it |
-| Render | Free | $0 | Sleeps after ~15 min idle; keep-warm handles it |
+| Render | Starter | ~$7/mo | Does not spin down. The free tier sleeps after ~15 min |
 | Vercel | Hobby | $0 | Non-commercial use; a portfolio qualifies |
 | Stripe | Test mode | $0 | No real charges are possible |
 
-Total: nothing. The only optional spend is Render Starter at about $7/month to remove sleeping
-entirely.
+Total: about $7/month, all of it Render. Everything else is free and stays free.
+
+The free Render tier remains a valid choice for a project nobody is about to review — but note
+that keeping a free instance awake around the clock costs 744 hours against a **750-hour
+monthly workspace quota**, and exceeding it suspends every free web service in the workspace
+until the first of the next month. A pinger that works is therefore a pinger that can take the
+site down. Restricting it to 00:00–21:00 UTC brings that to ~682 hours and leaves real margin.
 
 ---
 
@@ -260,9 +278,11 @@ entirely.
 
 | Symptom | Cause and fix |
 | --- | --- |
-| Dashboard tiles all say "Unavailable" | `API_URL` wrong on Vercel, or has a trailing slash |
-| Health shows database `unavailable` | `DATABASE_URL` wrong, or missing `?sslmode=require` |
-| First load takes ~50 seconds | Render free tier woke from sleep; check the keep-warm variable is set |
+| Dashboard tiles all say "Unavailable" | `API_URL` wrong on Vercel, or has a trailing slash. Note "Unavailable" means the API answered with a fault — if it never answered you would see "Starting" instead |
+| Dashboard says "API starting" and stays there | The API is not answering at all. Check the Render service is deployed and awake; the page recovers by itself once it responds |
+| Health shows database `Not yet reported` | The API never answered, so the database was never asked. Not a database problem |
+| Health shows database `Unavailable` | `DATABASE_URL` wrong, or missing `?sslmode=require` |
+| First load takes ~50 seconds | The service is on the free tier and woke from sleep. Upgrade the *instance* to Starter — not the workspace plan, which does not affect instance sleeping |
 | Checkout button says "not configured" | `STRIPE_API_KEY` not set on Render, or the service has not finished redeploying |
 | Webhook events show 400 in Stripe | `STRIPE_WEBHOOK_SECRET` does not match this endpoint's signing secret |
 | Webhook events show 503 | `STRIPE_WEBHOOK_SECRET` is not set at all |
