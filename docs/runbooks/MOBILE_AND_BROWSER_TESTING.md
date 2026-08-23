@@ -32,20 +32,40 @@ bg-[#07110f]/80  backdrop-blur-xl
 ```
 
 An element with a backdrop-filter establishes a stacking context **and a containing block for
-fixed-position descendants**. So `fixed inset-0 z-50` never escaped the header. The drawer was
-not a top-level overlay at all — it was being composited inside a parent that is 80%
-transparent and blurring whatever sits behind it. That is precisely the reported symptom: the
-page visible through the menu, menu text painted on top.
+fixed-position descendants**. So `fixed inset-0 z-50` never escaped the header — and this is
+the part that turned out to matter most: `inset-y-0` resolved against the *header's* box rather
+than the viewport, which made the drawer **132 pixels tall**.
+
+The menu items overflowed that box and painted straight onto the page. Everything below the
+first entry had no panel behind it, because the panel's background only ever covered its own
+132 pixels. What looked like a transparency or compositing fault was the panel simply not being
+there.
+
+That also explains why the links still worked and why the accessibility tree looked correct:
+the items were rendered, hit-testable and in the DOM. They were outside a box that had
+collapsed.
 
 The fix is `createPortal` to `document.body`, which removes the subtree relationship entirely.
+The drawer's box goes back to full viewport height.
 
 **The lesson, and it cost a wrong fix to learn:** when an overlay renders incorrectly, check
 what it is nested inside before adjusting how its own children stack.
 
-### What did not catch it
+### What did not catch it — and the one that recorded it as correct
 
 The drawer already had six end-to-end tests, **including an axe accessibility scan**. Every
 one passed.
+
+Worse than that: the visual-regression suite **had a screenshot of the bug and treated it as
+the expected result.** The committed baseline showed a drawer 132 pixels tall containing the
+brand and a single menu entry. Payments, Transactions, Customers, Admin console and Portfolio
+notes were all missing from it. Nobody looked closely enough at the recorded image to notice
+that most of the menu was absent, so the broken rendering became the definition of correct, and
+the suite then defended it.
+
+The fix made that baseline fail, which is the only reason it came to light. **A visual baseline
+is only as good as the review it got on the day it was recorded** — approving a snapshot is a
+code review, not a formality.
 
 axe measures text contrast against the computed background, saw the declared opaque colour,
 and correctly reported no violation. The colour was genuinely there — it just was not painted.

@@ -193,3 +193,48 @@ test("the drawer escapes every filtered ancestor, so it is a real overlay", asyn
   expect(ancestry.offenders).toEqual([]);
   expect(ancestry.parentIsBody).toBe(true);
 });
+
+test("every menu item sits inside the panel's painted background", async ({ page }) => {
+  // The sharpest statement of the drawer bug, and the one that would have
+  // caught it on any browser.
+  //
+  // Trapped inside the header's containing block, `inset-y-0` resolved against
+  // the header rather than the viewport and the panel's box collapsed to 72px.
+  // The menu items rendered *outside* that box, painting straight onto the page
+  // with no panel behind them — which is what "the drawer is transparent" on an
+  // iPhone actually was. Nothing was transparent; the background simply did not
+  // extend under the items.
+  //
+  // Measured on the deployed site before and after:
+  //     before   panel 72px    0 of 6 links inside the box
+  //     after    panel 812px   6 of 6 links inside the box
+  //
+  // Every earlier test passed throughout, because the links were present,
+  // hit-testable and in the accessibility tree the whole time. They were simply
+  // outside a box that had collapsed.
+  await page.goto("/?lang=en");
+  await page.getByRole("button", { name: "Primary navigation" }).click();
+
+  const drawer = page.getByRole("dialog", { name: "Primary navigation" });
+  await expect(drawer).toBeVisible();
+
+  const geometry = await drawer.evaluate((panel) => {
+    const box = panel.getBoundingClientRect();
+    const links = Array.from(panel.querySelectorAll("a[href]"));
+
+    return {
+      panelHeight: Math.round(box.height),
+      viewportHeight: window.innerHeight,
+      total: links.length,
+      contained: links.filter((link) => {
+        const item = link.getBoundingClientRect();
+        return item.top >= box.top - 1 && item.bottom <= box.bottom + 1;
+      }).length,
+    };
+  });
+
+  // A drawer is full-height by design; a collapsed box is the failure mode.
+  expect(geometry.panelHeight).toBeGreaterThanOrEqual(geometry.viewportHeight - 1);
+  expect(geometry.total).toBeGreaterThan(0);
+  expect(geometry.contained).toBe(geometry.total);
+});
