@@ -47,11 +47,18 @@ deployment and no API URL or key reaches the client.
 
 | Piece | Location | Responsibility |
 | --- | --- | --- |
-| Dashboard | `apps/web` | Server-rendered operations view; proxies checkout |
-| API | `apps/api` | Health, metrics, transactions, checkout, webhooks |
-| Database | `database/postgres` | Users, payments, transactions, audit logs |
+| Dashboard | `apps/web` | Server-rendered operations view; proxies checkout and the admin API |
+| Vue client | `apps/web-vue` | Vue 3 + Pinia SPA on the same API, with its own operator area |
+| Svelte client | `apps/web-svelte` | SvelteKit (static adapter) on the same API, data via `load` |
+| Shared contract | `packages/api-contract` | One Zod description of every response, validated by all three clients |
+| API | `apps/api` | Health, readiness, metrics, ledger reads, checkout, webhooks, auth, admin |
+| Reconciler | `services/reconciler` | **Go.** Re-derives payment state from the event log and disagrees with the payments table when they diverge |
+| Database | `database/postgres` | Users, payments, transactions, audit logs, sessions, refund requests |
 | Migrations | `apps/api/src/database/migrate.ts` | Ordered, recorded, transactional |
-| Pipeline | `.github/workflows/ci.yml` | Typecheck, lint, unit, integration, end-to-end |
+| Container | `apps/api/Dockerfile` | Multi-stage, non-root, health-checked against `/ready` |
+| Orchestration | `infrastructure/kubernetes` | Applied manifests; probes split across `/ready` and `/health` |
+| Pipeline | `.github/workflows/ci.yml` | Eight jobs: API, container, reconciler, three clients, visual, end-to-end |
+| Monitoring | `.github/workflows/production-watch.yml` | Hourly smoke against production; a failed run is an email |
 
 ## Data model
 
@@ -99,8 +106,49 @@ The platform is built to degrade visibly rather than pretend.
 - The API is unreachable when the dashboard renders: the signed-out state is shown rather
   than a 500, so the private half can never take the public half down
 
+## Operational surface
+
+Two health endpoints, deliberately answering different questions. Conflating them is how a
+deploy passes its check and then serves 500s.
+
+| Endpoint | Question | When the database is unreachable |
+| --- | --- | --- |
+| `/api/v1/health` | Is this process alive and what does it know? | **200**, `status: degraded` — a process that can describe its own degradation is worth inspecting, not killing |
+| `/api/v1/ready` | May traffic come here? | **503** — the instance leaves the load balancer's pool rather than accepting payments it cannot record |
+
+Demonstrated rather than asserted: removing the database from a running Kubernetes
+deployment took both pods out of the Service's endpoints with `restarts=0`, and restoring
+it returned them with no intervention. Transcript in
+[KUBERNETES.md](../runbooks/KUBERNETES.md).
+
+Every log line is JSON carrying a request id, and the same id is returned to the caller in
+`x-request-id`. An upstream id is honoured so a trace beginning at a proxy survives — but
+validated first, because that value is echoed into a response header and written into logs.
+
+Every response on every origin carries security headers. The API, serving only JSON to
+programs, can afford the strictest set: `default-src 'none'; frame-ancestors 'none'`,
+`nosniff`, `DENY`, `no-referrer`, HSTS, and `cross-origin-resource-policy: same-origin`.
+
+## Independent verification
+
+The ledger is checked by something that does not share its code.
+
+`services/reconciler` is a Go program that reads the database directly, re-derives every
+payment's status from the append-only `transactions` log, and exits non-zero when that
+disagrees with the `payments` table. It is a separate process in a different language on
+purpose: a checker built inside the API would inherit the API's model of a refund and
+therefore agree with the API's bugs. It reads and never writes — something able to "fix" a
+discrepancy is able to destroy the evidence of it.
+
+The case that makes it non-trivial is partial refunds, which emit the same event type as
+full ones. "A refund event exists, therefore refunded" would flag every partially refunded
+payment, and a report with false positives is a report nobody opens.
+
 ## Related reading
 
 - [Decision records](../decisions/) — why the significant choices were made
 - [Quality strategy](../QUALITY_STRATEGY.md) — how the system is tested
 - [Local development](../runbooks/LOCAL_DEVELOPMENT.md) — how to run it
+- [Container](../runbooks/CONTAINER.md) — the image, and what it was verified to do
+- [Kubernetes](../runbooks/KUBERNETES.md) — the manifests, and the failure mode they were tested against
+- [Reconciler](../../services/reconciler/README.md) — why the ledger check is written in Go

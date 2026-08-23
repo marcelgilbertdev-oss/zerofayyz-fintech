@@ -104,14 +104,28 @@ passwords, and nothing that could identify or locate a person.
 - Writing tests that are structured around how software actually fails
 - Setting up a pipeline that checks all of this automatically
 - Documenting decisions so that the next person inherits the reasoning, not just the code
+- Running it, not only building it: structured logs with request correlation, readiness
+  separated from liveness, hourly monitoring with alerting, a container that has served
+  traffic, and Kubernetes manifests whose failure mode was tested rather than assumed
+- Checking the system with something that does not share its code — an independent ledger
+  reconciler in Go, because a checker built inside the application agrees with its bugs
 
 ## The honest limits
 
 It is a portfolio prototype, not a product. No real money moves, and there are no real
-customers. The administrator console reads far more than it changes — issuing refunds and
-managing accounts are the next things to build. The payment path was finished properly
-before any of the rest began, on the view that one complete thing is worth more than three
-partial ones.
+customers.
+
+What it does *not* have is named deliberately, because absence should be a decision rather
+than an oversight: no Solidity or React Native client, no TimescaleDB, no managed
+Kubernetes operations under real load, no benchmarking at production scale. The dashboard
+ships `frame-ancestors 'none'` but no `script-src` — Next.js hydrates through inline
+scripts, and a policy with `unsafe-inline` would announce a CSP while permitting exactly
+what CSP exists to stop, so the nonce work is deferred rather than faked.
+
+The payment path was finished properly before any of the rest began, on the view that one
+complete thing is worth more than three partial ones. Refunds, account management, the
+ledger pages, and the operational half all followed on that same principle — each finished
+and tested before the next began.
 
 Those limits are stated in the project's own README as well. A system that is honest about
 what it does not do is easier to trust about what it does.

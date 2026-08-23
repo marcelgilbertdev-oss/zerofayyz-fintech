@@ -22,6 +22,7 @@ around how payment systems actually fail, and everything is gated by CI.
 - **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 - **Case study (non-technical):** [docs/portfolio/CASE_STUDY.md](docs/portfolio/CASE_STUDY.md)
 - **Manual acceptance test:** [docs/runbooks/MANUAL_ACCEPTANCE_TEST.md](docs/runbooks/MANUAL_ACCEPTANCE_TEST.md)
+- **Context pack for an AI assistant:** [docs/knowledge/EXTERNAL_AI_CONTEXT.md](docs/knowledge/EXTERNAL_AI_CONTEXT.md)
 
 ## Stack
 
