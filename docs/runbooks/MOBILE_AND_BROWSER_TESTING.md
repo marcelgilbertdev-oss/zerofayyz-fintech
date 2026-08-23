@@ -71,6 +71,11 @@ rendering faults — the layer-promotion class above among them — can still sl
 The closest thing to an iPhone without holding one. Also, separately, what any future iOS app
 will be developed against.
 
+This is installed and working on the development machine, and it is what confirmed the drawer
+fix: Chromium could not reproduce the fault, so the portal change was verified by opening the
+live site on a booted iPhone 17 and photographing a solid drawer where a transparent one had
+been.
+
 **Setup.** Since Xcode 15, Apple ships the SDK with Xcode but requires the simulator *runtime*
 — the actual iOS image — to be downloaded separately. Check what is present:
 
@@ -86,17 +91,25 @@ dozens of iPhones. Those are device *definitions* with no OS to run. Install it 
 xcodebuild -downloadPlatform iOS
 ```
 
-That is a multi-gigabyte download and may ask for an administrator password. Afterwards:
+About 8.5 GB, so do it on good broadband. It needed no administrator password. Then create and
+boot a device — the runtime and device-type identifiers are the exact strings, not the display
+names:
 
 ```bash
-xcrun simctl create "iPhone 17" "iPhone 17"
+xcrun simctl create "iPhone 17" \
+  com.apple.CoreSimulator.SimDeviceType.iPhone-17 \
+  com.apple.CoreSimulator.SimRuntime.iOS-26-5
 xcrun simctl boot "iPhone 17"
 open -a Simulator
-xcrun simctl openurl booted "https://zerofayyz-fintech.vercel.app"
+xcrun simctl openurl booted "https://zerofayyz-fintech.vercel.app/customers?lang=en"
 ```
 
-To point a simulator at a local build, use `http://localhost:PORT` — the simulator shares the
-host's network.
+To point it at a local build use `http://localhost:PORT`; the simulator shares the host's
+network.
+
+**A wrinkle worth knowing:** Safari opens on its Start Page card the first time. Dismissing it
+by tapping where the close button appears can land in Settings instead — press HOME and reissue
+`openurl`, which brings Safari forward on the page you asked for.
 
 ### 4. An actual iPhone — the only ground truth
 
