@@ -8,7 +8,19 @@ services:
     name: zerofayyz-fintech-api
     runtime: node
     rootDir: apps/api
-    plan: free
+    # Declared here, not only in the dashboard, because this service is
+    # Blueprint-managed: "if any of those changes conflict with configuration
+    # defined in the Blueprint, they're overwritten the next time you sync your
+    # Blueprint." Left at `free`, this line would have silently reverted the
+    # paid upgrade on some later sync and restored the 15-minute spin-down with
+    # nobody having touched anything.
+    #
+    # Why it is paid at all, since $7/month deserves its reason in writing:
+    # Render "spins down a Free web service that goes 15 minutes without
+    # receiving any inbound traffic", and waking it measured 27-38 seconds. A
+    # reviewer opens this link at an unpredictable moment, so the free tier made
+    # their first impression a coin flip.
+    plan: starter
     # Colocated with the Neon database and the Vercel function region. Split
     # them across continents and a single page load pays three intercontinental
     # round-trips: viewer to Vercel, Vercel to API, API to database.
