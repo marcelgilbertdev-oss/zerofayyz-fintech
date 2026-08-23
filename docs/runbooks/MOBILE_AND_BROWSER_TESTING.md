@@ -11,21 +11,36 @@ The mobile navigation drawer was unreadable on an iPhone. Opening it showed the 
 straight through the panel: customer rows interleaved with menu items, the menu text painting
 on top of them. The links still worked. They were simply invisible.
 
-The drawer's background was never missing. It computed `rgb(8, 19, 16)` at full opacity. The
-problem was the element beside it:
+The drawer's background was never missing. It computed `rgb(8, 19, 16)` at full opacity.
+
+### The first diagnosis, which was wrong
+
+The panel sits next to a scrim carrying `backdrop-blur-sm`. `backdrop-filter` promotes an
+element to its own compositing layer, and the panel had no `z-index` — so its order was implied
+by DOM position. The theory was that iOS composites a promoted sibling above an un-promoted
+one. Explicit z-indexes went in, shipped, and **changed nothing on the phone.**
+
+It is a real hazard and the z-indexes were kept. It was not this bug. Two siblings were being
+ordered correctly *inside a container that was itself the problem*.
+
+### The actual cause
+
+`MobileNav` is used inside the page header, and that header carries:
 
 ```
-backdrop   backdrop-blur-sm   → promoted to its own compositing layer
-panel      z-index: auto      → not promoted; order implied by DOM position only
+bg-[#07110f]/80  backdrop-blur-xl
 ```
 
-`backdrop-filter` promotes an element to a hardware layer. Chromium still paints positioned
-siblings in DOM order, so the panel covered the backdrop and everything looked right. **iOS
-Safari, once a sibling has been promoted, composites that layer above the un-promoted one** —
-so the blurred page slid over the drawer's background while its text kept painting above.
+An element with a backdrop-filter establishes a stacking context **and a containing block for
+fixed-position descendants**. So `fixed inset-0 z-50` never escaped the header. The drawer was
+not a top-level overlay at all — it was being composited inside a parent that is 80%
+transparent and blurring whatever sits behind it. That is precisely the reported symptom: the
+page visible through the menu, menu text painted on top.
 
-The fix is to stop relying on implied order: the backdrop is `z-0`, the panel is `z-10`, and
-the container is `isolate`.
+The fix is `createPortal` to `document.body`, which removes the subtree relationship entirely.
+
+**The lesson, and it cost a wrong fix to learn:** when an overlay renders incorrectly, check
+what it is nested inside before adjusting how its own children stack.
 
 ### What did not catch it
 
@@ -38,10 +53,16 @@ and correctly reported no violation. The colour was genuinely there — it just 
 with it.** Nor could the Playwright suite have caught it: it runs on Chromium, which does not
 exhibit the bug by construction.
 
-The regression test added afterwards therefore pins the *invariant*, not the appearance — both
-siblings carry an explicit `z-index`, the panel's is higher, and its background is opaque
-`rgb()` with no alpha. It was confirmed to fail with the `z-index` removed before being
-committed, because a guard that cannot fail is not a guard.
+The regression tests therefore pin *invariants*, not the appearance, because the structure
+differs between broken and fixed in every browser while the rendering only differs on iOS:
+
+- the panel's ancestors apply no `backdrop-filter`, `filter` or `transform`, and its parent is
+  `document.body` — removing the portal fails this, naming three offending ancestors
+- both siblings carry an explicit `z-index`, the panel's is higher, and its background is
+  opaque `rgb()` with no alpha
+
+Each was confirmed to fail with its fix reverted before being committed, because a guard that
+cannot fail is not a guard.
 
 ---
 
@@ -55,7 +76,8 @@ cd apps/web && npm run test:e2e -- mobile-nav.spec.ts
 
 Catches layout, overflow, focus handling, scroll locking and accessibility-tree problems. It
 runs in CI on every push. **It cannot catch a WebKit rendering difference**, and the drawer bug
-above is the standing proof.
+above is the standing proof — it passed throughout, including on the version that shipped
+broken to a phone.
 
 ### 2. macOS Safari — real WebKit, already installed
 
