@@ -22,6 +22,8 @@ around how payment systems actually fail, and everything is gated by CI.
 - **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 - **Case study (non-technical):** [docs/portfolio/CASE_STUDY.md](docs/portfolio/CASE_STUDY.md)
 - **Manual acceptance test:** [docs/runbooks/MANUAL_ACCEPTANCE_TEST.md](docs/runbooks/MANUAL_ACCEPTANCE_TEST.md)
+- **Hosting, accounts and cost:** [docs/runbooks/HOSTING_AND_ACCOUNTS.md](docs/runbooks/HOSTING_AND_ACCOUNTS.md)
+- **Phone and browser testing:** [docs/runbooks/MOBILE_AND_BROWSER_TESTING.md](docs/runbooks/MOBILE_AND_BROWSER_TESTING.md)
 - **Context pack for an AI assistant:** [docs/knowledge/EXTERNAL_AI_CONTEXT.md](docs/knowledge/EXTERNAL_AI_CONTEXT.md)
 - **The briefing — everything built and why:** [docs/portfolio/THE_BRIEFING.md](docs/portfolio/THE_BRIEFING.md)
 
