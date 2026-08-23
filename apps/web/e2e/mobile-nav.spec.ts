@@ -102,3 +102,42 @@ test("the phone-width dashboard never scrolls sideways", async ({ page }) => {
 
   expect(overflows).toBe(false);
 });
+
+test("the drawer declares its stacking order rather than relying on DOM order", async ({
+  page,
+}) => {
+  // A phone-only rendering bug that no desktop browser reproduces.
+  //
+  // The backdrop uses backdrop-blur, which promotes it to its own compositing
+  // layer. The panel had no z-index, so its position was implied by DOM order —
+  // which Chromium honours and iOS Safari, once a sibling is promoted, does
+  // not. On an iPhone the blurred page composited over the drawer's opaque
+  // background while its text kept painting above, and the whole menu was
+  // unreadable. Found on a real phone, not by this suite.
+  //
+  // The symptom cannot be reproduced here, so this pins the invariant instead:
+  // both siblings state their order explicitly, and the panel is above.
+  await page.goto("/customers?lang=en");
+  await page.getByRole("button", { name: "Primary navigation" }).click();
+
+  const drawer = page.getByRole("dialog", { name: "Primary navigation" });
+  await expect(drawer).toBeVisible();
+
+  const layers = await drawer.evaluate((panel) => {
+    const backdrop = panel.parentElement?.querySelector("button[aria-hidden='true']");
+
+    return {
+      panelZ: getComputedStyle(panel).zIndex,
+      backdropZ: backdrop ? getComputedStyle(backdrop).zIndex : null,
+      // An opaque panel is the other half of the contract: even correctly
+      // stacked, a translucent background would show the page through it.
+      panelBackground: getComputedStyle(panel).backgroundColor,
+    };
+  });
+
+  expect(layers.panelZ).not.toBe("auto");
+  expect(layers.backdropZ).not.toBe("auto");
+  expect(Number(layers.panelZ)).toBeGreaterThan(Number(layers.backdropZ));
+  // rgb() with no alpha channel — anything with transparency fails here.
+  expect(layers.panelBackground).toMatch(/^rgb\(/);
+});

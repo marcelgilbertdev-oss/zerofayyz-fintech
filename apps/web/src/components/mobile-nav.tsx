@@ -99,15 +99,26 @@ export function MobileNav({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50">
+        // `isolate` keeps the z-indexes below scoped to this overlay rather
+        // than competing with anything the page sets.
+        <div className="fixed inset-0 isolate z-50">
           {/* Inert background: a click anywhere outside dismisses, and
-              aria-hidden keeps the page behind out of the reader's path. */}
+              aria-hidden keeps the page behind out of the reader's path.
+
+              The explicit z-0 is load-bearing, not tidiness. `backdrop-blur`
+              promotes this element to its own compositing layer, and iOS Safari
+              then composites that layer above a sibling that has no z-index of
+              its own — so the drawer's opaque background disappeared underneath
+              the blurred page while its text kept painting on top. The drawer
+              was unreadable on an iPhone and correct in every desktop browser,
+              because Chromium paints positioned siblings in DOM order and never
+              reproduces it. Found on a real phone; see the pairing z-10 below. */}
           <button
             type="button"
             aria-hidden="true"
             tabIndex={-1}
             onClick={() => setOpen(false)}
-            className="absolute inset-0 h-full w-full cursor-default bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 z-0 h-full w-full cursor-default bg-black/60 backdrop-blur-sm"
           />
           <div
             ref={panelRef}
@@ -115,7 +126,10 @@ export function MobileNav({
             role="dialog"
             aria-modal="true"
             aria-label={labels.primaryLabel}
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.07] bg-[#081310] px-5 py-6 shadow-2xl"
+            // z-10 states the stacking order the layout always assumed. Without
+            // it the panel relies on DOM order, which the compositor is free to
+            // disregard once a sibling has been promoted.
+            className="absolute inset-y-0 left-0 z-10 flex w-72 max-w-[85vw] flex-col border-r border-white/[0.07] bg-[#081310] px-5 py-6 shadow-2xl"
           >
             <div className="flex items-center justify-between gap-3">
               <div>
