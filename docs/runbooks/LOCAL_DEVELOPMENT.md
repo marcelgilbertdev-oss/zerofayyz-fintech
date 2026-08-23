@@ -154,7 +154,7 @@ from scratch.
 | Webhook returns 400 | Signature mismatch — the secret does not match the running listener |
 | Migration fails with a missing column | A migration was added after the container was created; run `npm run migrate` |
 | Buttons do nothing in the browser | Dev-server origin mismatch; use the same hostname the server started on |
-| CI fails on `npm ci` with "Missing: @emnapi/... from lock file" | A macOS `npm install` pruned Linux-only optional dependencies from the lock. Run `npm run relock` in `apps/web` and commit the result |
+| CI fails on `npm ci` with "Missing: @emnapi/... from lock file" | A macOS `npm install` pruned Linux-only optional dependencies from the lock. Run `npm run relock` in `apps/web`, then `npm run verify:lock` to prove it before pushing, and commit the result |
 
 ## After adding a web dependency
 
@@ -166,6 +166,18 @@ CI runner while everything works locally. After adding or upgrading anything in
 ```bash
 cd apps/web && npm run relock
 ```
+
+Then confirm the result actually satisfies Linux — this failure has reached CI three
+times, and every one of them was avoidable from a laptop:
+
+```bash
+cd apps/web && npm run verify:lock
+```
+
+That runs the exact `npm ci` CI runs, inside a Linux container, against nothing but the
+two files that matter. It prints `added N packages` on success and the same
+`Missing: ... from lock file` error on failure — thirty seconds locally instead of a
+red pipeline.
 
 That does a full fresh resolve, which is the only reliable way to get every
 platform's variants into the lock. Commit the regenerated lockfile.
