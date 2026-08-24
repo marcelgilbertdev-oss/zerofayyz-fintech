@@ -5,7 +5,7 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-08-23:** live, 269 automated tests, 28/28 production smoke, 8 CI jobs
+**Status as of 2026-08-24:** live, 284 automated tests, 28/28 production smoke, 8 CI jobs
 green. Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
 github.com/marcelgilbertdev-oss/zerofayyz-fintech. **Separate from the gabriel repo — no
 shared code.**

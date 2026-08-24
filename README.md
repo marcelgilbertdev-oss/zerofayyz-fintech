@@ -115,11 +115,15 @@ TypeScript throughout, ESM, Node 20+.
   read-only root filesystem, `maxUnavailable: 0`, and readiness and liveness probes pointed at
   different endpoints. Removing the database took both pods out of the Service's endpoints with
   zero restarts, which is the whole argument for having two health endpoints, demonstrated
-- Error tracking wired but inert without a DSN, with credential-bearing headers scrubbed before
-  any event leaves the process
+- Error tracking live in production, reporting with the request id attached so an issue and a
+  log line point at the same request — and scrubbed explicitly rather than by SDK default:
+  cookies, `authorization`, `stripe-signature`, `set-cookie` and the whole query string are
+  stripped before any event leaves the process, because on a payments API an unscrubbed error
+  report turns an incident dashboard into a credential store. Inert without a DSN by design,
+  and `/health` says `unconfigured` rather than pretending
 - Visual regression on the chrome at desktop and phone width, deliberately excluding
   data-driven pages: a suite that fails whenever the ledger moves is one people learn to ignore
-- 269 automated tests across seven suites, all gated in CI, plus a 28-check smoke suite
+- 284 automated tests across eight suites, all gated in CI, plus a 28-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture

@@ -134,6 +134,7 @@ URLs only.
 | Vercel | Three projects: `-fintech`, `-vue`, `-svelte` | Free Hobby |
 | Neon | PostgreSQL | Free |
 | Stripe | **Test mode only** — no real charge is possible | Free |
+| Sentry | Error tracking for the API; `SENTRY_DSN` set in Render only | Free |
 
 ### Sign-ins inside the application
 

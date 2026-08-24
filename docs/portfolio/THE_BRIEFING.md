@@ -25,7 +25,7 @@ It is sandbox only. No real money moves, ever.
   with it
 - **PostgreSQL** underneath all of it
 
-**The numbers:** 269 automated tests across seven suites, 28 production checks running
+**The numbers:** 284 automated tests across eight suites, 28 production checks running
 hourly, 8 CI jobs, all green.
 
 **The one sentence to have ready:** *"It's a payments platform — the API, three frontends,
@@ -66,7 +66,7 @@ can list features, and almost nobody can explain the reasoning.
 
 | Built | Why |
 |---|---|
-| 269 tests in seven layers | Each layer catches what the one beneath structurally cannot |
+| 284 tests in eight layers | Each layer catches what the one beneath structurally cannot |
 | Integration tests against real PostgreSQL | **The story:** the webhook had nineteen passing unit tests and had never worked. Every test stubbed the database, so none ran the real SQL — and the SQL was invalid |
 | Accessibility scanned at two viewports | Adding phone width found a real WCAG failure that had been shipping under a green suite |
 | Visual regression on the chrome | Catches layout silently breaking. Scoped to surfaces without live data, because a suite that fails whenever the ledger moves is one people learn to ignore |
@@ -83,6 +83,22 @@ can list features, and almost nobody can explain the reasoning.
 | A container, non-root, health-checked | Built *and started* in CI on every push, because a Dockerfile nobody has run is decoration |
 | Kubernetes manifests | Applied to a real cluster and tested by removing the database: both pods left the load balancer with **zero restarts** |
 | Security headers everywhere | Asserted exactly, including on error pages, and verified from the wire |
+| Error tracking that cannot become a credential store | Sentry reports carry the request id, so an issue and a log line point at the same request. The scrubbing is written explicitly rather than left to the SDK: cookies, `authorization`, `stripe-signature`, `set-cookie` and the entire query string are stripped before anything leaves the process |
+
+**The one in that table worth saying out loud.** "We added error tracking" is a sentence
+everybody has. **"We added error tracking and made sure it couldn't become a credential
+store"** is not.
+
+Sentry captures request context by default, and this is a payments API: session tokens live in
+cookies, and the Stripe signature header is a shared secret. An error report that shipped
+either would quietly turn an incident dashboard into a place where credentials accumulate —
+searchable, retained, and visible to anyone with dashboard access. So the scrubbing is
+configured in `apps/api/src/observability/error-tracking.ts` rather than trusted to defaults.
+
+The same file makes a second choice worth defending: **it initialises only when `SENTRY_DSN`
+is present.** With no DSN the subsystem is inert, the API behaves identically, and `/health`
+reports `unconfigured` rather than pretending. A platform should not be hostage to a third
+party being wired up.
 
 ### Three frontends
 
@@ -99,7 +115,7 @@ This is the section to reread before each interview.
 ### Tiger Data — Senior Test Tooling Engineer · *global remote*
 **They care about:** release process ownership, GitHub Actions, Python, PostgreSQL,
 stress testing and benchmarking.
-**Show them:** the seven test layers, the 8 CI jobs, the smoke suite, the load test.
+**Show them:** the eight test layers, the 8 CI jobs, the smoke suite, the load test.
 **Lead with:** the webhook that had nineteen passing tests and had never worked — it is a
 *PostgreSQL* defect at a PostgreSQL company, found by changing test infrastructure rather
 than by writing more assertions.
@@ -154,8 +170,10 @@ phishing-simulation security product.
 **Show them:** the SvelteKit client with its real `load` function.
 **Lead with:** the security posture the frontend does *not* invent — enumeration defence,
 the audit trail, refusals surfaced verbatim rather than softened.
-**Also strong:** Sentry is wired; Go is in the repository doing real work; your visual
-regression covers Chromatic's job with an honest explanation of the scoping.
+**Also strong:** Sentry is not just wired — the scrubbing is written explicitly so cookies,
+`authorization` and `stripe-signature` never reach the error dashboard. On a *security*
+product that detail is the one they will recognise. Go is in the repository doing real work,
+and your visual regression covers Chromatic's job with an honest explanation of the scoping.
 **Admit:** the posting says senior and your software career is short. The line that works:
 *"My career leading technical teams is twenty-one years. What I have one year of is the
 syntax."* Also: no Gmail/Outlook extension work.

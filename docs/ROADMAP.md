@@ -124,7 +124,10 @@ endpoint exists; nothing consumed it until the first slice below.
   at a proxy survives — but validated first, since that value is echoed into a response
   header and written into logs. Tests refuse CRLF header splitting, a 500-character flood,
   and a quote-brace sequence that would corrupt the JSON a log query depends on.
-- Error tracking, and an alert when the webhook endpoint starts returning non-2xx
+- ~~Error tracking~~ — **shipped**: Sentry live in production, reports carry the request id,
+  and cookies/`authorization`/`stripe-signature`/`set-cookie`/query string are scrubbed before
+  any event leaves the process. Still open: an alert when the webhook endpoint starts
+  returning non-2xx
 - Alert routing, so a broken webhook reaches a person rather than a log file
   (the audit log panel this phase originally planned shipped in Phase 3)
 

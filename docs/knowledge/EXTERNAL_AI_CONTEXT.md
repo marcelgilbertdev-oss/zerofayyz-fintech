@@ -75,8 +75,8 @@ checker sharing code with what it checks agrees with its bugs. It reads and neve
 
 ## Current numbers (2026-08-23)
 
-- **269 automated tests** across seven suites: 79 API unit · 42 integration against real
-  PostgreSQL · 61 Playwright end-to-end · 40 Vue · 29 Svelte · 12 Go · 6 visual regression
+- **284 automated tests** across eight suites: 79 API unit · 42 integration against real
+  PostgreSQL · 11 web unit · 65 Playwright end-to-end · 40 Vue · 29 Svelte · 12 Go · 6 visual regression
 - **28/28** production smoke checks, run hourly against the live system
 - **8 CI jobs**, all green
 - Load test: p95 ≤ 405ms, zero errors at 10 concurrent

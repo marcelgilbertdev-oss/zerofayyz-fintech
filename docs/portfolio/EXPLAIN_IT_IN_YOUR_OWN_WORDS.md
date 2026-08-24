@@ -123,7 +123,7 @@ costs a join and it's what makes the ledger auditable."*
 | Client (Vue/Svelte) | 67 | Contract validation, state, sign-in, partial failure | — |
 | Production smoke | 26 | That what *shipped* actually runs | — |
 
-**Say:** *"269 automated tests plus 28 production checks, all gated in CI.
+**Say:** *"284 automated tests plus 28 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
 structurally cannot — the integration suite exists because 19 green unit tests
 never once executed the SQL that was broken."*
@@ -315,6 +315,30 @@ The test I'm proudest of takes the database down and asserts both at once —
 from outside, so I scheduled it hourly. A failed scheduled run is an email to
 me. That's monitoring with a person on the end of it, and it needed no new
 infrastructure to operate or pay for."*
+
+**On error tracking — this is the one they don't expect:** *"Logs answer 'what
+happened to this one request'. They don't answer 'is this error new, how often
+is it happening, and did the last deploy cause it' — that's what an error
+tracker is for, and it's the difference between logs somebody could read and
+errors somebody actually sees. Reports carry the request id, so a Sentry issue
+and a log line point at the same request."*
+
+*"The part I'd want you to look at is the scrubbing. Sentry captures request
+context by default, and this is a payments API — session tokens live in
+cookies and the Stripe signature header is a shared secret. So cookies,
+authorization, stripe-signature, set-cookie and the entire query string are
+stripped before anything leaves the process, configured explicitly rather than
+trusted to the SDK's defaults. Otherwise you've turned an incident dashboard
+into a place credentials accumulate: searchable, retained, and visible to
+everyone with dashboard access. 'We added error tracking' is common. 'We added
+error tracking and made sure it couldn't become a credential store' is the
+version that matters on a payments system."*
+
+**And on it being optional:** *"It initialises only when a DSN is present. With
+no DSN the subsystem is inert, the API behaves identically, and /health reports
+'unconfigured' rather than pretending. I didn't want the platform hostage to a
+third party being wired up — and I didn't want a health page that lies about
+it either."*
 
 **On the container:** *"Multi-stage, so the toolchain that built it doesn't
 ship. Production dependencies re-resolved, so TypeScript and the test tooling
