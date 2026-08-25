@@ -75,10 +75,16 @@ export function formatMoney(
 ): string {
   // Minor units are exact; rounding would stop the tiles reconciling with the
   // ledger beneath them.
-  return new Intl.NumberFormat(INTL_TAG[locale], {
+  const formatter = new Intl.NumberFormat(INTL_TAG[locale], {
     style: "currency",
     currency,
-  }).format(amountMinor / 100);
+  });
+  // A minor unit is not always a hundredth: JPY has none (Stripe's amountMinor
+  // for ¥25,000 is 25000, not 2500000), so a blanket /100 would display yen a
+  // hundred times too small. The formatter already knows each currency's
+  // fraction digits, so the divisor comes from it rather than from a constant.
+  const fractionDigits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
+  return formatter.format(amountMinor / 10 ** fractionDigits);
 }
 
 export function formatCount(value: number, locale: Locale): string {
