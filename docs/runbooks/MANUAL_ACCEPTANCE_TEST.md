@@ -88,7 +88,7 @@ on a Japanese page.
 | 1 | **Overview** | left sidebar, top nav item |
 | 2 | **English** | top bar, right side |
 | 3 | **日本語** | top bar, right side |
-| 4 | **amount field** | top bar, shows `$ 42.00` |
+| 4 | **amount field** | top bar, shows `¥ 4200` |
 | 5 | **+ Test payment** | top bar, far right |
 
 Each stop shows a **mint-green ring** around the control — a 2px outline offset
@@ -624,7 +624,7 @@ automated**, smoke 20→22.
 twice, and both were caught.** CI went red on two lint errors (a
 setState-in-effect and a raw anchor where a Link belongs), fixed at the source
 rather than suppressed. And two test-side defects surfaced: the metrics suite's
-absolute assertions had silently assumed its rows were the only USD rows in the
+absolute assertions had silently assumed its rows were the only platform-currency rows in the
 database (now delta-based against a captured baseline), and a brand-new smoke
 check failed against healthy production because it read .data off its own
 helper's wrapper — logged here because a check that cries wolf gets ignored the

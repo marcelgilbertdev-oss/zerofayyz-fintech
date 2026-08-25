@@ -18,8 +18,8 @@ stay in Latin script, and dates switch to Japanese conventions.
 
 ## 2. Make a payment (60 seconds)
 
-Type any amount into the `$` field in the header — pick something memorable, like
-`137.42` — and click **+ Test payment**.
+Type any amount into the `¥` field in the header — pick something memorable, like
+`13742` — and click **+ Test payment**. Amounts are yen, so whole numbers only.
 
 Pay on Stripe's own page with test card `4242 4242 4242 4242`, any future expiry, any CVC.
 
