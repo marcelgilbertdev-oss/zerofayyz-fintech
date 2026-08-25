@@ -121,6 +121,44 @@ Free instances." It is a different thing that sounds like the same thing.
 
 ---
 
+## Pushing is not shipping
+
+On 2026-08-25 three commits sat on `main` with green CI while production kept
+serving the previous build for an hour. The Japanese dashboard showed dollar
+amounts the whole time, and every test in the repository said yen.
+
+Nothing was broken. **Auto-deploy had simply never been on.** Every deploy this
+service had ever run was triggered by hand, so no deploy was ever coming — and
+the failure mode of a deploy that never starts looks exactly like a deploy that
+is still going. There is no error to find, no red badge, nothing to search for.
+
+`render.yaml` now declares it:
+
+```yaml
+autoDeploy: true
+```
+
+It belongs in the Blueprint rather than the dashboard for the same reason
+`plan: starter` does — see the section above. A toggle set only in the UI can
+be overwritten on the next Blueprint sync, and the reversion would be silent.
+
+**The bootstrap is worth knowing.** A `render.yaml` change only takes effect
+once Render syncs the Blueprint, which happens during a deploy. So the fix for
+auto-deploy could not deploy itself; it needed one manual deploy to take hold.
+Any future Blueprint change has the same property.
+
+**How to actually verify it, rather than assume:** push a trivial commit and
+watch whether Render starts a deploy without anyone clicking. That is the only
+evidence that means anything — the setting being present in a file is not the
+same as the setting being in effect, which is the whole lesson of this section.
+
+**Two lessons, both learned the expensive way and both the same shape as the
+`keep-warm` measurement above:** a green pipeline is evidence that code is
+correct, never evidence that it reached anyone. And a control you have not
+watched work is a belief, not a control.
+
+---
+
 ## Accounts
 
 All accounts, cards, keys and passwords belong to the owner. **Claude never signs into any of
