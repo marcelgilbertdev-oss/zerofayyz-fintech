@@ -8,6 +8,13 @@ services:
     name: zerofayyz-fintech-api
     runtime: node
     rootDir: apps/api
+    # Declared here rather than left to the dashboard, for the same reason as
+    # `plan` below — and because its absence cost an hour on 2026-08-25. Three
+    # commits sat on main with green CI while production kept serving the
+    # previous build, because every deploy this service had ever run was
+    # triggered by hand. Green CI is evidence that code is correct, never
+    # evidence that it reached anyone.
+    autoDeploy: true
     # Declared here, not only in the dashboard, because this service is
     # Blueprint-managed: "if any of those changes conflict with configuration
     # defined in the Blueprint, they're overwritten the next time you sync your
