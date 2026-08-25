@@ -25,7 +25,7 @@ const health = {
 };
 
 const metrics = {
-  currency: "USD",
+  currency: "JPY",
   grossVolumeMinor: 122_200,
   succeededCount: 3,
   successRate: 75,
@@ -176,7 +176,7 @@ describe("checkout amount", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const dashboard = createDashboard();
-    await dashboard.checkout("173.50");
+    await dashboard.checkout("17,350");
 
     const init = fetchMock.mock.calls[0]?.[1];
     expect(JSON.parse(String(init?.body))).toEqual({ amountMinor: 17_350 });

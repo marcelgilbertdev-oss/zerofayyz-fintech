@@ -54,8 +54,10 @@ test("Japanese formats currency, numbers and dates in its own conventions", asyn
 
   const body = await page.locator("body").innerText();
 
-  // Intl renders USD as "$1,222.00" in en-US and "$1,222.00" in ja-JP too, but
-  // dates differ sharply — ja-JP uses 年/月/日 rather than "20 August 2026".
+  // Money is yen in both locales (Intl renders JPY as ¥ or ￥ depending on
+  // engine), and dates differ sharply — ja-JP uses 年/月/日 rather than
+  // "20 August 2026".
+  expect(body).toMatch(/[¥￥]/);
   expect(body).toMatch(/\d+年/);
   expect(body).toMatch(/\d+月/);
 });

@@ -47,7 +47,7 @@ describe("healthSchema", () => {
 
 describe("metricsSchema", () => {
   const valid = {
-    currency: "USD",
+    currency: "JPY",
     grossVolumeMinor: 122_200,
     succeededCount: 3,
     successRate: 75,
@@ -85,7 +85,7 @@ describe("transactionsSchema", () => {
         id: "6f9619ff-8b86-4d01-b42d-00cf4fc964ff",
         customer: { displayName: "Portfolio Recruiter", email: "p@zerofayyz.test" },
         amountMinor: 4_200,
-        currency: "USD",
+        currency: "JPY",
         status: "succeeded",
         methodLabel: "Stripe Checkout",
         createdAt: "2026-08-20T19:27:09.259Z",

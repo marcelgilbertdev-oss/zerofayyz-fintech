@@ -121,7 +121,7 @@ before(async () => {
   // Metrics are asserted as DELTAS against this baseline, captured after the
   // suite's own rows are cleaned and before any are inserted. The original
   // test asserted absolute figures, which silently assumed this suite's rows
-  // were the only USD rows in the database — true in the TRUNCATE era, false
+  // were the only JPY rows in the database — true in the TRUNCATE era, false
   // the moment the demo seed became restorable. A suite may assert what it
   // adds; the table's absolute contents belong to no one.
   {
@@ -145,7 +145,7 @@ before(async () => {
   await database.query(
     `
       INSERT INTO payments (id, user_id, amount_minor, currency, status, description)
-      VALUES ($1, $2, 4200, 'USD', 'processing', 'Integration checkout')
+      VALUES ($1, $2, 4200, 'JPY', 'processing', 'Integration checkout')
     `,
     [PAYMENT_ID, USER_ID],
   );
@@ -247,7 +247,7 @@ test("GET /api/v1/metrics aggregates real rows", async (context) => {
   assert.equal(response.statusCode, 200);
 
   const body = response.json();
-  assert.equal(body.currency, "USD");
+  assert.equal(body.currency, "JPY");
   // This suite's contribution: one payment that succeeded ($42.00, today) and
   // two recorded events. Its payment entered as processing and left as
   // succeeded, so pending is back where it started.

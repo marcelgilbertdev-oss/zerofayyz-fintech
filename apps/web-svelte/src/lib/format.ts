@@ -2,9 +2,11 @@
 
 export function money(amountMinor: number, currency: string): string {
   // Minor units are exact; rounding would stop tiles reconciling with the ledger.
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
-    amountMinor / 100,
-  );
+  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency });
+  // A minor unit is not always a hundredth: JPY has none, so the divisor comes
+  // from the currency's own fraction digits rather than from a constant.
+  const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
+  return formatter.format(amountMinor / 10 ** digits);
 }
 
 export function relative(iso: string): string {

@@ -73,13 +73,13 @@ export const useDashboardStore = defineStore("dashboard", {
         this.health || this.metrics || this.transactions ? "ready" : "error";
     },
 
-    async checkout(amount: string = "42.00") {
+    async checkout(amount: string = "4200") {
       const amountMinor = toMinorUnits(amount);
 
       // Refused here rather than round-tripping to the API for a 400 the user
       // would have to wait through. The route schema still validates it.
       if (amountMinor === null) {
-        this.checkoutError = "Enter an amount between $0.50 and $10,000.00";
+        this.checkoutError = "Enter an amount between ¥50 and ¥1,500,000";
         return;
       }
 

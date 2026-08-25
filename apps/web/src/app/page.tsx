@@ -209,7 +209,7 @@ type DashboardMetrics = {
 };
 
 const unavailableMetrics: DashboardMetrics = {
-  currency: "USD",
+  currency: "JPY",
   grossVolumeMinor: 0,
   succeededCount: 0,
   successRate: null,
@@ -332,7 +332,7 @@ export default async function Home({
       value: formatMoney(paymentMetrics.grossVolumeMinor, currency, locale),
       note: t.metrics.succeededNote(formatCount(paymentMetrics.succeededCount, locale)),
       tone: "positive",
-      glyph: "$",
+      glyph: "¥",
     },
     {
       label: t.metrics.succeededPayments,

@@ -9,7 +9,7 @@ import TransactionsTable from "./TransactionsTable.svelte";
 
 describe("MetricTiles", () => {
   const metrics = {
-    currency: "USD",
+    currency: "JPY",
     grossVolumeMinor: 122_200,
     succeededCount: 3,
     successRate: 75,
@@ -18,11 +18,11 @@ describe("MetricTiles", () => {
     dailyVolume: [],
   };
 
-  it("renders exact currency amounts — $227.50, not $228", () => {
+  it("renders whole-yen amounts — ¥122,200, never a /100 relic like ¥1,222", () => {
     render(MetricTiles, { props: { metrics } });
 
-    expect(screen.getByText("$1,222.00")).toBeTruthy();
-    expect(screen.getByText("$227.50")).toBeTruthy();
+    expect(screen.getByText("¥122,200")).toBeTruthy();
+    expect(screen.getByText("¥22,750")).toBeTruthy();
   });
 
   it("says there is no success rate rather than showing 0%", () => {
@@ -68,7 +68,7 @@ describe("TransactionsTable", () => {
               id: "6f9619ff-8b86-4d01-b42d-00cf4fc964ff",
               customer: { displayName: "Portfolio Recruiter", email: "p@zerofayyz.test" },
               amountMinor: 4_200,
-              currency: "USD",
+              currency: "JPY",
               status: "succeeded",
               methodLabel: "Stripe Checkout",
               createdAt: new Date().toISOString(),
@@ -81,7 +81,7 @@ describe("TransactionsTable", () => {
 
     expect(screen.getByRole("table")).toBeTruthy();
     expect(screen.getByText("Portfolio Recruiter")).toBeTruthy();
-    expect(screen.getByText("$42.00")).toBeTruthy();
+    expect(screen.getByText("¥4,200")).toBeTruthy();
   });
 
   it("shows an empty state instead of a bare table", () => {

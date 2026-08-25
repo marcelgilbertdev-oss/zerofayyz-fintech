@@ -26,7 +26,7 @@
   // but a chosen amount survives the Stripe round trip.
   const storedAmount = globalThis.sessionStorage?.getItem("zf_last_amount");
   let amount = $state(
-    storedAmount && toMinorUnits(storedAmount) !== null ? storedAmount : "42.00",
+    storedAmount && toMinorUnits(storedAmount) !== null ? storedAmount : "4200",
   );
 
   function rememberAndCheckout() {
@@ -50,12 +50,12 @@
         Test payment amount in US dollars
       </label>
       <div class="amount-field" class:invalid={!amountValid}>
-        <span aria-hidden="true">$</span>
+        <span aria-hidden="true">¥</span>
         <input
           id="amount"
           bind:value={amount}
           type="text"
-          inputmode="decimal"
+          inputmode="numeric"
           autocomplete="off"
           aria-describedby="amount-hint"
           aria-invalid={!amountValid}
@@ -65,7 +65,7 @@
         />
       </div>
       <p id="amount-hint" class="amount-hint" class:invalid={!amountValid}>
-        Any amount from $0.50 to $10,000.00
+        Any amount from ¥50 to ¥1,500,000
       </p>
       <button
         type="button"

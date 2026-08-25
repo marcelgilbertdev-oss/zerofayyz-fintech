@@ -20,8 +20,8 @@ import { toMinorUnits as contractParse } from "../../../packages/api-contract/sc
  * tsconfig.e2e.json, where the dependencies exist.
  */
 const CASES = [
-  "42.00", "0.50", "0.49", "10000.00", "10000.01", "1,234.56", "$17.35",
-  "17.355", "0", "-5", "", "   ", "abc", "1e3", "99.999", "7", "7.5",
+  "4200", "50", "49", "1500000", "1500001", "1,500,000", "¥4,200", "￥300",
+  "42.00", "17.35", "0", "-5", "", "   ", "abc", "1e3", "7", "7.5",
 ];
 
 test("the dashboard's money parsing matches the shared contract exactly", () => {
@@ -32,9 +32,12 @@ test("the dashboard's money parsing matches the shared contract exactly", () => 
   }
 });
 
-test("floating-point cents survive the round trip", () => {
-  // 17.35 * 100 is 1734.9999999999998; anything that multiplies floats fails here.
-  expect(contractParse("17.35")).toBe(1735);
-  expect(contractParse("0.70")).toBe(70);
-  expect(contractParse("8.29")).toBe(829);
+test("yen amounts are integers, and decimals are refused as non-amounts", () => {
+  // JPY is zero-decimal: a minor unit is one yen, and "17.35" is not an
+  // amount of yen at all. The float hazard the old cents test guarded
+  // (17.35 * 100 being 1734.999…) cannot arise when nothing is multiplied.
+  expect(contractParse("17350")).toBe(17350);
+  expect(contractParse("¥4,200")).toBe(4200);
+  expect(contractParse("17.35")).toBe(null);
+  expect(contractParse("0.70")).toBe(null);
 });

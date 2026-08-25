@@ -24,7 +24,7 @@ type DailyRow = {
  * Summing across currencies would be wrong, so every figure is scoped to a
  * single currency and the response says which one it used.
  */
-const DEFAULT_CURRENCY = "USD";
+const DEFAULT_CURRENCY = "JPY";
 const DAILY_VOLUME_DAYS = 12;
 
 const metricsResponseSchema = {

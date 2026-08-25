@@ -327,7 +327,7 @@ export const ledgerRoutes: FastifyPluginAsync<LedgerRouteOptions> = async (
                     displayName: { type: "string" },
                     email: { type: "string" },
                     paymentCount: { type: "integer", minimum: 0 },
-                    // USD-scoped, like /metrics: summing across currencies
+                    // JPY-scoped, like /metrics: summing across currencies
                     // produces a number that means nothing.
                     succeededVolumeMinor: { type: "integer", minimum: 0 },
                     lastPaymentAt: { type: ["string", "null"], format: "date-time" },
@@ -353,7 +353,7 @@ export const ledgerRoutes: FastifyPluginAsync<LedgerRouteOptions> = async (
                  COUNT(payments.id)::TEXT AS payment_count,
                  COALESCE(SUM(payments.amount_minor)
                    FILTER (WHERE payments.status = 'succeeded'
-                             AND payments.currency = 'USD'), 0)::TEXT
+                             AND payments.currency = 'JPY'), 0)::TEXT
                    AS succeeded_volume_minor,
                  MAX(payments.created_at) AS last_payment_at,
                  COUNT(*) OVER ()::TEXT AS total

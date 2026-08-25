@@ -70,7 +70,7 @@ export default async function CustomersPage({
                     </td>
                     <td className="px-4 py-3 text-white/70">{customer.paymentCount}</td>
                     <td className="px-4 py-3 font-semibold text-white/85">
-                      {formatMoney(customer.succeededVolumeMinor, "USD", locale)}
+                      {formatMoney(customer.succeededVolumeMinor, "JPY", locale)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-white/60">
                       {customer.lastPaymentAt

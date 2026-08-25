@@ -213,7 +213,7 @@ test("POST /api/v1/payments/checkout-session falls back to the demo amount", asy
 // any row is written and before Stripe is ever called.
 for (const [name, amountMinor] of [
   ["below the Stripe minimum", 49],
-  ["above the sandbox ceiling", 1_000_001],
+  ["above the sandbox ceiling", 1_500_001],
   ["negative", -500],
   ["fractional minor units", 42.5],
 ] as const) {

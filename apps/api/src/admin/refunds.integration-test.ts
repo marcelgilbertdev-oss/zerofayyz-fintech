@@ -96,8 +96,8 @@ beforeEach(async () => {
   await database.query(
     `
       INSERT INTO payments (id, user_id, amount_minor, currency, status, provider_payment_id, description)
-      -- EUR on purpose: the metrics endpoint aggregates one currency (USD), and
-      -- test files run in parallel against one database. A USD payment here
+      -- EUR on purpose: the metrics endpoint aggregates one currency (JPY), and
+      -- test files run in parallel against one database. A JPY payment here
       -- leaks into the ledger suite's gross-volume assertion; a EUR payment is
       -- invisible to it by the same currency-scoping the metrics document.
       VALUES ($1, $2, 13742, 'EUR', 'succeeded', 'pi_refund_suite', 'Refund suite payment')

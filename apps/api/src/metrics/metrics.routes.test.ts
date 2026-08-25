@@ -73,7 +73,7 @@ test("GET /api/v1/metrics derives every figure from PostgreSQL", async (context)
 
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.json(), {
-    currency: "USD",
+    currency: "JPY",
     grossVolumeMinor: 118_000,
     succeededCount: 2,
     successRate: 66.7,

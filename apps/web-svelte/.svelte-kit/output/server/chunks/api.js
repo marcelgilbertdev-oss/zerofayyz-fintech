@@ -60,14 +60,13 @@ const checkoutSchema = z.object({
   url: z.string().url()
 });
 const MIN_AMOUNT_MINOR = 50;
-const MAX_AMOUNT_MINOR = 1e6;
+const MAX_AMOUNT_MINOR = 15e5;
 function toMinorUnits(input) {
-  const trimmed = input.trim().replace(/^\$/, "").replace(/,/g, "");
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+  const trimmed = input.trim().replace(/^[¥￥]/, "").replace(/,/g, "");
+  if (!/^\d+$/.test(trimmed)) {
     return null;
   }
-  const [dollars, cents = ""] = trimmed.split(".");
-  const minor = Number(dollars) * 100 + Number(cents.padEnd(2, "0"));
+  const minor = Number(trimmed);
   if (minor < MIN_AMOUNT_MINOR || minor > MAX_AMOUNT_MINOR) {
     return null;
   }

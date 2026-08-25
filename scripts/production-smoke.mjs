@@ -68,7 +68,7 @@ await check("metrics are internally consistent", async () => {
   const { response, body } = await fetchJson("/api/v1/metrics");
 
   assert(response.status === 200, `expected 200, got ${response.status}`);
-  assert(body.currency === "USD", "metrics are not scoped to a currency");
+  assert(body.currency === "JPY", "metrics are not scoped to a currency");
   assert(Number.isInteger(body.grossVolumeMinor), "gross volume is not an integer of minor units");
   assert(body.dailyVolume.length === 12, `expected 12 daily buckets, got ${body.dailyVolume.length}`);
 

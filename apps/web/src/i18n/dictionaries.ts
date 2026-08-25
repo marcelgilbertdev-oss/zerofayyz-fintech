@@ -159,7 +159,7 @@ const en = {
     customers: {
       title: "Customers",
       subtitle:
-        "Every sandbox customer, with lifetime settled volume (USD) and payment count. Aggregated in SQL, not in the page.",
+        "Every sandbox customer, with lifetime settled volume (JPY) and payment count. Aggregated in SQL, not in the page.",
       customer: "Customer",
       payments: "Payments",
       volume: "Settled volume",
@@ -186,9 +186,9 @@ const en = {
   checkout: {
     error: "Unable to start checkout",
     unavailable: "The payment API is currently unavailable",
-    amountLabel: "Test payment amount in US dollars",
-    amountHint: "Any amount from $0.50 to $10,000.00",
-    amountInvalid: "Enter an amount between $0.50 and $10,000.00",
+    amountLabel: "Test payment amount in yen",
+    amountHint: "Any amount from ¥50 to ¥1,500,000",
+    amountInvalid: "Enter an amount between ¥50 and ¥1,500,000",
   },
   auth: {
     signIn: "Sign in",
@@ -260,7 +260,7 @@ const en = {
     requestRefund: "Request refund",
     refundReasonLabel: "Reason for the refund",
     refundReasonPlaceholder: "Why is this being refunded? (min. 5 characters)",
-    refundAmountLabel: "Amount in US dollars — leave empty for the full amount",
+    refundAmountLabel: "Amount in yen — leave empty for the full amount",
     refundSubmit: "Submit request",
     refundSubmitting: "Submitting…",
     refundsTitle: "Refund queue",
@@ -472,7 +472,7 @@ const ja: Dictionary = {
     customers: {
       title: "顧客",
       subtitle:
-        "サンドボックス顧客の一覧です。累計確定額（米ドル）と決済回数を表示します。集計はページ側ではなく SQL で行っています。",
+        "サンドボックス顧客の一覧です。累計確定額（円）と決済回数を表示します。集計はページ側ではなく SQL で行っています。",
       customer: "顧客",
       payments: "決済数",
       volume: "確定額",
@@ -499,9 +499,9 @@ const ja: Dictionary = {
   checkout: {
     error: "決済を開始できませんでした",
     unavailable: "決済 API に現在接続できません",
-    amountLabel: "テスト決済の金額（米ドル）",
-    amountHint: "$0.50 〜 $10,000.00 の範囲で指定できます",
-    amountInvalid: "$0.50 〜 $10,000.00 の範囲で入力してください",
+    amountLabel: "テスト決済の金額（円）",
+    amountHint: "¥50 〜 ¥1,500,000 の範囲で指定できます",
+    amountInvalid: "¥50 〜 ¥1,500,000 の範囲で入力してください",
   },
   auth: {
     signIn: "サインイン",
@@ -572,7 +572,7 @@ const ja: Dictionary = {
     requestRefund: "返金を申請",
     refundReasonLabel: "返金理由",
     refundReasonPlaceholder: "返金理由を入力してください（5文字以上）",
-    refundAmountLabel: "金額（米ドル）— 空欄の場合は全額",
+    refundAmountLabel: "金額（円）— 空欄の場合は全額",
     refundSubmit: "申請を送信",
     refundSubmitting: "送信中…",
     refundsTitle: "返金キュー",

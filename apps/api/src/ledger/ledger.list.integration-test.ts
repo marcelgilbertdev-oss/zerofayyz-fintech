@@ -16,7 +16,7 @@ const connectionString =
   "postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech";
 
 const CUSTOMER_ID = "ffffffff-0000-4000-8000-000000000001";
-// GBP so these rows are invisible to every USD-scoped assertion other suites
+// GBP so these rows are invisible to every JPY-scoped assertion other suites
 // make — the same currency isolation the refund suite uses with EUR.
 const PAYMENTS = [
   { id: "ffffffff-0000-4000-8000-000000000101", amount: 1_000, status: "succeeded" },
@@ -140,7 +140,7 @@ test("customers aggregate counts every payment but sums only settled money", asy
 
   assert.ok(me, "the suite's customer is listed");
   assert.equal(me?.paymentCount, 4);
-  // GBP on purpose: the volume column is USD-scoped like /metrics, so these
+  // GBP on purpose: the volume column is JPY-scoped like /metrics, so these
   // succeeded GBP payments must NOT appear in it — summing across currencies
   // is the bug, and this asserts its absence.
   assert.equal(me?.succeededVolumeMinor, 0);

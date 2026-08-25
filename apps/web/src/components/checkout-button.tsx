@@ -14,11 +14,12 @@ import { useId, useState, useSyncExternalStore } from "react";
 // implementations and fails if they ever disagree. Playwright never runs inside
 // a Vercel build, so the test may reach across the boundary the bundler cannot.
 const MIN_AMOUNT_MINOR = 50;
-const MAX_AMOUNT_MINOR = 1_000_000;
-const DEFAULT_AMOUNT = "42.00";
+const MAX_AMOUNT_MINOR = 1_500_000;
+const DEFAULT_AMOUNT = "4200";
 // Survives the round trip to Stripe and back. The field must stay pre-filled
-// (a demo needs a zero-typing path), but a reviewer who chose $400 and returns
-// to see $42 reads it as the system forgetting them — a live charter finding.
+// (a demo needs a zero-typing path), but a reviewer who chose ¥40,000 and
+// returns to see ¥4,200 reads it as the system forgetting them — a live
+// charter finding.
 const AMOUNT_STORAGE_KEY = "zf_last_amount";
 
 function subscribeToStorage(onChange: () => void): () => void {
@@ -27,19 +28,21 @@ function subscribeToStorage(onChange: () => void): () => void {
   return () => window.removeEventListener("storage", onChange);
 }
 
-/** Dollars as typed → integer minor units, or null when it is not a valid amount. */
+/** Yen as typed → integer minor units, or null when it is not a valid amount.
+ *
+ * JPY is a zero-decimal currency: one minor unit is one yen, so there is no
+ * fractional part to parse and "4200.50" is not an amount of yen at all. The
+ * float hazards a cents currency invites (17.35 * 100 being 1734.999… in
+ * IEEE-754) never arise, because nothing here is ever multiplied.
+ */
 export function toMinorUnits(input: string): number | null {
-  const trimmed = input.trim().replace(/^\$/, "").replace(/,/g, "");
+  const trimmed = input.trim().replace(/^[¥￥]/, "").replace(/,/g, "");
 
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+  if (!/^\d+$/.test(trimmed)) {
     return null;
   }
 
-  // Parsed as text rather than by multiplying a float by 100: `17.35 * 100` is
-  // 1734.9999999999998 in IEEE-754, and a payment ledger is the last place to
-  // round someone's money by accident.
-  const [dollars, cents = ""] = trimmed.split(".");
-  const minor = Number(dollars) * 100 + Number(cents.padEnd(2, "0"));
+  const minor = Number(trimmed);
 
   if (minor < MIN_AMOUNT_MINOR || minor > MAX_AMOUNT_MINOR) {
     return null;
@@ -136,13 +139,13 @@ export function CheckoutButton({
       </label>
       <div className="flex items-center rounded-xl border border-white/10 bg-[#16241f] pl-2.5 focus-within:border-emerald-300/40">
         <span aria-hidden="true" className="text-xs font-semibold text-white/40">
-          $
+          ¥
         </span>
         <input
           id={amountId}
           name="amount"
           type="text"
-          inputMode="decimal"
+          inputMode="numeric"
           autoComplete="off"
           value={amount}
           onChange={(event) => {

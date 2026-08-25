@@ -21,17 +21,20 @@ type CheckoutBody = {
 };
 
 const DEMO_AMOUNT_MINOR = 4_200;
-// Stripe will not charge less than $0.50 in USD, so the floor mirrors the
-// gateway's own rule rather than inventing a softer one.
+// Stripe will not charge less than ¥50 in JPY, so the floor mirrors the
+// gateway's own rule rather than inventing a softer one. JPY is a
+// zero-decimal currency: a minor unit IS one yen, so these bounds and every
+// amount_minor in the ledger are plain yen values, never hundredths.
 //
 // The ceiling is ours, and it is deliberately generous: anyone may pick any
-// amount up to $10,000. It is bounded at all because this endpoint is public
-// and unauthenticated — an unbounded amount lets one stranger put nine digits
-// into the gross-volume tile and ruin the dashboard for everyone after them.
-// A payments reviewer expects to find a bound here; its absence is the finding.
+// amount up to ¥1,500,000. It is bounded at all because this endpoint is
+// public and unauthenticated — an unbounded amount lets one stranger put nine
+// digits into the gross-volume tile and ruin the dashboard for everyone after
+// them. A payments reviewer expects to find a bound here; its absence is the
+// finding.
 const MIN_AMOUNT_MINOR = 50;
-const MAX_AMOUNT_MINOR = 1_000_000;
-const DEMO_CURRENCY = "USD";
+const MAX_AMOUNT_MINOR = 1_500_000;
+const DEMO_CURRENCY = "JPY";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

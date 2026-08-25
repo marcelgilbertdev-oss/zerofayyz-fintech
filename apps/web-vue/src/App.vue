@@ -12,7 +12,7 @@ const store = useDashboardStore();
 // Same memory as the Next dashboard: pre-filled for the zero-typing path,
 // but a chosen amount survives the Stripe round trip.
 const stored = window.sessionStorage.getItem("zf_last_amount");
-const amount = ref(stored && toMinorUnits(stored) !== null ? stored : "42.00");
+const amount = ref(stored && toMinorUnits(stored) !== null ? stored : "4200");
 
 function rememberAndCheckout() {
   window.sessionStorage.setItem("zf_last_amount", amount.value.trim());
@@ -39,12 +39,12 @@ onMounted(() => {
           Test payment amount in US dollars
         </label>
         <div class="amount-field" :class="{ invalid: !amountValid }">
-          <span aria-hidden="true">$</span>
+          <span aria-hidden="true">¥</span>
           <input
             id="amount"
             v-model="amount"
             type="text"
-            inputmode="decimal"
+            inputmode="numeric"
             autocomplete="off"
             aria-describedby="amount-hint"
             :aria-invalid="!amountValid"
@@ -52,7 +52,7 @@ onMounted(() => {
           />
         </div>
         <p id="amount-hint" class="amount-hint" :class="{ invalid: !amountValid }">
-          Any amount from $0.50 to $10,000.00
+          Any amount from ¥50 to ¥1,500,000
         </p>
         <button
           type="button"

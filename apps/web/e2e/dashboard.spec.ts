@@ -82,10 +82,10 @@ test("a reviewer can choose the payment amount", async ({ page }) => {
   await expect(amount).toBeVisible();
 
   // Pre-filled, so the one-click path still works for anyone who ignores it.
-  await expect(amount).toHaveValue("42.00");
+  await expect(amount).toHaveValue("4200");
 
-  await amount.fill("173.50");
-  await expect(amount).toHaveValue("173.50");
+  await amount.fill("17350");
+  await expect(amount).toHaveValue("17350");
   await expect(amount).toHaveAttribute("aria-invalid", "false");
 });
 
@@ -101,7 +101,7 @@ test("an out-of-range amount is refused before any network call", async ({ page 
     await route.abort();
   });
 
-  await amount.fill("999999");
+  await amount.fill("9999999");
   await expect(amount).toHaveAttribute("aria-invalid", "true");
 
   await expect(async () => {
@@ -127,7 +127,7 @@ test("the permitted amount range is visible, not only announced", async ({ page 
   await page.goto("/");
 
   const amount = page.getByLabel(/test payment amount/i);
-  const hint = page.getByText(/Any amount from \$0\.50 to \$10,000\.00/i);
+  const hint = page.getByText(/Any amount from ¥50 to ¥1,500,000/i);
 
   await amount.focus();
   await expect(hint).toBeVisible();
@@ -139,11 +139,11 @@ test("a chosen amount survives the trip to Stripe and back", async ({ page }) =>
 
   // Simulate what the checkout click stores before redirecting to Stripe —
   // the return from Stripe is a fresh document load, exactly like this one.
-  await page.evaluate(() => window.sessionStorage.setItem("zf_last_amount", "137.50"));
+  await page.evaluate(() => window.sessionStorage.setItem("zf_last_amount", "13750"));
   await page.reload();
 
   // Pre-filled with the reviewer's own number, not the default: the field
   // must never read as the system forgetting what they chose. First-time
-  // visitors (empty storage) still get the one-click 42.00.
-  await expect(page.getByLabel(/test payment amount/i)).toHaveValue("137.50");
+  // visitors (empty storage) still get the one-click ¥4,200.
+  await expect(page.getByLabel(/test payment amount/i)).toHaveValue("13750");
 });

@@ -30,10 +30,10 @@ function createDashboard(seed) {
     errors = settled.filter((entry) => entry.status === "rejected").map((entry) => String(entry.reason?.message ?? entry.reason));
     state = health || metrics || transactions ? "ready" : "error";
   }
-  async function checkout(amount = "42.00") {
+  async function checkout(amount = "4200") {
     const amountMinor = toMinorUnits(amount);
     if (amountMinor === null) {
-      checkoutError = "Enter an amount between $0.50 and $10,000.00";
+      checkoutError = "Enter an amount between ¥50 and ¥1,500,000";
       return;
     }
     checkoutPending = true;
@@ -112,9 +112,9 @@ function HealthPanel($$renderer, $$props) {
   });
 }
 function money(amountMinor, currency) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
-    amountMinor / 100
-  );
+  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency });
+  const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
+  return formatter.format(amountMinor / 10 ** digits);
 }
 function relative(iso) {
   const minutes = Math.max(
@@ -204,9 +204,9 @@ function _page($$renderer, $$props) {
     let { data } = $$props;
     const dashboard = createDashboard(data);
     const storedAmount = globalThis.sessionStorage?.getItem("zf_last_amount");
-    let amount = storedAmount && toMinorUnits(storedAmount) !== null ? storedAmount : "42.00";
+    let amount = storedAmount && toMinorUnits(storedAmount) !== null ? storedAmount : "4200";
     const amountValid = derived(() => toMinorUnits(amount) !== null);
-    $$renderer2.push(`<div class="shell svelte-1uha8ag"><header class="top svelte-1uha8ag"><div><p class="brand svelte-1uha8ag">ZEROFAYYZ <span class="svelte-1uha8ag">FINTECH</span></p> <p class="tagline svelte-1uha8ag">Svelte 5 client · same API, same ledger, different framework</p></div> <div class="pay-group svelte-1uha8ag"><label class="amount-label svelte-1uha8ag" for="amount">Test payment amount in US dollars</label> <div${attr_class("amount-field svelte-1uha8ag", void 0, { "invalid": !amountValid() })}><span aria-hidden="true">$</span> <input id="amount"${attr("value", amount)} type="text" inputmode="decimal" autocomplete="off" aria-describedby="amount-hint"${attr("aria-invalid", !amountValid())} class="svelte-1uha8ag"/></div> <p id="amount-hint"${attr_class("amount-hint svelte-1uha8ag", void 0, { "invalid": !amountValid() })}>Any amount from $0.50 to $10,000.00</p> <button type="button" class="pay svelte-1uha8ag"${attr("disabled", dashboard.checkoutPending, true)}>${escape_html(dashboard.checkoutPending ? "Opening Stripe…" : "+ Test payment")}</button></div></header> `);
+    $$renderer2.push(`<div class="shell svelte-1uha8ag"><header class="top svelte-1uha8ag"><div><p class="brand svelte-1uha8ag">ZEROFAYYZ <span class="svelte-1uha8ag">FINTECH</span></p> <p class="tagline svelte-1uha8ag">Svelte 5 client · same API, same ledger, different framework</p></div> <div class="pay-group svelte-1uha8ag"><label class="amount-label svelte-1uha8ag" for="amount">Test payment amount in US dollars</label> <div${attr_class("amount-field svelte-1uha8ag", void 0, { "invalid": !amountValid() })}><span aria-hidden="true">¥</span> <input id="amount"${attr("value", amount)} type="text" inputmode="numeric" autocomplete="off" aria-describedby="amount-hint"${attr("aria-invalid", !amountValid())} class="svelte-1uha8ag"/></div> <p id="amount-hint"${attr_class("amount-hint svelte-1uha8ag", void 0, { "invalid": !amountValid() })}>Any amount from ¥50 to ¥1,500,000</p> <button type="button" class="pay svelte-1uha8ag"${attr("disabled", dashboard.checkoutPending, true)}>${escape_html(dashboard.checkoutPending ? "Opening Stripe…" : "+ Test payment")}</button></div></header> `);
     if (dashboard.checkoutError) {
       $$renderer2.push("<!--[0-->");
       $$renderer2.push(`<p role="alert" class="error svelte-1uha8ag">${escape_html(dashboard.checkoutError)}</p>`);
