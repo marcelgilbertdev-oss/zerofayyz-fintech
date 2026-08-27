@@ -16,6 +16,7 @@ type TransactionRow = {
   status: string;
   method_label: string;
   created_at: Date;
+  total: string;
 };
 
 const transactionListSchema = {
@@ -63,9 +64,16 @@ const transactionListSchema = {
     meta: {
       type: "object",
       additionalProperties: false,
-      required: ["count", "source"],
+      required: ["count", "total", "limit", "offset", "source"],
       properties: {
+        // count stays: it is what the deployed clients were compiled against.
+        // total/limit/offset are the same paged meta the ledger routes emit,
+        // added when this endpoint learned to page (it shipped with LIMIT 10
+        // hardcoded and silently ignored its query string).
         count: { type: "integer", minimum: 0 },
+        total: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1 },
+        offset: { type: "integer", minimum: 0 },
         source: { type: "string", enum: ["postgresql"] },
       },
     },
@@ -82,14 +90,31 @@ export const transactionRoutes: FastifyPluginAsync<TransactionRouteOptions> = as
       schema: {
         tags: ["transactions"],
         summary: "List recent sandbox transactions",
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            limit: { type: "integer", minimum: 1, maximum: 100 },
+            offset: { type: "integer", minimum: 0 },
+          },
+        },
         response: {
           200: transactionListSchema,
         },
       },
     },
-    async () => {
-      const result = await database.query<TransactionRow>(`
-        SELECT *
+    async (request) => {
+      // Validated and coerced by the querystring schema above; typed here
+      // because the untyped route shorthand keeps the swagger tags compiling.
+      const query = request.query as { limit?: number; offset?: number };
+      // 10 was this endpoint's hardcoded window before it paged; keeping it as
+      // the default keeps the dashboard's "recent transactions" unchanged.
+      const limit = query.limit ?? 10;
+      const offset = query.offset ?? 0;
+
+      const result = await database.query<TransactionRow, [number, number]>(
+        `
+        SELECT *, COUNT(*) OVER ()::TEXT AS total
         FROM (
           SELECT DISTINCT ON (payments.id)
             transactions.id,
@@ -110,8 +135,10 @@ export const transactionRoutes: FastifyPluginAsync<TransactionRouteOptions> = as
           ORDER BY payments.id, transactions.occurred_at DESC
         ) AS latest_payment_events
         ORDER BY created_at DESC
-        LIMIT 10
-      `);
+        LIMIT $1 OFFSET $2
+      `,
+        [limit, offset],
+      );
 
       const data = result.rows.map((row) => ({
         id: row.id,
@@ -131,6 +158,9 @@ export const transactionRoutes: FastifyPluginAsync<TransactionRouteOptions> = as
         data,
         meta: {
           count: data.length,
+          total: Number.parseInt(result.rows[0]?.total ?? "0", 10),
+          limit,
+          offset,
           source: "postgresql" as const,
         },
       };

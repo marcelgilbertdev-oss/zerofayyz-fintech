@@ -67,6 +67,12 @@ export const transactionsSchema = z.object({
   ),
   meta: z.object({
     count: z.number().int().nonnegative(),
+    // Optional for the same reason clientOrigins is on healthSchema: the
+    // clients deploy separately from the API, so a client compiled against
+    // this must validate an older API that has not learned to page yet.
+    total: z.number().int().nonnegative().optional(),
+    limit: z.number().int().positive().optional(),
+    offset: z.number().int().nonnegative().optional(),
     source: z.literal("postgresql"),
   }),
 });
