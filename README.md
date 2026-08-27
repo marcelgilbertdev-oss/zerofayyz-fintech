@@ -66,7 +66,7 @@ TypeScript throughout, ESM, Node 20+.
 - The platform's payment rules stated in Gherkin and executed by Cucumber — four-eyes refund
   approval, sign-in responses that reveal nothing, zero-decimal yen, webhook idempotency, and
   pagination regression coverage — five features, thirteen scenarios, run as a tenth CI job.
-  See [apps/web/features](apps/web/features) and
+  See [apps/web/features](apps/web/features/README.md) and
   [ADR 0012](docs/decisions/0012-state-payment-rules-in-gherkin.md).
   The API is consumed unmodified by all three, so the contract is demonstrated rather than
   asserted

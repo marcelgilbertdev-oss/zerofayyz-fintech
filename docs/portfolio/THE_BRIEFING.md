@@ -25,7 +25,7 @@ It is sandbox only. No real money moves, ever.
   with it
 - **PostgreSQL** underneath all of it
 
-**The numbers:** 284 automated tests across eight suites, 28 production checks running
+**The numbers:** 331 automated tests across ten suites, 28 production checks running
 hourly, 8 CI jobs, all green.
 
 **The one sentence to have ready:** *"It's a payments platform — the API, three frontends,
@@ -66,7 +66,7 @@ can list features, and almost nobody can explain the reasoning.
 
 | Built | Why |
 |---|---|
-| 284 tests in eight layers | Each layer catches what the one beneath structurally cannot |
+| 331 tests in ten layers | Each layer catches what the one beneath structurally cannot |
 | Integration tests against real PostgreSQL | **The story:** the webhook had nineteen passing unit tests and had never worked. Every test stubbed the database, so none ran the real SQL — and the SQL was invalid |
 | Accessibility scanned at two viewports | Adding phone width found a real WCAG failure that had been shipping under a green suite |
 | Visual regression on the chrome | Catches layout silently breaking. Scoped to surfaces without live data, because a suite that fails whenever the ledger moves is one people learn to ignore |

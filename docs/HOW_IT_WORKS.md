@@ -139,16 +139,24 @@ after a late or out-of-order delivery. Keeping them apart is what makes the ledg
 
 ## 5. How it's tested
 
-Three layers, each catching what the layer beneath structurally cannot. Full detail in
+Layers, each catching what the layer beneath structurally cannot. Full detail in
 [QUALITY_STRATEGY.md](QUALITY_STRATEGY.md).
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 79 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
-| Client unit | 66 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
+| Unit | 82 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
+| Client unit | 69 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
 | Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals |
-| End-to-end | 61 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
-| Production smoke | 26 | The live deployment | That what shipped actually works |
+| End-to-end | 65 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
+| Business rules (Gherkin) | 13 scenarios | The whole stack, seeded and booted | Whether the *rules* still hold — written so a non-engineer can read and dispute them |
+| QA MCP server | 31 | Its own tools, plus a live protocol handshake | That an agent can run the suites and check the live API on demand |
+| Production smoke | 28 | The live deployment | That what shipped actually works |
+
+**One layer is unusual and worth a sentence.** The business rules are written in Gherkin —
+plain English of the form *Given / When / Then* — and executed by Cucumber. For example, the
+rule that money never leaves on one person's say-so reads: *"the person who requested a
+refund cannot approve it."* Anyone can read that and say whether it is the rule they wanted.
+Then it runs. See [apps/web/features](../apps/web/features).
 
 **The story worth telling:** the webhook handler once had nineteen passing unit tests and had
 never worked. `JSONB_BUILD_OBJECT` accepts `"any"`, so an uncast bind parameter had no

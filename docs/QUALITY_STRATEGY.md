@@ -17,13 +17,15 @@ cannot see.
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 79 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
+| Unit | 82 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
 | Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation |
-| End-to-end | 61 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
+| End-to-end | 65 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
+| **BDD (Gherkin)** | **13 scenarios** | The whole stack, seeded and booted | Whether the platform's *business rules* still hold — stated in language a non-engineer can dispute |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
 | Vue client unit | 40 | jsdom, fetch mocked at the network seam | Contract validation, store state, sign-in and audit-trail flow, partial failure, rendered output |
 | Svelte client unit | 29 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
-| Production smoke | 26 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
+| **QA MCP server** | **31** | Its own tools, plus a live protocol handshake | That an agent can drive the suites, and that contract drift and webhook idempotency are checkable on demand |
+| Production smoke | 28 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
 
 Total wall-clock for all local suites: under thirty seconds.
 
@@ -113,6 +115,45 @@ reappear on the page. If someone reintroduces hardcoded numbers where live data 
 build fails. Tests that assert an old bug stays fixed are worth more than their line count
 suggests.
 
+### BDD — [`apps/web/features/`](../apps/web/features/README.md)
+
+Cucumber 13 executing Gherkin feature files against the whole stack. Five features state the
+platform's rules in plain language: four-eyes refund approval, sign-in failures that reveal
+nothing, zero-decimal yen, webhook idempotency, and pagination.
+
+Every one of those was already covered by the layers above. The difference is *who can read
+it*: a `.feature` file is a specification a product manager or compliance reviewer can dispute
+without reading TypeScript, and it executes. That is the whole argument for the layer, and the
+reason to keep it small — thirteen scenarios covering rules worth publishing, not a
+translation of the entire suite into Gherkin.
+
+`npm run test:bdd` owns the lifecycle: seed, boot the API with a throwaway Stripe key and
+webhook secret, boot the built dashboard, run strictly, tear down. It rebuilds the API every
+run, because its first run failed against a stale `dist/` and a stale build is
+indistinguishable from a regression from outside.
+
+Two scenarios are deliberately narrower than they could be. Approving a refund calls Stripe's
+real API, which the suite's dummy key cannot do, so the four-eyes feature proves the *refusal*
+and decision-by-another via rejection rather than pretending to prove an approval. And the
+webhook handler records nothing for events it cannot tie to a local payment, so replays
+deliver a signed `checkout.session.completed` for a genuinely seeded payment. A feature file
+is a public promise; it must only claim what the environment can honestly observe.
+
+Reasoning: [ADR 0012](decisions/0012-state-payment-rules-in-gherkin.md).
+
+### QA surface over MCP — `apps/mcp/`
+
+An MCP server exposing the quality surface — run the allowlisted suites, validate live API
+responses against the shared contract, replay a signed webhook, read the ledger. Two of its
+tools moved checks that could previously only run in the wrong place: contract drift was
+catchable only once a user had loaded the page, and webhook idempotency could not be observed
+from outside at all.
+
+The product surface is deliberately absent. An agent that can *operate* a payments system is a
+different risk conversation from one that can *test* it. Reasoning:
+[ADR 0011](decisions/0011-expose-the-qa-surface-over-mcp.md); details in
+[apps/mcp/README.md](../apps/mcp/README.md).
+
 ## The defect that justified this strategy
 
 The webhook handler shipped with nineteen passing unit tests and had **never once worked**.
@@ -179,14 +220,19 @@ localhost:4000/api/v1/webhooks/stripe`. See the
 
 ## Gates
 
-Nothing merges without the pipeline passing. `.github/workflows/ci.yml` runs five jobs:
+Nothing merges without the pipeline passing. `.github/workflows/ci.yml` runs ten jobs:
 
 1. **API** — typecheck, unit tests, migrations against an empty database, integration tests
-2. **Web** — lint, typecheck (application *and* the separately-scoped e2e project), build
-3. **Vue client** — typecheck, unit tests, build
-4. **Svelte client** — typecheck, unit tests, build
-5. **End-to-end** — migrated database, demo data, seeded staff accounts, both servers built
-   and started, Playwright
+2. **Container** — builds the image, starts it, waits on its own healthcheck
+3. **Reconciler** — the Go ledger reconciler's own suite
+4. **Web** — lint, typecheck (application *and* the separately-scoped e2e project), build
+5. **Vue client** — typecheck, unit tests, build
+6. **Svelte client** — typecheck, unit tests, build
+7. **MCP** — typecheck, unit tests, and a real protocol handshake against the running server
+8. **BDD** — seeded database, built stack, every Gherkin feature run strictly
+9. **Visual regression** — inside the renderer the baselines were recorded in
+10. **End-to-end** — migrated database, demo data, seeded staff accounts, both servers built
+    and started, Playwright
 
 The web job typechecks through two project files on purpose. The application's `tsconfig`
 excludes `e2e/`, because the Next build typechecks everything it includes and would follow a

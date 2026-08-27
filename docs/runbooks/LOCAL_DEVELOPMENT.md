@@ -129,9 +129,26 @@ cd apps/api && npm run test:integration
 cd apps/web && npm run test:e2e
 ```
 
+The business rules, written in Gherkin and executed by Cucumber:
+
+```bash
+cd apps/web && npm run test:bdd
+```
+
 Integration tests need PostgreSQL up; they truncate and reseed the tables they use, so do not
 point them at a database whose contents you care about. End-to-end tests build and start both
 servers themselves.
+
+`test:bdd` also owns its whole lifecycle — it seeds the database, rebuilds and starts the API
+with a throwaway Stripe key and webhook secret, starts the built dashboard, runs every feature
+strictly, then shuts down what it started. Two things to know:
+
+- **It needs PostgreSQL up**, like the integration tests, and it reseeds demo data.
+- **If a server is already listening on :4000 without a webhook secret** — one left over from
+  the e2e suite, say — it stops with that exact message rather than failing two scenarios
+  with a confusing 503. Stop the stale server and re-run.
+- **Cucumber supports LTS Node lines only.** On an odd-numbered Node it runs the Cucumber
+  child under a Homebrew `node@22` keg automatically, or tells you to install one.
 
 ## Stop everything
 

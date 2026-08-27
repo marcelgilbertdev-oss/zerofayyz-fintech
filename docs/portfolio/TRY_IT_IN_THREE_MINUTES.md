@@ -78,7 +78,7 @@ refusals, spoken through Pinia on one page and runes on the other.
 | **Auditability** | Append-only history the application itself cannot rewrite |
 | **Internationalisation** | English and Japanese, with translations enforced by the type system — a missing string is a compile error |
 | **Accessibility** | WCAG 2.1 AA, scanned by axe-core in CI against both locales |
-| **Testing** | 284 automated tests across eight suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, and end-to-end against a production build — plus a 28-check smoke suite that verifies the live deployment from outside |
+| **Testing** | 331 automated tests across ten suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, end-to-end against a production build, and thirteen Cucumber/Gherkin scenarios stating the payment rules in plain language — plus a 28-check smoke suite that verifies the live deployment from outside |
 | **Operations** | Three-tier deployment colocated in Singapore, CI gating every merge, migrations applied before traffic |
 
 **Built by Marcel Gilbert** · [github.com/marcelgilbertdev-oss/zerofayyz-fintech](https://github.com/marcelgilbertdev-oss/zerofayyz-fintech)
