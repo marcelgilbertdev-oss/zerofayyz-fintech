@@ -319,6 +319,64 @@ jobs:
         working-directory: apps/mcp
         run: node scripts/handshake-check.mjs
 
+  bdd:
+    name: BDD — Gherkin business rules (Cucumber)
+    runs-on: ubuntu-latest
+    needs: [api, web]
+
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_DB: zerofayyz_fintech
+          POSTGRES_USER: zerofayyz_fintech
+          POSTGRES_PASSWORD: zerofayyz_fintech
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zerofayyz_fintech -d zerofayyz_fintech"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://zerofayyz_fintech:zerofayyz_fintech@127.0.0.1:5432/zerofayyz_fintech
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: npm ci
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Apply migrations
+        working-directory: apps/api
+        run: npm run migrate
+
+      - name: Build the dashboard
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Install Playwright browser
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      # The runner seeds the database, builds and starts the API with a
+      # throwaway Stripe key and webhook secret (signature verification is
+      # offline HMAC — no Stripe account is reachable from this job), starts
+      # the built dashboard, and executes every .feature file strictly.
+      - name: Run the Gherkin features
+        working-directory: apps/web
+        run: npm run test:bdd
+
   visual:
     name: Visual regression — layout has not shifted
     # Runs INSIDE the same image the baselines were recorded in. Screenshot

@@ -38,7 +38,7 @@ TypeScript throughout, ESM, Node 20+.
 | Database | PostgreSQL 18, `pg`, hand-written SQL |
 | Payments | Stripe 22, hosted Checkout, signed webhooks |
 | Auth | scrypt (`node:crypto`), opaque server-side sessions, role-based guards |
-| Tests | `node --test` for unit and integration, Playwright for end-to-end |
+| Tests | `node --test` for unit and integration, Playwright for end-to-end, Cucumber/Gherkin for business rules |
 | CI | GitHub Actions — typecheck, lint, unit, integration, end-to-end, MCP handshake |
 | Agent access | MCP server (stdio) exposing the QA surface — see [apps/mcp](apps/mcp/README.md) |
 
@@ -63,6 +63,11 @@ TypeScript throughout, ESM, Node 20+.
   suites, validating the live API against the shared contract, and proving webhook idempotency
   by replaying a signed event. Contract drift used to be catchable only in a user's browser;
   it is now a command and a CI gate. See [apps/mcp](apps/mcp/README.md).
+- The platform's payment rules stated in Gherkin and executed by Cucumber — four-eyes refund
+  approval, sign-in responses that reveal nothing, zero-decimal yen, webhook idempotency, and
+  pagination regression coverage — five features, thirteen scenarios, run as a tenth CI job.
+  See [apps/web/features](apps/web/features) and
+  [ADR 0012](docs/decisions/0012-state-payment-rules-in-gherkin.md).
   The API is consumed unmodified by all three, so the contract is demonstrated rather than
   asserted
 - Authentication and roles: scrypt password hashing with cost parameters stored inside each
@@ -128,7 +133,7 @@ TypeScript throughout, ESM, Node 20+.
   and `/health` says `unconfigured` rather than pretending
 - Visual regression on the chrome at desktop and phone width, deliberately excluding
   data-driven pages: a suite that fails whenever the ledger moves is one people learn to ignore
-- 318 automated tests across nine suites, all gated in CI, plus a 28-check smoke suite
+- 331 automated tests across ten suites, all gated in CI, plus a 28-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture

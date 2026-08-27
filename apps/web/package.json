@@ -14,7 +14,8 @@
     "test:visual": "PLAYWRIGHT_VISUAL=1 playwright test e2e/visual-regression.spec.ts",
     "test:visual:update": "PLAYWRIGHT_VISUAL=1 playwright test e2e/visual-regression.spec.ts --update-snapshots",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:bdd": "node scripts/bdd-run.mjs"
   },
   "dependencies": {
     "next": "16.3.1",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@cucumber/cucumber": "^13.2.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -32,6 +34,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^3.2.7"
   }
