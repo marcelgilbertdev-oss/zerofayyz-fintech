@@ -128,7 +128,7 @@ TypeScript throughout, ESM, Node 20+.
   and `/health` says `unconfigured` rather than pretending
 - Visual regression on the chrome at desktop and phone width, deliberately excluding
   data-driven pages: a suite that fails whenever the ledger moves is one people learn to ignore
-- 307 automated tests across nine suites, all gated in CI, plus a 28-check smoke suite
+- 318 automated tests across nine suites, all gated in CI, plus a 28-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture

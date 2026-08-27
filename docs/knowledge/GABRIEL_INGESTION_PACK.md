@@ -5,7 +5,7 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-08-27:** live, 307 automated tests, 28/28 production smoke, 9 CI jobs
+**Status as of 2026-08-27:** live, 318 automated tests, 28/28 production smoke, 9 CI jobs
 green. Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
 github.com/marcelgilbertdev-oss/zerofayyz-fintech. **Separate from the gabriel repo — no
 shared code.**
@@ -86,6 +86,34 @@ rather than a verdict — twice, in the same file. Another version of the suite 
 while a failed deploy left the previous build serving, because every check matched text both
 builds contained. **Rule:** a check nobody has seen fail correctly is not a check; a smoke
 suite that cannot distinguish the new build from the old cannot detect a failed deploy.
+
+### A tool's input schema is a promise, and nothing checks it by default
+An MCP tool advertised `limit` and `offset` for every ledger resource. One endpoint behind
+it took no request argument at all and hardcoded its window, so `?limit=5` returned ten rows
+— an agent paging the ledger got wrong answers that looked right. Response-shape validation
+could not catch it: the shape was valid, only the row count was wrong. The contract never
+promised paging; the *tool schema* did. **Rule:** every parameter a tool accepts is a claim
+about the system behind it. Test the claim against the real endpoint, or do not accept the
+parameter — an inert parameter is worse than an absent one, because the caller cannot tell.
+
+### A compatibility shim should detect its own obsolescence
+When a client works around a server-side gap, the workaround usually outlives the gap and
+becomes the next bug. Given the paging defect above, the fix inferred from each *response*
+whether the server had honoured the request — paged endpoints echo the effective `limit`
+back in their metadata — and applied the fallback only when it had not, reporting which of
+the two had happened. Deploying the server fix flipped it from `client` to `server` with no
+code change and nothing to remember. **Rule:** prefer a shim that asks the system what it
+did over one that hardcodes what the system was once unable to do. A per-resource exception
+table is a stale document waiting to happen; a response probe is self-healing.
+
+### An additive optional field beats a shape change when clients deploy separately
+Adding `total`/`limit`/`offset` to a response meta could have been a breaking contract
+change requiring three clients to recompile and redeploy in lockstep with the API. Making
+them **optional**, keeping the existing field, let old clients validate the new API and new
+clients validate the old one — the API shipped alone, no client redeploy. **Rule:** where
+producer and consumer deploy independently, every contract addition is optional until both
+sides have shipped. The precedent is worth naming in the schema so the next person extends
+it the same way rather than tightening it.
 
 ### Visual regression belongs on deterministic surfaces
 Full-page screenshot comparison against data-driven pages cannot be stable: row count

@@ -108,3 +108,23 @@ client-agnostic, not tuned to one harness.
 Report the per-step results (even the boring passes). The install ledger entry
 `INS-ZEROFAYYZ-FINTECH-QA-MCP-SERVER` gets its founder-verified line only after
 this checklist has been run by a person.
+
+---
+
+## Run log
+
+### 2026-08-27 — first run, with Marcel · ALL STEPS PASS
+
+Every step above passed; full write-up in the
+[acceptance test human result log](MANUAL_ACCEPTANCE_TEST.md#human-result-log).
+
+Two things this first run taught, folded back into the doc above:
+
+1. **Step 2d found a real defect** — `limit` was ignored by `/api/v1/transactions`
+   (failure #17). Both ends fixed and deployed; the endpoint now pages, so 2d's
+   PASS condition is worth tightening from "yen rows" to "*the number of rows you
+   asked for*, and `meta.limit` echoing your request back."
+2. **Step 2g's precondition is worth checking, not assuming.** Confirm
+   `STRIPE_WEBHOOK_SECRET` is absent from both the shell environment and
+   `.env.local` before running it. If it were set, the "graceful refusal" step
+   would instead fire a real replay into the live demo ledger.

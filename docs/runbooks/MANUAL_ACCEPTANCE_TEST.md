@@ -652,8 +652,31 @@ day the wolf comes.
 | 14 | Reviewer pasted the whole credentials block into the email field and was told "Incorrect email or password" | The demo box printed two values in a way that invites one copy | **Fill these in for me** button; credentials still printed for anyone who prefers to read them | E2E fills, submits, and lands on /admin |
 | 15 | The login error stayed on screen while the typo it complained about was being corrected | The form cleared its error on submit, not on edit | Clears the moment either field is edited | E2E types a correction and asserts the message disappears |
 | 16 | Accessibility checks failed only in parallel runs — read as flake, was a real defect | The login limiter counted **every** attempt, so concurrent successful demo logins exhausted its budget. In production the sixth reviewer in a busy 15 minutes would have been locked out of the public demo account, looking identical to an outage | Limiter counts failures only: `status()` is read-only, `recordFailure()` spends budget, success clears the slate | Unit test for 10 consecutive successes; integration test for 10 real sign-ins |
+| 17 | `/api/v1/transactions?limit=5` returned 10 rows — an agent paging the ledger got wrong answers that looked right | The handler took no request argument (`async () => {}`) and hardcoded `LIMIT 10`, silently discarding its query string. The MCP tool's input schema promised `limit`/`offset` for every resource; **nothing checked that promise against the endpoint behind it.** Contract drift could not see it — the response *shape* was valid, only the row count was wrong | API validates and parameterizes `LIMIT $1 OFFSET $2` with exact `COUNT(*) OVER ()` meta (default kept at 10); contract fields added **optional** so no client redeploy was needed; MCP tool infers from the response whether the server paged and slices client-side if not, reporting `paging: "server"\|"client"` | 3 route tests (params reach SQL, default window, cap rejected) + 8 MCP tests; the client-side shim self-retires — verified reading `client` before deploy and `server` after |
 
 ## Human result log
+
+### 2026-08-27 — QA MCP server checklist walked with Marcel · PASSED, one defect found
+
+The full [MCP QA server checklist](MCP_QA_SERVER_TEST_CHECKLIST.md) driven end to end with
+Marcel approving each step: handshake (6 tools) · health (`operational`, db 3ms) · contract
+drift (**all 4 endpoints verified, 0 drifted**, including `admin/audit-logs` which CI still
+skips) · ledger reads · 7 suites listed with only `production-smoke` flagged ·
+`vue-unit` run *through the agent* (40/40, exit 0) · `replay_webhook` refusing cleanly with
+no webhook secret configured, which is the graceful-refusal path under test rather than an
+error. The shell env and `.env.local` were both checked for `STRIPE_WEBHOOK_SECRET` before
+that last step, so no probe events reached the live demo ledger.
+
+**One real defect found on the server's first drive** — failure #17 above: the transactions
+endpoint ignored `limit`/`offset` entirely. The QA surface caught a bug on the day it was
+first used, which is the argument for building it. Worth noting *why* the existing tooling
+could not: `check_contract_drift` validates response shape, and the shape was valid — the
+tool's own **input schema** was the unchecked promise.
+
+Fixed at both ends and deployed the same session (`e2e` verified live: `?limit=5&offset=2`
+→ 5 rows, `meta.total: 34`). The client-side compatibility shim was written to detect its
+own obsolescence and observed doing exactly that — `paging: client` before the deploy,
+`paging: server` after, with no code change between the two reads.
 
 ### 2026-08-22 — A16 / A17 walked by Marcel · PASSED, two defects found
 
