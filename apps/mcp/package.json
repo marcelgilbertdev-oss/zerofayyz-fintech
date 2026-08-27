@@ -1,0 +1,30 @@
+{
+  "name": "@zerofayyz/fintech-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server exposing the platform's QA surface: test runs, contract drift, webhook replay, ledger reads and health.",
+  "type": "module",
+  "bin": {
+    "zerofayyz-mcp": "src/server.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "relock": "rm -rf node_modules package-lock.json && npm install"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

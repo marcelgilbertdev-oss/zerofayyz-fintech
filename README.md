@@ -39,7 +39,8 @@ TypeScript throughout, ESM, Node 20+.
 | Payments | Stripe 22, hosted Checkout, signed webhooks |
 | Auth | scrypt (`node:crypto`), opaque server-side sessions, role-based guards |
 | Tests | `node --test` for unit and integration, Playwright for end-to-end |
-| CI | GitHub Actions — typecheck, lint, unit, integration, end-to-end |
+| CI | GitHub Actions — typecheck, lint, unit, integration, end-to-end, MCP handshake |
+| Agent access | MCP server (stdio) exposing the QA surface — see [apps/mcp](apps/mcp/README.md) |
 
 ## Shipped
 
@@ -58,6 +59,10 @@ TypeScript throughout, ESM, Node 20+.
 - WCAG 2.1 AA verified by axe-core in CI against both locales
 - Three independent frontends on one API — Next.js 16, Vue 3 (Composition API + Pinia) and
   Svelte 5 (SvelteKit, runes) — sharing one Zod contract that validates every response at the boundary.
+- An MCP server exposing the platform's QA surface to an agent — running the allowlisted test
+  suites, validating the live API against the shared contract, and proving webhook idempotency
+  by replaying a signed event. Contract drift used to be catchable only in a user's browser;
+  it is now a command and a CI gate. See [apps/mcp](apps/mcp/README.md).
   The API is consumed unmodified by all three, so the contract is demonstrated rather than
   asserted
 - Authentication and roles: scrypt password hashing with cost parameters stored inside each
@@ -123,7 +128,7 @@ TypeScript throughout, ESM, Node 20+.
   and `/health` says `unconfigured` rather than pretending
 - Visual regression on the chrome at desktop and phone width, deliberately excluding
   data-driven pages: a suite that fails whenever the ledger moves is one people learn to ignore
-- 284 automated tests across eight suites, all gated in CI, plus a 28-check smoke suite
+- 307 automated tests across nine suites, all gated in CI, plus a 28-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture

@@ -12,6 +12,8 @@ coverage/
 .env
 .env.*
 !.env.example
+# Local Postgres credentials in a name no .env* pattern catches.
+env.txt
 
 # Logs
 *.log

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "zerofayyz-qa": {
+      "command": "npx",
+      "args": ["tsx", "apps/mcp/src/server.ts"],
+      "env": {
+        "MCP_OPERATOR_EMAIL": "demo@zerofayyz.test",
+        "MCP_OPERATOR_PASSWORD": "view-the-ledger"
+      }
+    }
+  }
+}

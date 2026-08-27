@@ -280,6 +280,45 @@ jobs:
         working-directory: apps/web-svelte
         run: npm run build
 
+  mcp:
+    name: QA MCP server — typecheck, unit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mcp/package-lock.json
+
+      # The MCP server re-exports the shared contract to validate live responses
+      # against it, so the contract's own dependencies must be installed — the
+      # same reason the Vue and Svelte jobs do this.
+      - name: Install shared contract
+        working-directory: packages/api-contract
+        run: npm ci
+
+      - name: Install dependencies
+        working-directory: apps/mcp
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: apps/mcp
+        run: npm run typecheck
+
+      - name: Unit tests
+        working-directory: apps/mcp
+        run: npm test
+
+      # Proves the server actually speaks MCP, not merely that its functions
+      # pass their unit tests. A protocol server whose handshake is broken has
+      # a green suite and zero working tools.
+      - name: Protocol handshake
+        working-directory: apps/mcp
+        run: node scripts/handshake-check.mjs
+
   visual:
     name: Visual regression — layout has not shifted
     # Runs INSIDE the same image the baselines were recorded in. Screenshot
