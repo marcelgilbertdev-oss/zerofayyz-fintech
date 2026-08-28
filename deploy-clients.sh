@@ -43,10 +43,20 @@ cat > "$root/apps/$client/$out/vercel.json" <<'JSON'
 }
 JSON
 
+# Locally the CLI uses the session from `vercel login`. CI has no session, so
+# it passes a token instead; without this the CLI would prompt and hang until
+# the job times out. One code path, authenticated either way.
+# macOS ships bash 3.2, where "${auth[@]}" on an empty array is an unbound
+# variable under set -u. The ${auth[@]+...} guard expands to nothing instead.
+auth=()
+if [ -n "${VERCEL_TOKEN:-}" ]; then
+  auth=(--token "$VERCEL_TOKEN")
+fi
+
 cd "$root"
-npx --yes vercel@latest link --yes --project "$project" >/dev/null
+npx --yes vercel@latest link --yes --project "$project" ${auth[@]+"${auth[@]}"} >/dev/null
 mkdir -p "apps/$client/$out/.vercel"
 cp .vercel/project.json "apps/$client/$out/.vercel/project.json"
 
 cd "apps/$client/$out"
-npx --yes vercel@latest --yes --prod
+npx --yes vercel@latest --yes --prod ${auth[@]+"${auth[@]}"}

@@ -1,0 +1,80 @@
+name: Deploy SPA clients
+
+# CI already builds the Vue and Svelte clients on every push — it just never
+# shipped them. They cannot auto-deploy from Vercel's Git integration: their
+# imports reach above the project root into packages/api-contract, so a
+# root-scoped build fails with TS2307, and pointing the root at the repository
+# makes framework detection build apps/api instead. See
+# docs/runbooks/DEPLOYMENT.md for both failures.
+#
+# So the runbook's answer was "run ./deploy-clients.sh after changing them",
+# and that human step is what actually failed: the yen fix (6b4aae1) sat on
+# main while both live clients served a pre-fix bundle showing yen a hundred
+# times too small. This workflow performs that step so nobody has to remember.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web-vue/**"
+      - "apps/web-svelte/**"
+      - "packages/api-contract/**"
+      - "deploy-clients.sh"
+      - ".github/workflows/deploy-clients.yml"
+  workflow_dispatch: {}
+
+# A deploy is not safe to interrupt half-written, so in-flight runs finish.
+concurrency:
+  group: deploy-clients
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ matrix.client }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      # One client failing must not cancel the other's deploy — a half-updated
+      # pair is the state this workflow exists to prevent.
+      fail-fast: false
+      matrix:
+        client: [web-vue, web-svelte]
+
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Without this the run reaches the Vercel CLI, opens an interactive login
+      # prompt it cannot answer, and hangs until the timeout. Fail in seconds
+      # with a sentence naming the missing secret instead.
+      - name: The deploy token must be present
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN is not set. Add it under Settings → Secrets and variables → Actions."
+            echo "Create the token at vercel.com/account/tokens, scoped to the team that owns the projects."
+            exit 1
+          fi
+
+      # The shared contract carries its own dependencies and no client installs
+      # it implicitly — the same step the web-vue and web-svelte CI jobs need,
+      # and the reason a Vercel-side build cannot work.
+      - name: Install shared contract
+        working-directory: packages/api-contract
+        run: npm ci
+
+      - name: Install client dependencies
+        working-directory: apps/${{ matrix.client }}
+        run: npm ci
+
+      # Builds where the whole repository is present, then uploads the finished
+      # output with framework detection off. Identical to the local path.
+      - name: Build and deploy to production
+        run: ./deploy-clients.sh ${{ matrix.client }}
