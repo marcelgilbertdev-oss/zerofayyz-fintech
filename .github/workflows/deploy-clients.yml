@@ -43,7 +43,10 @@ jobs:
 
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      # The team that owns both projects. Not a secret — a team slug is public
+      # in every deployment URL — and hardcoding it means the workflow cannot
+      # deploy to the wrong account if the token is scoped more broadly.
+      VERCEL_SCOPE: marcel-gilbert
 
     steps:
       - uses: actions/checkout@v7

@@ -52,6 +52,13 @@ auth=()
 if [ -n "${VERCEL_TOKEN:-}" ]; then
   auth=(--token "$VERCEL_TOKEN")
 fi
+# These projects belong to a team. Without an explicit scope the CLI resolves
+# against the token's own default, and a personal-scoped token would quietly
+# CREATE a second project of the same name and deploy there — a green run
+# pointing at a URL nobody is looking at. Name the team instead.
+if [ -n "${VERCEL_SCOPE:-}" ]; then
+  auth+=(--scope "$VERCEL_SCOPE")
+fi
 
 cd "$root"
 npx --yes vercel@latest link --yes --project "$project" ${auth[@]+"${auth[@]}"} >/dev/null
