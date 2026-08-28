@@ -67,7 +67,6 @@ describe("dashboard store", () => {
     expect(store.state).toBe("ready");
     expect(store.errors).toEqual([]);
     expect(store.liveChecks).toBe(4);
-    expect(store.grossVolume).toBe(1222);
   });
 
   it("keeps working panels when one endpoint fails", async () => {

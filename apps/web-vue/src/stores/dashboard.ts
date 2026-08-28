@@ -40,10 +40,6 @@ export const useDashboardStore = defineStore("dashboard", {
         webhook.status === "configured",
       ].filter(Boolean).length;
     },
-
-    grossVolume(store): number | null {
-      return store.metrics ? store.metrics.grossVolumeMinor / 100 : null;
-    },
   },
 
   actions: {
