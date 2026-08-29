@@ -75,7 +75,7 @@ checker sharing code with what it checks agrees with its bugs. It reads and neve
 
 ## Current numbers (2026-08-23)
 
-- **331 automated tests** across ten suites: 82 API unit · 42 integration against real
+- **337 automated tests** across ten suites: 82 API unit · 42 integration against real
   PostgreSQL · 11 web unit · 65 Playwright end-to-end · 40 Vue · 29 Svelte · 12 Go · 6 visual regression
 - **29/29** production smoke checks, run hourly against the live system — including a signed-webhook probe that catches a stale signing secret, which `/health` cannot see because it reports the variable's presence rather than its correctness
 - **8 CI jobs**, all green

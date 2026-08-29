@@ -60,8 +60,9 @@ contract:
 
 Same ledger, same numbers, three idioms.
 
-Both clients carry the staff door too: scroll to the **Operator area** at the bottom of
-either page, click **Fill these in for me**, and sign in. The audit trail that appears is
+Both clients carry the staff door too: click **Operator sign-in** in the header, or scroll
+to the **Operator area** at the foot of either page, then click **Fill these in for me** and
+sign in. The audit trail that appears is
 the same append-only table the admin console reads — your sign-in on the Vue page is the
 newest row when you open the Svelte one. Same session cookie, same rate limiter, same
 refusals, spoken through Pinia on one page and runes on the other.
@@ -78,11 +79,12 @@ refusals, spoken through Pinia on one page and runes on the other.
 | **Auditability** | Append-only history the application itself cannot rewrite |
 | **Internationalisation** | English and Japanese, with translations enforced by the type system — a missing string is a compile error |
 | **Accessibility** | WCAG 2.1 AA, scanned by axe-core in CI against both locales |
-| **Testing** | 331 automated tests across ten suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, end-to-end against a production build, and thirteen Cucumber/Gherkin scenarios stating the payment rules in plain language — plus a 29-check smoke suite that verifies the live deployment from outside |
-| **Operations** | Three-tier deployment colocated in Singapore, CI gating every merge, migrations applied before traffic |
+| **Testing** | 337 automated tests across ten suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, end-to-end against a production build, and thirteen Cucumber/Gherkin scenarios stating the payment rules in plain language — plus a 30-check smoke suite that verifies the live deployment from outside |
+| **Operations** | Three-tier deployment colocated in Singapore, CI gating every merge, migrations applied before traffic. The smoke suite runs **hourly against production** and a failed run emails the owner — including a *signed-webhook probe*, because a health endpoint reports that a signing secret is present, not that it is correct |
+| **Agent-drivable QA** | A [Model Context Protocol server](../decisions/0011-expose-the-qa-surface-over-mcp.md) exposing the platform's QA surface as six tools, so an AI agent can run the suites, replay webhooks and check the ledger. Its first human-driven run found a live pagination defect |
 
 **Built by Marcel Gilbert** · [github.com/marcelgilbertdev-oss/zerofayyz-fintech](https://github.com/marcelgilbertdev-oss/zerofayyz-fintech)
 
-For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), ten
+For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), thirteen
 [decision records](../decisions/), and a [manual acceptance charter](../runbooks/MANUAL_ACCEPTANCE_TEST.md)
 carrying every defect found during development and how each was closed.
