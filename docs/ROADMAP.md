@@ -158,8 +158,10 @@ founder's to take — it briefly stops real deliveries.
 real secret; then `STRIPE_WEBHOOK_SECRET` replaced on Render with a well-formed
 wrong value, giving **29/30** — the probe failing with *"a validly signed
 delivery was rejected with 400 … real Stripe events are being refused and the
-ledger has stopped moving"*, a red run, and GitHub's email to the owner; then
-the secret restored and **30/30** again.
+ledger has stopped moving"*, a red run, and GitHub's email to the owner —
+**received on the owner's phone at 10:13**, subject *"Production watch: All jobs
+have failed"*, which is the link most monitoring stories assert and never check;
+then the secret restored and **30/30** again.
 
 The part worth keeping: during the break, **the other twenty-nine checks all
 passed.** `/health` still reported the webhook `configured`, the dashboard still
