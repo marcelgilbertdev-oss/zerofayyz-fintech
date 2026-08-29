@@ -301,6 +301,25 @@ unscrubbed error report would turn an incident dashboard into a credential store
 
 ---
 
+## GitHub Actions secrets
+
+Two workflows hold credentials. Both fail loudly and name the missing variable rather than
+hanging on a prompt, so an absent secret is a red run with an explanation, not a mystery.
+
+| Secret | Used by | What it is |
+| --- | --- | --- |
+| `VERCEL_TOKEN` | `deploy-clients.yml` | Deploy token from vercel.com/account/tokens, scoped to the team that owns the projects. The two SPA clients cannot build on Vercel, so CI builds and uploads them |
+| `STRIPE_WEBHOOK_SECRET` | `production-watch.yml` | The same `whsec_…` value set on Render. The hourly monitor signs a probe event with it and requires the API to accept it |
+
+Add both under **Settings → Secrets and variables → Actions**.
+
+**Why the monitor needs the webhook secret.** `/health` reports whether the variable is
+*set*, not whether it is *right*. A secret rotated in Stripe and never updated on Render
+therefore looks healthy while every real delivery is rejected and the ledger quietly stops.
+The probe signs an event the handler does not act on (`payment_intent.created`), so it
+verifies the signature path without writing anything. When the secret is rotated, update it
+in both places — Render and this Actions secret — or the next hourly run fails.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |

@@ -22,4 +22,12 @@ jobs:
         with:
           node-version: 22
       - name: Run the production smoke suite
+        env:
+          # The signed-webhook probe is the only check that needs a credential, and
+          # it covers the failure /health cannot see: a secret that is present but
+          # stale, which reports "configured" while every real Stripe delivery is
+          # refused. REQUIRE makes a missing secret fail the run rather than quietly
+          # skip the probe — a monitor that stops monitoring must say so.
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          SMOKE_REQUIRE_WEBHOOK_PROBE: "1"
         run: node scripts/production-smoke.mjs

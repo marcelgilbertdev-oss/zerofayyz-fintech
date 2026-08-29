@@ -9,12 +9,25 @@
  *   node scripts/production-smoke.mjs
  *
  * Exits non-zero if any check fails, so it can gate a deploy.
+ *
+ * ONE check is the exception to "no credentials": the signed webhook probe needs
+ * STRIPE_WEBHOOK_SECRET, because a secret that is present but WRONG is invisible
+ * from outside — /health reports the variable's presence, not its correctness, so
+ * a secret rotated in Stripe and never updated here leaves every real delivery
+ * rejected and the ledger silently frozen. Without the secret that check SKIPS and
+ * says so; set SMOKE_REQUIRE_WEBHOOK_PROBE=1 (the scheduled monitor does) to make a
+ * skip a failure, because a monitor that quietly stops monitoring is worse than one
+ * that never started.
  */
+
+import { createHmac } from "node:crypto";
 
 const API = process.env.SMOKE_API_URL ?? "https://zerofayyz-fintech-api.onrender.com";
 const WEB = process.env.SMOKE_WEB_URL ?? "https://zerofayyz-fintech.vercel.app";
 // The free tier sleeps; the first request may pay a cold start.
 const TIMEOUT_MS = Number.parseInt(process.env.SMOKE_TIMEOUT_MS ?? "90000", 10);
+const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+const REQUIRE_WEBHOOK_PROBE = process.env.SMOKE_REQUIRE_WEBHOOK_PROBE === "1";
 
 const results = [];
 
@@ -31,6 +44,12 @@ async function check(name, run) {
     results.push({ name, ok: false, detail: String(error.message ?? error), ms });
     console.log(`  FAIL  ${name} — ${error.message ?? error} (${ms}ms)`);
   }
+}
+
+/** A skip is recorded and printed, never omitted — see the header note. */
+function skip(name, why) {
+  results.push({ name, ok: true, skipped: true, detail: why, ms: 0 });
+  console.log(`  SKIP  ${name} — ${why}`);
 }
 
 function assert(condition, message) {
@@ -128,6 +147,64 @@ await check("a forged signature is rejected", async () => {
 
   return body.error;
 });
+
+// The positive control. The two checks above prove bad signatures are refused;
+// none of them proves a GOOD one is accepted, and that is the failure that hurts:
+// health reports the webhook "configured" whenever the variable is merely set, so a
+// stale secret looks healthy while Stripe's deliveries are rejected one by one.
+//
+// payment_intent.created is a real Stripe event type this handler does not act on,
+// so a verified delivery returns {received: true, processed: false} and writes
+// nothing — the probe exercises signature verification without touching the ledger.
+if (!WEBHOOK_SECRET) {
+  const why = "STRIPE_WEBHOOK_SECRET not set";
+  if (REQUIRE_WEBHOOK_PROBE) {
+    await check("a correctly signed webhook is accepted", async () => {
+      throw new Error(`${why} — the scheduled monitor requires this probe`);
+    });
+  } else {
+    skip("a correctly signed webhook is accepted", why);
+  }
+} else {
+  await check("a correctly signed webhook is accepted", async () => {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const payload = JSON.stringify({
+      id: `evt_smoke_probe_${timestamp}`,
+      object: "event",
+      type: "payment_intent.created",
+      created: timestamp,
+      livemode: false,
+      data: { object: { id: `pi_smoke_probe_${timestamp}`, object: "payment_intent" } },
+    });
+    const digest = createHmac("sha256", WEBHOOK_SECRET)
+      .update(`${timestamp}.${payload}`)
+      .digest("hex");
+
+    const response = await fetch(`${API}/api/v1/webhooks/stripe`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "stripe-signature": `t=${timestamp},v1=${digest}`,
+      },
+      body: payload,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const body = await response.json().catch(() => null);
+
+    assert(
+      response.status === 200,
+      `a validly signed delivery was rejected with ${response.status} — the deployed ` +
+        `STRIPE_WEBHOOK_SECRET does not match the one signing this probe, so real Stripe ` +
+        `events are being refused and the ledger has stopped moving`,
+    );
+    assert(body?.received === true, "endpoint did not acknowledge the delivery");
+    // If this ever becomes true, the probe has started writing to the ledger and
+    // must move to an event type the handler still ignores.
+    assert(body?.processed === false, "the probe event was processed — it must be inert");
+
+    return "signature verified, nothing written";
+  });
+}
 
 await check("forged webhooks left the ledger untouched", async () => {
   const { body } = await fetchJson("/api/v1/metrics");
@@ -455,8 +532,13 @@ await check("the ledger API paginates and filters", async () => {
 });
 
 const failed = results.filter((entry) => !entry.ok);
+const skipped = results.filter((entry) => entry.skipped);
 
-console.log(`\n${results.length - failed.length}/${results.length} checks passed\n`);
+console.log(
+  `\n${results.length - failed.length - skipped.length}/${results.length} checks passed` +
+    (skipped.length > 0 ? `, ${skipped.length} skipped` : "") +
+    `\n`,
+);
 
 if (failed.length > 0) {
   process.exit(1);

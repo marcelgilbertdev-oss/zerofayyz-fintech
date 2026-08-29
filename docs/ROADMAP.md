@@ -112,7 +112,7 @@ endpoint exists; nothing consumed it until the first slice below.
   orchestrator drains the instance instead of routing payments into a dead ledger. Tested
   on both branches, including the divergence itself: database down asserts 503 from one
   endpoint and 200 from the other in the same test.
-- Scheduled monitoring with alerting: the 28-check smoke suite now runs hourly against the
+- Scheduled monitoring with alerting: the 29-check smoke suite now runs hourly against the
   live deployment (`production-watch.yml`), and a failed scheduled run is GitHub's own
   email to the owner — an alert with a person on the end of it and no new infrastructure.
 
@@ -126,13 +126,32 @@ endpoint exists; nothing consumed it until the first slice below.
   and a quote-brace sequence that would corrupt the JSON a log query depends on.
 - ~~Error tracking~~ — **shipped**: Sentry live in production, reports carry the request id,
   and cookies/`authorization`/`stripe-signature`/`set-cookie`/query string are scrubbed before
-  any event leaves the process. Still open: an alert when the webhook endpoint starts
-  returning non-2xx
-- Alert routing, so a broken webhook reaches a person rather than a log file
+  any event leaves the process.
+- ~~Alert routing, so a broken webhook reaches a person rather than a log file~~ —
+  **shipped (2026-08-28)**: a *signed* webhook probe in the smoke suite, run hourly.
   (the audit log panel this phase originally planned shipped in Phase 3)
 
-**What proves it works:** deliberately break the webhook secret, confirm the alert fires,
-restore it, confirm recovery. An alert nobody has ever seen fire is not monitoring.
+**Why a positive control rather than an error count.** Two failure modes had to be told
+apart. A secret that is *missing* was already caught: `/health` reports the webhook
+`unconfigured` and the hourly run fails. A secret that is *present but stale* — rotated in
+Stripe, never updated on Render — was invisible, because health reports the variable's
+presence, not its correctness. Every real delivery would be rejected, the ledger would stop
+moving, and nothing would say so. Counting non-2xx responses cannot detect it either: the
+suite itself posts an unsigned and a forged webhook on purpose, so 400s are normal traffic
+here, and alerting on them would produce the report nobody opens.
+
+So the check signs a real event with the deployed secret and requires the endpoint to accept
+it. It uses `payment_intent.created` — a genuine Stripe type this handler does not act on —
+so a verified delivery returns `processed: false` and writes nothing to the live ledger.
+
+**What proved it works:** the check was watched failing for the right reason before it was
+trusted — run against a local API with a deliberately mismatched secret, it fails naming the
+divergence and its consequence; with the correct secret it passes, writing nothing. A missing
+secret makes it *skip* and say so on a public run, and `SMOKE_REQUIRE_WEBHOOK_PROBE=1` (set
+in the scheduled monitor) turns that skip into a failure, because a monitor that quietly
+stops monitoring is worse than one that never started. Breaking the *production* secret to
+watch the hourly alert fire end-to-end is the one step left, and it is deliberately the
+founder's to take — it briefly stops real deliveries.
 
 ---
 

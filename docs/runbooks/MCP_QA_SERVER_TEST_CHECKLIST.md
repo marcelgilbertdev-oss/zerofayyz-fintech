@@ -65,7 +65,10 @@ covered by unit tests; run it for real only against a local API if ever needed.
 ## 3 · Optional: production smoke through the agent (~1 min, read-only)
 
 Ask: **"Run the production-smoke suite."**
-**PASS:** 28/28 checks against the deployed platform. This is the same suite as
+**PASS:** 28 passed and 1 skipped, of 29, against the deployed platform. The skip is the
+signed-webhook probe, which needs `STRIPE_WEBHOOK_SECRET` — and per 2g above that secret
+lives only in Render, so an agent run is expected to skip it rather than be given it. The
+scheduled monitor holds the secret and requires the probe. This is the same suite as
 `node scripts/production-smoke.mjs` — the point is proving an agent can run it.
 
 ## 4 · Optional: Claude Desktop (second client, ~3 min)

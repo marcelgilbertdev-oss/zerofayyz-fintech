@@ -70,7 +70,7 @@ can list features, and almost nobody can explain the reasoning.
 | Integration tests against real PostgreSQL | **The story:** the webhook had nineteen passing unit tests and had never worked. Every test stubbed the database, so none ran the real SQL — and the SQL was invalid |
 | Accessibility scanned at two viewports | Adding phone width found a real WCAG failure that had been shipping under a green suite |
 | Visual regression on the chrome | Catches layout silently breaking. Scoped to surfaces without live data, because a suite that fails whenever the ledger moves is one people learn to ignore |
-| A 28-check production smoke suite | Tests prove the code works. This proves *what actually shipped* works |
+| A 29-check production smoke suite | Tests prove the code works. This proves *what actually shipped* works |
 | The Go reconciler | A checker that shares code with the thing it checks agrees with its bugs |
 
 ### Running it, not just building it

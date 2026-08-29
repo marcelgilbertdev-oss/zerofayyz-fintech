@@ -5,7 +5,7 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-08-28:** live, 331 automated tests, 28/28 production smoke, 10 CI jobs
+**Status as of 2026-08-28:** live, 331 automated tests, 29/29 production smoke, 10 CI jobs
 green — all ten re-verified green on this date, including visual regression and end-to-end.
 The two SPA clients now deploy from CI rather than by hand, after serving a stale bundle for
 days (§2, the delivery lessons). Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
@@ -142,6 +142,21 @@ tested by making the *refused* request, not the permitted one.
 Env vars added to a platform blueprint do not reliably propagate to an already-running
 service, and an unset value fails silently. **Rule:** report configuration status on a health
 endpoint (the count, never the values) and assert it from the wire in a smoke check.
+
+### A health check reports that configuration is present, not that it is correct
+A webhook signing secret that is *missing* is easy to catch: the health endpoint says
+`unconfigured` and the scheduled monitor fails. A secret that is present but *stale* —
+rotated at the provider, never updated on the host — is invisible to exactly the same check,
+because it reports the variable's presence. Every signed delivery is then rejected, the
+ledger stops moving, and every dashboard stays green. Counting non-2xx responses does not
+close it either: a good smoke suite posts unsigned and forged webhooks deliberately, so
+rejections are normal traffic and alerting on them produces the report nobody opens.
+**Rule:** for any credential whose correctness only shows under real traffic, monitor with a
+*positive* control — exercise the credential and require success. Choose a request the system
+verifies but does not act on (here, a real provider event type the handler ignores, so a
+verified delivery writes nothing), and make a missing credential fail the monitor rather than
+silently skip the probe. A negative control proves bad input is refused; only a positive one
+proves good input is still accepted.
 
 ### A deploy path that is not in the pipeline will drift, whatever the runbook says
 Two of the three frontends served a bundle from before a currency fix for several days,
