@@ -5,8 +5,10 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-08-27:** live, 331 automated tests, 28/28 production smoke, 10 CI jobs
-green. Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
+**Status as of 2026-08-28:** live, 331 automated tests, 28/28 production smoke, 10 CI jobs
+green — all ten re-verified green on this date, including visual regression and end-to-end.
+The two SPA clients now deploy from CI rather than by hand, after serving a stale bundle for
+days (§2, the delivery lessons). Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
 github.com/marcelgilbertdev-oss/zerofayyz-fintech. **Separate from the gabriel repo — no
 shared code.**
 
@@ -141,6 +143,70 @@ Env vars added to a platform blueprint do not reliably propagate to an already-r
 service, and an unset value fails silently. **Rule:** report configuration status on a health
 endpoint (the count, never the values) and assert it from the wire in a smoke check.
 
+### A deploy path that is not in the pipeline will drift, whatever the runbook says
+Two of the three frontends served a bundle from before a currency fix for several days,
+displaying a gross volume of ¥2,203 where the API said `220300` — yen a hundred times too
+small, on the one detail this platform makes a point of, on two of the three links a reviewer
+would open. The source was already correct on `main`. The clients simply never redeployed:
+Vercel cannot build them, because their imports reach above the project root into
+`packages/api-contract` (`TS2307`), and pointing the root at the repository makes framework
+detection build the API instead. Both failures were known, documented, and correctly worked
+around by building locally — and the runbook's answer was a sentence asking a human to run a
+script after changing them. **Rule:** every instruction phrased as *something a person must
+remember to run* is an outage that has not happened yet. Move it into CI, and make the
+automated step fail loudly naming its own missing input — a step that hangs waiting on a
+prompt is just a new way to be optional.
+
+### A guard that is optional is not a guard, and the proof is the repeat commit
+Installing packages on macOS prunes Linux-only optional dependencies from the lockfile, so
+`npm ci` refuses the tree in CI with `Missing: @emnapi/core from lock file`. This reached CI
+for the **fourth** time — despite the lesson being written down, and despite a purpose-built
+checker (`npm run verify:lock`, thirty seconds inside a `node:22` container) added
+specifically to stop it. It exists, it works, and it was not run. **Rule:** when a fix commit
+repeats an earlier fix commit's sentence, the defect is not in the code or the documentation —
+it is in the fact that the check is opt-in. The remedy is a required pipeline step, not a
+more emphatic note.
+
+### A CLI deploy resolves its target from the token, so an unscoped token lands elsewhere
+Moving a manual deploy into CI swaps an interactive session for a token, and the token carries
+its own default scope. The link step resolves a project *name* against that scope: for projects
+owned by a team, a personally scoped token does not fail — it creates a second project of the
+same name under the personal account and deploys there. The pipeline goes green while
+publishing to a URL nobody is watching, which is the same silent-wrong-target failure the
+automation was written to end. **Rule:** name the owning scope explicitly in the workflow
+rather than inheriting the token's default; the slug is not a secret (it is public in every
+deployment URL), and pinning it means a later widening of the token cannot redirect the
+deploy. Read the run log once and confirm the published target, rather than trusting the exit
+code.
+
+### A test that passes only on a dirty database is asserting a precondition it never stated
+A pagination scenario read the ledger with a limit of 5 and asserted exactly 5 rows came back.
+Green on a developer machine, red in CI: `4 !== 5`. The local database still held rows from
+earlier runs; CI seeds clean. The deeper trap sat one level down — the endpoint uses
+`DISTINCT ON (payments.id)` and returns the *latest event per payment*, because it backs the
+dashboard's recent-transactions table, so its depth is the seed's four **payments** and not its
+growing count of transaction rows. An intermediate fix that delivered signed webhook events
+until the ledger was "deep enough" therefore could never work, and its failure was the clue.
+**Rule:** any assertion whose truth depends on how much data exists must either state that
+precondition in the test or stay inside what a clean seed guarantees — and must be run against
+a fresh database *and* a dirty one before it is believed.
+
+### An unused function with a passing test is armed, not dead
+A Vue store exposed a `grossVolume` getter dividing minor units by 100 — the exact error the
+rendering path carries a comment warning against, since JPY has no minor unit. Nothing
+rendered it; the component read the value through the correct formatter. But a unit test
+asserted the getter returned `1222`, pinning the wrong behaviour in place and making it look
+deliberate to whoever wired it up next. **Rule:** delete dead code with its test. Coverage over
+an unused path is not reassurance, it is a loaded default waiting for a caller.
+
+### A generated directory under version control churns without ever being read
+Sixty files of SvelteKit's `.svelte-kit` output were tracked, dirtying the working tree after
+every build and putting hashed chunk diffs into reviews of unrelated changes. Every script the
+client has — `build`, `typecheck`, `test` — runs `svelte-kit sync` first, so the committed copy
+was never read by any of them. It had been committed by omission: the ignore file already
+excluded `.next`, `dist`, `build` and `coverage`. **Rule:** before trusting a generated
+directory in git, delete it and run the suite. If it comes back, it belongs in `.gitignore`.
+
 ## 3. The security posture, as a reusable checklist
 
 | Concern | Approach |
@@ -174,3 +240,4 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Kubernetes + failure-mode transcript | `docs/runbooks/KUBERNETES.md` |
 | Go reconciler | `services/reconciler/README.md` |
 | Marcel's own explanation | `docs/portfolio/EXPLAIN_IT_IN_YOUR_OWN_WORDS.md` |
+| SPA client deploy (CI) | `.github/workflows/deploy-clients.yml`, `deploy-clients.sh` |
