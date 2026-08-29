@@ -660,9 +660,11 @@ export default async function Home({
                   {t.health.liveCount(formatCount(liveCheckCount, locale), formatCount(systemChecks.length, locale))}
                 </span>
               </div>
-              <div className="mt-5 divide-y divide-white/[0.06]">
+              {/* A list of statuses is a list: screen readers announce how many
+                  there are, and the Vue and Svelte panels already say <ul>. */}
+              <ul className="mt-5 divide-y divide-white/[0.06]">
                 {systemChecks.map((check) => (
-                  <div key={check.label} className="flex items-center justify-between gap-4 py-3.5 first:pt-0">
+                  <li key={check.label} className="flex items-center justify-between gap-4 py-3.5 first:pt-0">
                     <div className="flex items-center gap-3">
                       <span className={`size-2 rounded-full ${check.healthy ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.65)]" : "bg-white/20"}`} />
                       <div>
@@ -671,9 +673,9 @@ export default async function Home({
                       </div>
                     </div>
                     <span className={`text-[10px] ${check.healthy ? "text-emerald-300/70" : "text-white/55"}`}>{check.status}</span>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
               <div className="mt-1 rounded-xl border border-white/[0.06] bg-black/10 p-3">
                 <div className="flex items-center justify-between gap-3 text-[10px] text-white/60">
                   <span>{t.health.responseSource}</span>

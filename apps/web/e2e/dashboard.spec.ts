@@ -18,7 +18,32 @@ test("the dashboard renders live platform health", async ({ page }) => {
   // The API and database are up during the E2E run, so the page must say so.
   // A hardcoded status tile would pass this test even with the API stopped,
   // which is why the assertion is on the live count.
-  await expect(healthCard.getByText(/[0-9] of 4 live/)).toBeVisible();
+  //
+  // The total is NOT pinned to a number. It was "of 4" and broke the moment the
+  // panel started showing the two integrations the API had been reporting all
+  // along — a test asserting a total it does not derive is a test that has to be
+  // edited every time the truth changes. What matters is that the badge counts
+  // the rows actually rendered, so this reads both and compares them.
+  const badge = healthCard.getByText(/\d+ of \d+ live/);
+  await expect(badge).toBeVisible();
+
+  // textContent with whitespace collapsed: innerText can come back with the
+  // badge's own line breaks, and the match then silently yields undefined —
+  // which reads as "expected 6, received NaN" rather than as a parse problem.
+  const badgeText = ((await badge.textContent()) ?? "").replace(/\s+/g, " ").trim();
+  const match = badgeText.match(/(\d+) of (\d+) live/);
+  expect(match, `badge did not read "N of M live": ${badgeText}`).not.toBeNull();
+
+  const live = Number(match![1]);
+  const total = Number(match![2]);
+  const rowCount = await healthCard.getByRole("listitem").count();
+
+  // The total must be the number of rows actually rendered. It was hardcoded to
+  // 4 while the panel showed a subset of what the API reported, so the badge
+  // could claim a total the list did not contain.
+  expect(total).toBe(rowCount);
+  expect(live).toBeGreaterThan(0);
+  expect(live).toBeLessThanOrEqual(total);
 });
 
 test("recent transactions come from the database, not the page", async ({ page }) => {
