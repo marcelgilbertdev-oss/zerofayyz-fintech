@@ -35,6 +35,14 @@ type ApiHealth = {
    */
   databaseOperational: boolean | null;
   databaseLatencyMs: number | null;
+  /**
+   * Both null when the API predates reporting them — an older deployment has
+   * not said these are missing, so the row is omitted rather than shown as
+   * down. The count beneath the panel is derived from the rows that exist, so
+   * it cannot claim a total the list does not contain.
+   */
+  clientOrigins: { configured: boolean; count: number | null } | null;
+  errorTrackingConfigured: boolean | null;
   stripeConfigured: boolean;
   webhookConfigured: boolean;
 };
@@ -48,6 +56,8 @@ const unknownHealth = (reachability: Reachability): ApiHealth => ({
   databaseLatencyMs: null,
   stripeConfigured: false,
   webhookConfigured: false,
+  clientOrigins: null,
+  errorTrackingConfigured: null,
 });
 
 type DashboardTransaction = {
@@ -87,6 +97,8 @@ async function getApiHealth(): Promise<ApiHealth> {
         };
         stripe?: { status?: unknown };
         webhook?: { status?: unknown };
+        clientOrigins?: { status?: unknown; count?: unknown };
+        errorTracking?: { status?: unknown };
       };
     };
 
@@ -107,6 +119,22 @@ async function getApiHealth(): Promise<ApiHealth> {
           : null,
       stripeConfigured: payload.checks?.stripe?.status === "configured",
       webhookConfigured: payload.checks?.webhook?.status === "configured",
+      // null, not false: an API deployed before these were reported has not
+      // told us they are missing, and "Down" would be a claim we cannot make.
+      clientOrigins:
+        payload.checks?.clientOrigins === undefined
+          ? null
+          : {
+              configured: payload.checks.clientOrigins.status === "configured",
+              count:
+                typeof payload.checks.clientOrigins.count === "number"
+                  ? payload.checks.clientOrigins.count
+                  : null,
+            },
+      errorTrackingConfigured:
+        payload.checks?.errorTracking === undefined
+          ? null
+          : payload.checks.errorTracking.status === "configured",
     };
   } catch {
     // The server answered and we could not read it. That is a genuine fault.
@@ -430,6 +458,35 @@ export default async function Home({
       status: apiHealth.webhookConfigured ? t.health.configured : t.health.notConnected,
       healthy: apiHealth.webhookConfigured,
     },
+    // Reported by the API since the return-URL allowlist landed, and shown
+    // nowhere until now — the panel claimed "4 of 4" over a subset.
+    ...(apiHealth.clientOrigins === null
+      ? []
+      : [
+          {
+            label: t.health.clientOrigins,
+            detail:
+              apiHealth.clientOrigins.count === null
+                ? t.health.allowlistDetail
+                : t.health.allowlistCount(String(apiHealth.clientOrigins.count)),
+            status: apiHealth.clientOrigins.configured
+              ? t.health.configured
+              : t.health.notConnected,
+            healthy: apiHealth.clientOrigins.configured,
+          },
+        ]),
+    ...(apiHealth.errorTrackingConfigured === null
+      ? []
+      : [
+          {
+            label: t.health.errorTracking,
+            detail: t.health.errorTrackingDetail,
+            status: apiHealth.errorTrackingConfigured
+              ? t.health.configured
+              : t.health.notConnected,
+            healthy: apiHealth.errorTrackingConfigured,
+          },
+        ]),
   ];
   const liveCheckCount = systemChecks.filter((check) => check.healthy).length;
   const checkoutStatus = Array.isArray(query.checkout)

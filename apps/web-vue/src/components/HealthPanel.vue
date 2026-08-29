@@ -3,10 +3,10 @@ import { computed } from "vue";
 
 import type { Health } from "../schemas";
 
-const props = defineProps<{ health: Health; liveChecks: number }>();
+const props = defineProps<{ health: Health }>();
 
 const rows = computed(() => {
-  const { database, stripe, webhook } = props.health.checks;
+  const { database, stripe, webhook, clientOrigins, errorTracking } = props.health.checks;
 
   return [
     {
@@ -32,15 +32,40 @@ const rows = computed(() => {
           : "Awaiting signing secret",
       healthy: webhook.status === "configured",
     },
+  // clientOrigins and errorTracking are optional in the contract, because the
+  // clients deploy separately from the API. A row appears only when the API
+  // actually reported it — an older API has not said these are missing, and
+  // rendering them as down would be a claim we cannot make. The badge counts
+  // the rows that exist, so the total can never disagree with the list.
+    ...(clientOrigins
+      ? [
+          {
+            label: "Return allowlist",
+            detail: `${clientOrigins.count} approved origins`,
+            healthy: clientOrigins.status === "configured",
+          },
+        ]
+      : []),
+    ...(errorTracking
+      ? [
+          {
+            label: "Error tracking",
+            detail: "Scrubbed before send",
+            healthy: errorTracking.status === "configured",
+          },
+        ]
+      : []),
   ];
 });
+
+const liveCount = computed(() => rows.value.filter((row) => row.healthy).length);
 </script>
 
 <template>
   <section aria-label="System health" class="panel">
     <header class="panel-header">
       <h2>System health</h2>
-      <span class="badge">{{ liveChecks }} of 4 live</span>
+      <span class="badge">{{ liveCount }} of {{ rows.length }} live</span>
     </header>
     <ul class="checks">
       <li v-for="row in rows" :key="row.label" class="check">

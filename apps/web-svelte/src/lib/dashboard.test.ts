@@ -66,7 +66,6 @@ describe("svelte dashboard state", () => {
 
     expect(dashboard.state).toBe("ready");
     expect(dashboard.errors).toEqual([]);
-    expect(dashboard.liveChecks).toBe(4);
     expect(dashboard.metrics?.grossVolumeMinor).toBe(122_200);
   });
 
@@ -133,7 +132,6 @@ describe("svelte dashboard state", () => {
     await dashboard.load();
     expect(dashboard.state).toBe("ready");
     expect(dashboard.errors).toEqual([]);
-    expect(dashboard.liveChecks).toBe(4);
   });
 
   it("surfaces the API's own message when checkout fails", async () => {

@@ -66,7 +66,6 @@ describe("dashboard store", () => {
 
     expect(store.state).toBe("ready");
     expect(store.errors).toEqual([]);
-    expect(store.liveChecks).toBe(4);
   });
 
   it("keeps working panels when one endpoint fails", async () => {
@@ -136,7 +135,6 @@ describe("dashboard store", () => {
     await store.load();
     expect(store.state).toBe("ready");
     expect(store.errors).toEqual([]);
-    expect(store.liveChecks).toBe(4);
   });
 
   it("surfaces the API's own message when checkout fails", async () => {

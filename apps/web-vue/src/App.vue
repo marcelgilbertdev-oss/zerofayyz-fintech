@@ -94,7 +94,6 @@ onMounted(() => {
         <HealthPanel
           v-if="store.health"
           :health="store.health"
-          :live-checks="store.liveChecks"
         />
       </div>
 

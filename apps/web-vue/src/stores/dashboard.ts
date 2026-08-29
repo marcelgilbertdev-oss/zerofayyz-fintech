@@ -28,20 +28,6 @@ export const useDashboardStore = defineStore("dashboard", {
     checkoutError: null as string | null,
   }),
 
-  getters: {
-    /** Count of live integrations, mirroring the "N of 4 live" tile. */
-    liveChecks(store): number {
-      if (!store.health) return 0;
-      const { database, stripe, webhook } = store.health.checks;
-      return [
-        store.health.status === "operational",
-        database.status === "operational",
-        stripe.status === "configured",
-        webhook.status === "configured",
-      ].filter(Boolean).length;
-    },
-  },
-
   actions: {
     async load() {
       this.state = "loading";

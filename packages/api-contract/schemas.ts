@@ -32,6 +32,13 @@ export const healthSchema = z.object({
         count: z.number().int().nonnegative(),
       })
       .optional(),
+    // Optional for the same reason, and added later for the same lesson: the API
+    // had been reporting errorTracking for weeks while every client dropped it,
+    // because a Zod object strips what it does not name. A field the API sends
+    // and the contract omits is invisible, not extra.
+    errorTracking: z
+      .object({ status: z.enum(["configured", "unconfigured"]) })
+      .optional(),
   }),
 });
 

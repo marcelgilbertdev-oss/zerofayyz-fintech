@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/svelte";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/svelte";
+import { afterEach, describe, expect, it } from "vitest";
 
 import Page from "../routes/+page.svelte";
 import HealthPanel from "./HealthPanel.svelte";
@@ -38,7 +38,6 @@ describe("HealthPanel", () => {
   it("reports the live count and labels the down integration", () => {
     render(HealthPanel, {
       props: {
-        liveChecks: 3,
         health: {
           service: "zerofayyz-fintech-api",
           status: "operational" as const,
@@ -123,5 +122,59 @@ describe("Page shell", () => {
     render(Page);
 
     expect(screen.getByLabelText(/japanese yen/i)).toBeTruthy();
+  });
+});
+
+/**
+ * The API reported clientOrigins and errorTracking for weeks while every client
+ * dropped them — the contract did not name errorTracking, and a Zod object
+ * strips what it does not name — so the badge read "4 of 4 live" over a subset
+ * and called it a total. Both fields are optional, because the clients deploy
+ * separately from the API, so the panel must render what it is given and count
+ * only that.
+ */
+describe("HealthPanel integration coverage", () => {
+  // Auto-cleanup only registers under test-runner globals, which are off here,
+  // so the previous render's DOM would otherwise still be mounted and the
+  // "omits it" assertion would find the row the test before it created.
+  afterEach(cleanup);
+
+  const base = {
+    service: "zerofayyz-fintech-api",
+    status: "operational" as const,
+    environment: "production",
+    version: "0.1.0",
+    timestamp: "2026-08-29T00:00:00.000Z",
+    checks: {
+      database: { status: "operational" as const, latencyMs: 3, name: "neondb" },
+      stripe: { status: "configured" as const },
+      webhook: { status: "configured" as const },
+    },
+  };
+
+  it("shows every integration the API reports, and counts what it shows", () => {
+    render(HealthPanel, {
+      health: {
+          ...base,
+          checks: {
+            ...base.checks,
+            clientOrigins: { status: "configured" as const, count: 2 },
+            errorTracking: { status: "configured" as const },
+        },
+      },
+    });
+
+    expect(screen.getByText("Return allowlist")).toBeTruthy();
+    expect(screen.getByText("2 approved origins")).toBeTruthy();
+    expect(screen.getByText("Error tracking")).toBeTruthy();
+    expect(screen.getByText("6 of 6 live")).toBeTruthy();
+  });
+
+  it("omits what an older API never reported rather than calling it down", () => {
+    render(HealthPanel, { health: base });
+
+    expect(screen.queryByText("Return allowlist")).toBeNull();
+    expect(screen.queryByText("Error tracking")).toBeNull();
+    expect(screen.getByText("4 of 4 live")).toBeTruthy();
   });
 });

@@ -106,7 +106,7 @@
         <TransactionsTable transactions={dashboard.transactions} />
       {/if}
       {#if dashboard.health}
-        <HealthPanel health={dashboard.health} liveChecks={dashboard.liveChecks} />
+        <HealthPanel health={dashboard.health} />
       {/if}
     </div>
 

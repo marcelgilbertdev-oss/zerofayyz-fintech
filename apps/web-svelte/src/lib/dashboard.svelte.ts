@@ -37,17 +37,6 @@ export function createDashboard(seed?: DashboardSeed) {
   let checkoutPending = $state(false);
   let checkoutError = $state<string | null>(null);
 
-  const liveChecks = $derived.by(() => {
-    if (!health) return 0;
-    const { database, stripe, webhook } = health.checks;
-    return [
-      health.status === "operational",
-      database.status === "operational",
-      stripe.status === "configured",
-      webhook.status === "configured",
-    ].filter(Boolean).length;
-  });
-
   async function load() {
     state = "loading";
     errors = [];
@@ -104,7 +93,6 @@ export function createDashboard(seed?: DashboardSeed) {
     get errors() { return errors; },
     get checkoutPending() { return checkoutPending; },
     get checkoutError() { return checkoutError; },
-    get liveChecks() { return liveChecks; },
     load,
     checkout,
   };

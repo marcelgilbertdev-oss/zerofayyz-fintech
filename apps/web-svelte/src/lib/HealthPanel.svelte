@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Health } from "./schemas";
 
-  const { health, liveChecks }: { health: Health; liveChecks: number } = $props();
+  const { health }: { health: Health } = $props();
 
   const rows = $derived.by(() => {
-    const { database, stripe, webhook } = health.checks;
+    const { database, stripe, webhook, clientOrigins, errorTracking } = health.checks;
 
     return [
       {
@@ -30,14 +30,39 @@
             : "Awaiting signing secret",
         healthy: webhook.status === "configured",
       },
+  // clientOrigins and errorTracking are optional in the contract, because the
+  // clients deploy separately from the API. A row appears only when the API
+  // actually reported it — an older API has not said these are missing, and
+  // rendering them as down would be a claim we cannot make. The badge counts
+  // the rows that exist, so the total can never disagree with the list.
+      ...(clientOrigins
+        ? [
+            {
+              label: "Return allowlist",
+              detail: `${clientOrigins.count} approved origins`,
+              healthy: clientOrigins.status === "configured",
+            },
+          ]
+        : []),
+      ...(errorTracking
+        ? [
+            {
+              label: "Error tracking",
+              detail: "Scrubbed before send",
+              healthy: errorTracking.status === "configured",
+            },
+          ]
+        : []),
     ];
   });
+
+  const liveCount = $derived(rows.filter((row) => row.healthy).length);
 </script>
 
 <section aria-label="System health" class="panel">
   <header class="panel-header">
     <h2>System health</h2>
-    <span class="badge">{liveChecks} of 4 live</span>
+    <span class="badge">{liveCount} of {rows.length} live</span>
   </header>
   <ul class="checks">
     {#each rows as row (row.label)}

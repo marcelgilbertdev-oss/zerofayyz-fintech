@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from "pinia";
-import { render, screen } from "@testing-library/vue";
-import { beforeEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/vue";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import App from "../App.vue";
 import HealthPanel from "./HealthPanel.vue";
@@ -54,7 +54,7 @@ describe("HealthPanel", () => {
   };
 
   it("reports the live count it is given and labels the down integration", () => {
-    render(HealthPanel, { props: { health, liveChecks: 3 } });
+    render(HealthPanel, { props: { health } });
 
     expect(screen.getByText("3 of 4 live")).toBeTruthy();
     expect(screen.getByText("Awaiting signing secret")).toBeTruthy();
@@ -138,5 +138,61 @@ describe("App shell", () => {
 
     // A <label for>, so a screen reader announces it; it said "US dollars" over a ¥ field.
     expect(screen.getByLabelText(/japanese yen/i)).toBeTruthy();
+  });
+});
+
+/**
+ * The API reported clientOrigins and errorTracking for weeks while every client
+ * dropped them — the contract did not name errorTracking, and a Zod object
+ * strips what it does not name — so the badge read "4 of 4 live" over a subset
+ * and called it a total. Both fields are optional, because the clients deploy
+ * separately from the API, so the panel must render what it is given and count
+ * only that.
+ */
+describe("HealthPanel integration coverage", () => {
+  // Auto-cleanup only registers under test-runner globals, which are off here,
+  // so the previous render's DOM would otherwise still be mounted and the
+  // "omits it" assertion would find the row the test before it created.
+  afterEach(cleanup);
+
+  const base = {
+    service: "zerofayyz-fintech-api",
+    status: "operational" as const,
+    environment: "production",
+    version: "0.1.0",
+    timestamp: "2026-08-29T00:00:00.000Z",
+    checks: {
+      database: { status: "operational" as const, latencyMs: 3, name: "neondb" },
+      stripe: { status: "configured" as const },
+      webhook: { status: "configured" as const },
+    },
+  };
+
+  it("shows every integration the API reports, and counts what it shows", () => {
+    render(HealthPanel, {
+      props: {
+        health: {
+          ...base,
+          checks: {
+            ...base.checks,
+            clientOrigins: { status: "configured" as const, count: 2 },
+            errorTracking: { status: "configured" as const },
+          },
+        },
+      },
+    });
+
+    expect(screen.getByText("Return allowlist")).toBeTruthy();
+    expect(screen.getByText("2 approved origins")).toBeTruthy();
+    expect(screen.getByText("Error tracking")).toBeTruthy();
+    expect(screen.getByText("6 of 6 live")).toBeTruthy();
+  });
+
+  it("omits what an older API never reported rather than calling it down", () => {
+    render(HealthPanel, { props: { health: base } });
+
+    expect(screen.queryByText("Return allowlist")).toBeNull();
+    expect(screen.queryByText("Error tracking")).toBeNull();
+    expect(screen.getByText("4 of 4 live")).toBeTruthy();
   });
 });
