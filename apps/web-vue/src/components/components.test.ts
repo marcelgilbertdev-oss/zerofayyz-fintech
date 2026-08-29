@@ -1,6 +1,8 @@
+import { createPinia, setActivePinia } from "pinia";
 import { render, screen } from "@testing-library/vue";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
+import App from "../App.vue";
 import HealthPanel from "./HealthPanel.vue";
 import MetricTiles from "./MetricTiles.vue";
 import TransactionsTable from "./TransactionsTable.vue";
@@ -95,5 +97,46 @@ describe("TransactionsTable", () => {
     });
 
     expect(screen.getByText("No transactions yet.")).toBeTruthy();
+  });
+});
+
+/**
+ * The operator area sits at the bottom of a single page (ADR 0010), which is right —
+ * a router existing only to host a login page is ceremony. But a reviewer who does not
+ * scroll never sees the session cookie, role guard, rate limiter or audit trail, so the
+ * header carries a door to it. And the platform's claim that one API serves three
+ * clients is only checkable if the other two are reachable from here.
+ *
+ * These assert rendered output, not the deployment: this client ships a shell and
+ * renders in the browser, so a smoke test fetching its HTML sees an empty div.
+ */
+describe("App shell", () => {
+  // App mounts the dashboard store on setup, so it needs a Pinia — the same
+  // arrangement the store suite uses.
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("carries a header door to the operator area, and the area it points at", () => {
+    render(App);
+
+    const door = screen.getByRole("link", { name: /operator sign-in/i });
+    expect(door.getAttribute("href")).toBe("#operator");
+    expect(document.querySelector("#operator")).not.toBeNull();
+  });
+
+  it("links to the other two clients, so one API serving three is verifiable", () => {
+    render(App);
+
+    const hrefs = [...document.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((h) => h.includes("zerofayyz-fintech.vercel.app"))).toBe(true);
+    expect(hrefs.some((h) => h.includes("fintech-svelte.vercel.app"))).toBe(true);
+  });
+
+  it("labels the amount field in yen — the currency it actually renders", () => {
+    render(App);
+
+    // A <label for>, so a screen reader announces it; it said "US dollars" over a ¥ field.
+    expect(screen.getByLabelText(/japanese yen/i)).toBeTruthy();
   });
 });

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 
+import Page from "../routes/+page.svelte";
 import HealthPanel from "./HealthPanel.svelte";
 import MetricTiles from "./MetricTiles.svelte";
 import TransactionsTable from "./TransactionsTable.svelte";
@@ -92,5 +93,35 @@ describe("TransactionsTable", () => {
     });
 
     expect(screen.getByText("No transactions yet.")).toBeTruthy();
+  });
+});
+
+/**
+ * Same two guarantees as the Vue client, asserted the same way — the two suites are
+ * meant to agree assertion-for-assertion (ADR 0010). Rendered output, not deployment:
+ * SvelteKit lazy-loads the chunk this markup lives in, so no fetch of the served HTML
+ * can see it.
+ */
+describe("Page shell", () => {
+  it("carries a header door to the operator area, and the area it points at", () => {
+    render(Page);
+
+    const door = screen.getByRole("link", { name: /operator sign-in/i });
+    expect(door.getAttribute("href")).toBe("#operator");
+    expect(document.querySelector("#operator")).not.toBeNull();
+  });
+
+  it("links to the other two clients, so one API serving three is verifiable", () => {
+    render(Page);
+
+    const hrefs = [...document.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((h) => h.includes("zerofayyz-fintech.vercel.app"))).toBe(true);
+    expect(hrefs.some((h) => h.includes("fintech-vue.vercel.app"))).toBe(true);
+  });
+
+  it("labels the amount field in yen — the currency it actually renders", () => {
+    render(Page);
+
+    expect(screen.getByLabelText(/japanese yen/i)).toBeTruthy();
   });
 });
