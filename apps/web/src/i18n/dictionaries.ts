@@ -180,8 +180,11 @@ const en = {
     steps: ["Next.js app", "Backend API", "Stripe sandbox", "Webhook event", "PostgreSQL"],
   },
   footer: {
-    left: "ZEROFAYYZ FINTECH · Portfolio Prototype",
+    left: "ZEROFAYYZ FINTECH · Portfolio Prototype · Next.js dashboard",
     right: "Sandbox data only · No real funds processed",
+    // "Consumed unmodified by three clients" is the platform's central claim, and it was
+    // unverifiable from inside any one of them. These make it two clicks to check.
+    siblings: "Same API, other clients:",
   },
   checkout: {
     error: "Unable to start checkout",
@@ -493,8 +496,9 @@ const ja: Dictionary = {
     steps: ["Next.js アプリ", "バックエンド API", "Stripe サンドボックス", "Webhook イベント", "PostgreSQL"],
   },
   footer: {
-    left: "ZEROFAYYZ FINTECH · ポートフォリオ用プロトタイプ",
+    left: "ZEROFAYYZ FINTECH · ポートフォリオ用プロトタイプ · Next.js ダッシュボード",
     right: "サンドボックスデータのみ · 実際の資金は動きません",
+    siblings: "同一 API の別クライアント:",
   },
   checkout: {
     error: "決済を開始できませんでした",

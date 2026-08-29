@@ -33,10 +33,11 @@ onMounted(() => {
       <div>
         <p class="brand">ZEROFAYYZ <span>FINTECH</span></p>
         <p class="tagline">Vue 3 client · same API, same ledger, different framework</p>
+        <a class="door" href="#operator">Operator sign-in ↓</a>
       </div>
       <div class="pay-group">
         <label class="amount-label" for="amount">
-          Test payment amount in US dollars
+          Test payment amount in Japanese yen
         </label>
         <div class="amount-field" :class="{ invalid: !amountValid }">
           <span aria-hidden="true">¥</span>
@@ -105,13 +106,31 @@ onMounted(() => {
     <OperatorPanel />
 
     <footer class="foot">
-      <span>ZEROFAYYZ FINTECH · Portfolio Prototype · Vue 3 + Pinia client</span>
+      <span>
+        ZEROFAYYZ FINTECH · Portfolio Prototype · Vue 3 + Pinia client · same API:
+        <a href="https://zerofayyz-fintech.vercel.app">Next.js</a> · <a href="https://zerofayyz-fintech-svelte.vercel.app">Svelte 5</a>
+      </span>
       <span>Sandbox data only · No real funds processed</span>
     </footer>
   </div>
 </template>
 
 <style scoped>
+.door {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: inherit;
+  opacity: 0.75;
+}
+.door:hover,
+.door:focus-visible {
+  opacity: 1;
+}
+.foot a {
+  color: inherit;
+}
+
 .shell {
   display: flex;
   flex-direction: column;

@@ -695,7 +695,10 @@ export default async function Home({
           </section>
 
           <footer className="mt-7 flex flex-col justify-between gap-2 border-t border-white/[0.05] pt-5 text-[10px] text-white/55 sm:flex-row">
-            <span>{t.footer.left}</span>
+            <span>
+              {t.footer.left} · {t.footer.siblings}{" "}
+              <a href="https://zerofayyz-fintech-vue.vercel.app">Vue 3</a> · <a href="https://zerofayyz-fintech-svelte.vercel.app">Svelte 5</a>
+            </span>
             <span>{t.footer.right}</span>
           </footer>
         </main>

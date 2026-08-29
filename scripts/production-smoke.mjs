@@ -431,6 +431,44 @@ for (const client of CLIENTS) {
 // that cannot tell the new build from the previous one cannot detect a failed
 // deploy — which is the main thing it exists to detect.
 
+// The platform's central claim is that one API is consumed unmodified by three clients.
+// From inside any single client that was unverifiable — the footers named the client you
+// were on and offered no way to reach its siblings. Decorative links are exactly what a
+// refactor drops silently, so the claim gets a test rather than a promise.
+await check("each client points at the other two", async () => {
+  const wanted = [
+    { name: "dashboard", url: WEB, expect: ["fintech-vue.vercel.app", "fintech-svelte.vercel.app"] },
+    { name: "vue client", url: "https://zerofayyz-fintech-vue.vercel.app", expect: ["zerofayyz-fintech.vercel.app", "fintech-svelte.vercel.app"] },
+    { name: "svelte client", url: "https://zerofayyz-fintech-svelte.vercel.app", expect: ["zerofayyz-fintech.vercel.app", "fintech-vue.vercel.app"] },
+  ];
+
+  for (const client of wanted) {
+    const html = await (await fetch(client.url, { signal: AbortSignal.timeout(TIMEOUT_MS) })).text();
+    for (const href of client.expect) {
+      assert(html.includes(href), `${client.name} does not link to ${href}`);
+    }
+  }
+
+  return "three clients, each reachable from the other two";
+});
+
+// The operator area is where the session cookie, role guard, rate limiter and append-only
+// audit trail are demonstrated, and it sits at the bottom of a single page (ADR 0010). A
+// reviewer who does not scroll never sees the strongest half of the platform, so each SPA
+// carries a door in its header. This asserts the door and its target still exist.
+await check("the SPA clients carry a visible door to the operator area", async () => {
+  for (const [name, url] of [
+    ["vue client", "https://zerofayyz-fintech-vue.vercel.app"],
+    ["svelte client", "https://zerofayyz-fintech-svelte.vercel.app"],
+  ]) {
+    const html = await (await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })).text();
+    assert(html.includes('href="#operator"'), `${name} header has no link to the operator area`);
+    assert(html.includes('id="operator"'), `${name} has no operator area to link to`);
+  }
+
+  return "header door present in both SPA clients";
+});
+
 await check("the login page is live and publishes the demo credentials", async () => {
   const response = await fetch(`${WEB}/login`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
   const html = await response.text();

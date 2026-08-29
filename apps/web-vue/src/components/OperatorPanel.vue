@@ -43,7 +43,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section aria-label="Operator area" class="panel">
+  <section id="operator" aria-label="Operator area" class="panel">
     <header class="panel-header">
       <h2>Operator area</h2>
       <p class="source">
