@@ -112,7 +112,7 @@ endpoint exists; nothing consumed it until the first slice below.
   orchestrator drains the instance instead of routing payments into a dead ledger. Tested
   on both branches, including the divergence itself: database down asserts 503 from one
   endpoint and 200 from the other in the same test.
-- Scheduled monitoring with alerting: the 29-check smoke suite now runs hourly against the
+- Scheduled monitoring with alerting: the 30-check smoke suite now runs hourly against the
   live deployment (`production-watch.yml`), and a failed scheduled run is GitHub's own
   email to the owner — an alert with a person on the end of it and no new infrastructure.
 
