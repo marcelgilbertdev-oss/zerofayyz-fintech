@@ -7,6 +7,10 @@ out/
 dist/
 build/
 coverage/
+# SvelteKit regenerates this on every `svelte-kit sync`, which every one of the
+# client's scripts runs first — so the committed copy was never read, only
+# churned. Sixty files of hashed chunks, dirtying the tree after each build.
+.svelte-kit/
 
 # Environment variables and secrets
 .env
