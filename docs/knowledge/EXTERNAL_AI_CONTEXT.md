@@ -75,10 +75,11 @@ checker sharing code with what it checks agrees with its bugs. It reads and neve
 
 ## Current numbers (2026-08-23)
 
-- **337 automated tests** across ten suites: 82 API unit · 42 integration against real
-  PostgreSQL · 11 web unit · 65 Playwright end-to-end · 40 Vue · 29 Svelte · 12 Go · 6 visual regression
-- **29/29** production smoke checks, run hourly against the live system — including a signed-webhook probe that catches a stale signing secret, which `/health` cannot see because it reports the variable's presence rather than its correctness
-- **8 CI jobs**, all green
+- **341 automated tests** across ten suites: 82 API unit · 42 integration against real
+  PostgreSQL · 11 web unit · 65 Playwright end-to-end · 45 Vue · 34 Svelte · 12 Go ·
+  6 visual regression · 31 MCP · 13 Cucumber/BDD scenarios
+- **30/30** production smoke checks, run hourly against the live system — including a signed-webhook probe that catches a stale signing secret, which `/health` cannot see because it reports the variable's presence rather than its correctness
+- **10 CI jobs**, all green
 - Load test: p95 ≤ 405ms, zero errors at 10 concurrent
 - English and Japanese; WCAG 2.1 AA scanned by axe-core in CI at desktop **and** phone width
 

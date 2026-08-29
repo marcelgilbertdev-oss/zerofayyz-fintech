@@ -5,7 +5,7 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-08-29:** live, 337 automated tests, 30/30 production smoke, 10 CI jobs
+**Status as of 2026-08-29:** live, 341 automated tests, 30/30 production smoke, 10 CI jobs
 green — all ten re-verified green on this date, including visual regression and end-to-end.
 The two SPA clients now deploy from CI rather than by hand, after serving a stale bundle for
 days (§2, the delivery lessons). Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at

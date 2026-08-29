@@ -117,13 +117,16 @@ costs a join and it's what makes the ledger auditable."*
 
 | Layer | Count | What it catches | What it's blind to |
 |---|---|---|---|
-| Unit | 79 | Logic, branching, hashing, cookies, rate limiting | Anything involving real SQL |
+| Unit (API, web, MCP, Go) | 136 | Logic, branching, hashing, cookies, rate limiting, tool schemas | Anything involving real SQL |
 | Integration | 42 | Real database: SQL, constraints, triggers, idempotency, auth | Rendering, the user's path |
-| End-to-end | 61 | Real browser: sign-in, roles, accessibility, both locales | Whether the deployed thing works |
-| Client (Vue/Svelte) | 67 | Contract validation, state, sign-in, partial failure | — |
-| Production smoke | 26 | That what *shipped* actually runs | — |
+| End-to-end + visual | 71 | Real browser: sign-in, roles, accessibility, both locales, layout | Whether the deployed thing works |
+| Client (Vue/Svelte) | 79 | Contract validation, state, sign-in, partial failure | — |
+| Business rules (Cucumber) | 13 | The payment rules as readable, executable specifications | — |
+| Production smoke | 30 | That what *shipped* actually runs — hourly, with an email on failure | — |
 
-**Say:** *"337 automated tests plus 30 production checks, all gated in CI.
+*(Counts verified by running every suite on 2026-08-29 — 341 in total.)*
+
+**Say:** *"341 automated tests plus 30 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
 structurally cannot — the integration suite exists because 19 green unit tests
 never once executed the SQL that was broken."*
@@ -366,6 +369,66 @@ defect. Green tests are evidence about what was tested, never about what wasn't.
 
 ---
 
+## 10d. The rules are executable: Cucumber
+
+**Plain:** The platform's most important behaviours are business rules, not code
+shapes: money moves only on the provider's signed event; the same webhook
+delivered twice records once; one minor unit of yen is one yen; nobody approves
+their own refund. Each is stated in a `.feature` file in plain language and
+executed by the real Cucumber runner — five features, thirteen scenarios.
+
+**Say:** *"A compliance reviewer can read `four-eyes-refunds.feature` in ninety
+seconds, dispute it, and then watch it execute. The test IS the specification —
+there's no translation step where the document and the behaviour drift apart."*
+
+**If they dig:** the pagination feature is regression coverage for a real
+defect, and its first version only passed on a database that earlier runs had
+left dirty — it asserted five rows against a seed that holds four payments. The
+lesson worth saying out loud: *"a test that passes only on a dirty database is
+asserting a precondition it never stated."*
+
+---
+
+## 10e. An AI agent can drive the QA surface (MCP)
+
+**Plain:** The platform exposes its QA surface over the Model Context Protocol —
+six tools an AI agent can call: run the suites, replay signed webhooks, check
+ledger invariants, diff live responses against the contract. It's a protocol
+server with its own handshake check in CI, because a protocol server whose
+handshake is broken has a green unit suite and zero working tools.
+
+**Say:** *"I didn't bolt AI onto the demo — I gave the platform a QA surface an
+agent can operate. On its first human-driven run it found a live defect: the
+transactions endpoint advertised limit and offset, accepted both, ignored both,
+and returned the full window while reporting success. Response validation
+couldn't catch it because the shape was valid — only the row count was wrong.
+The fix taught me that every parameter a tool accepts is a claim about the
+system behind it, and the claim needs a test."*
+
+**Why this matters where you're applying:** PayPay's posting names MCP servers,
+OpenAI-key handling and LLM-workflow validation as requirements. This is a
+running artifact, not a coursework claim.
+
+---
+
+## 10f. Monitoring that proves the credential, not the config
+
+**Plain:** `/health` reports that the webhook signing secret is *present*. It
+cannot know the secret is *right*. Rotate it in Stripe and forget the host, and
+every delivery is rejected while every dashboard stays green — the ledger
+silently stops. Counting error responses can't catch it either, because the
+smoke suite posts deliberately-forged webhooks, so rejections are normal here.
+
+**Say:** *"The hourly monitor signs a real Stripe event type the handler
+deliberately ignores and requires the API to accept it. Verified delivery,
+nothing written. A negative control proves bad input is refused; only a positive
+control proves good input is still accepted — and it's the second one that goes
+silently wrong. I watched the check fail against a deliberately mismatched
+secret before I trusted it, because an alert nobody has seen fire isn't
+monitoring."*
+
+---
+
 ## 11. What it isn't — say this before they ask
 
 - A portfolio prototype, **not a product**
@@ -411,9 +474,10 @@ to time out and retry."*
 **"What's the weakest part?"**
 *"No capacity model. The load test asserts a no-regression baseline on a single
 shared free instance, which is the honest claim available — calling it a
-capacity plan would be theatre. The admin console also reads more than it
-writes: refunds and account management are the next things I'd build, because
-that's where an operator actually spends their day."*
+capacity plan would be theatre. And the repo keeps six per-app lockfiles instead
+of npm workspaces — that's a recorded decision (ADR 13), taken because CI now
+deploys the clients and converting every install path at once on a live
+platform wasn't worth the tidiness, but it is a cost I'm carrying knowingly."*
 
 **"Your rate limiter is in memory — what happens with two instances?"**
 *"It stops working, and I documented that in the code rather than leaving it to
