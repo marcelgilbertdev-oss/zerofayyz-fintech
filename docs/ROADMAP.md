@@ -153,6 +153,22 @@ stops monitoring is worse than one that never started. Breaking the *production*
 watch the hourly alert fire end-to-end is the one step left, and it is deliberately the
 founder's to take — it briefly stops real deliveries.
 
+**The drill was run on 2026-08-29, and the alert fired.** Three dispatches of
+`production-watch.yml` against the live deployment: baseline **30/30** with the
+real secret; then `STRIPE_WEBHOOK_SECRET` replaced on Render with a well-formed
+wrong value, giving **29/30** — the probe failing with *"a validly signed
+delivery was rejected with 400 … real Stripe events are being refused and the
+ledger has stopped moving"*, a red run, and GitHub's email to the owner; then
+the secret restored and **30/30** again.
+
+The part worth keeping: during the break, **the other twenty-nine checks all
+passed.** `/health` still reported the webhook `configured`, the dashboard still
+read 6 of 6 live, the ledger still served. Only the positive control noticed,
+which is the argument for building it that way — an error-count alarm would have
+seen nothing, because this suite posts forged webhooks deliberately and 400s are
+normal traffic here. An alert nobody has watched fire is not monitoring; this
+one has been watched, and watched stop.
+
 ---
 
 ## Phase 7 — Activity events in MongoDB
