@@ -27,6 +27,36 @@ around how payment systems actually fail, and everything is gated by CI.
 - **Context pack for an AI assistant:** [docs/knowledge/EXTERNAL_AI_CONTEXT.md](docs/knowledge/EXTERNAL_AI_CONTEXT.md)
 - **The briefing — everything built and why:** [docs/portfolio/THE_BRIEFING.md](docs/portfolio/THE_BRIEFING.md)
 
+## Try it yourself
+
+The live demo runs against Stripe's sandbox. **No real payment is possible** — real card
+numbers are rejected by Stripe in test mode, so nothing you type can be charged.
+
+Click **+ Test payment** and use:
+
+```
+Card    4242 4242 4242 4242
+Expiry  any future date        (e.g. 12/34)
+CVC     any three digits       (e.g. 123)
+Name    anything
+Postal  anything
+```
+
+The number is also shown on the Stripe page itself, above the pay button.
+
+To exercise the failure paths, swap the card number:
+
+| Card | What it demonstrates |
+|---|---|
+| `4000 0000 0000 0002` | card declined |
+| `4000 0000 0000 9995` | insufficient funds |
+| `4000 0025 0000 3155` | 3D Secure authentication required |
+
+The dashboard's success-rate tile divides succeeded payments by settled ones, where settled
+means succeeded, failed **or cancelled**. So clicking cancel on Stripe's page lowers it, while
+simply closing the tab does not — an unfinished checkout stays `created`, and counts as pending
+rather than failed.
+
 ## Stack
 
 TypeScript throughout, ESM, Node 20+.

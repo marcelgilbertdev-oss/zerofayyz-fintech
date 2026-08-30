@@ -195,7 +195,7 @@ const en = {
     error: "Unable to start checkout",
     unavailable: "The payment API is currently unavailable",
     amountLabel: "Test payment amount in yen",
-    amountHint: "Any amount from ¥50 to ¥1,500,000",
+    amountHint: "¥50–¥1,500,000 · sandbox only · test card 4242 4242 4242 4242",
     amountInvalid: "Enter an amount between ¥50 and ¥1,500,000",
   },
   auth: {
@@ -514,7 +514,7 @@ const ja: Dictionary = {
     error: "決済を開始できませんでした",
     unavailable: "決済 API に現在接続できません",
     amountLabel: "テスト決済の金額（円）",
-    amountHint: "¥50 〜 ¥1,500,000 の範囲で指定できます",
+    amountHint: "¥50〜¥1,500,000 ・ サンドボックス専用 ・ テストカード 4242 4242 4242 4242",
     amountInvalid: "¥50 〜 ¥1,500,000 の範囲で入力してください",
   },
   auth: {

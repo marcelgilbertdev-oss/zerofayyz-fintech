@@ -196,6 +196,15 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
             // the documented 4242 path; a wallet button that errors teaches a
             // reviewer nothing except distrust.
             payment_method_types: ["card"],
+            // The reviewer is on checkout.stripe.com by now, so a hint on our own
+            // page is already out of sight. This is the only surface that reaches
+            // them at the moment they need the number.
+            custom_text: {
+              submit: {
+                message:
+                  "Sandbox only \u2014 no real payment is possible. Test card 4242 4242 4242 4242, any future expiry, any CVC, any postcode.",
+              },
+            },
             integration_identifier: "zerofayyz_fintech_demo_qjvmpxaz",
             client_reference_id: paymentId,
             customer_email: customerEmail,
