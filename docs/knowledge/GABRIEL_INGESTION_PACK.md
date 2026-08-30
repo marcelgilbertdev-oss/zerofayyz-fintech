@@ -222,6 +222,51 @@ was never read by any of them. It had been committed by omission: the ignore fil
 excluded `.next`, `dist`, `build` and `coverage`. **Rule:** before trusting a generated
 directory in git, delete it and run the suite. If it comes back, it belongs in `.gitignore`.
 
+### A metric that punishes you for being browsed is measuring the wrong thing
+The dashboard's success-rate tile divided succeeded payments by succeeded plus failed plus
+**cancelled**, so every reviewer who opened Stripe's page and backed out counted against the
+platform. It read 44.7%, then 75.3% — a number that got worse the more people tried the demo,
+which is precisely backwards for a portfolio piece. A cancelled checkout is a person changing
+their mind before entering a card; it is not a failure of the system. Removing `canceled` from
+the denominator made it an authorisation success rate and it read 98.6% — not because the
+number was massaged, but because it finally measured what its label claimed. **Rule:** when a
+metric moves in the wrong direction as usage grows, suspect the definition before the system.
+
+### A demo nobody can complete is not a demo
+The live checkout required Stripe's sandbox test card, and that number appeared nowhere in the
+interface — only in a code comment and in test files. A reviewer clicked "Test payment",
+landed on a page asking for card details, and had nothing to type. The fix had to reach them
+*after* the redirect, because a hint on our own page is out of sight by then: Stripe Checkout
+accepts `custom_text.submit.message`, which renders above the pay button on Stripe's own
+domain. **Rule:** the reviewer's path is part of the product; walk it as a stranger with no
+context, and fix wherever they would stop.
+
+### A configuration flag cannot govern what is not a configuration item
+`payment_method_types: ["card"]` was set deliberately to keep wallet buttons off the checkout
+page, and Amazon Pay duly disappeared. Apple Pay, Google Pay and Link stayed. Reading Stripe's
+own tables explains it: Apple Pay and Google Pay have **no API enum** — they are presentations
+of `card`, so any card integration carries them — and Link is governed by the account's wallet
+settings rather than by the session. The fix was three toggles in a dashboard, in test mode,
+not a line of code. **Rule:** when a setting visibly fails, check whether the thing you are
+trying to control is addressable by that setting at all before assuming the setting is broken.
+
+### Pinning a string in a test makes the string the requirement
+Naming the test card in the amount hint broke an end-to-end test that matched the entire
+sentence, and turned CI red on a public repository twice. What that test actually guards is
+that the permitted range is *visible to everyone* rather than screen-reader-only — the exact
+wording was never the requirement. Matching on the range alone restored the guard and let the
+sentence keep changing. **Rule:** assert the property the test exists to protect, not the
+prose that currently expresses it.
+
+### A recording driven by the test harness stays true; a screen capture rots
+The platform's walkthrough video is produced by a Playwright script that drives the real
+deployment and records itself, rather than by a screen recorder and an editor. It regenerates
+in a minute whenever the figures on screen change, which they do every time someone tries the
+demo. The first cut was too short for its narration; because the footage is code, the fix was
+to lengthen a wait rather than re-shoot. **Rule:** if an artefact carries live numbers,
+generate it from the system rather than capturing it by hand, or it becomes a stale claim
+nobody remembers to refresh.
+
 ## 3. The security posture, as a reusable checklist
 
 | Concern | Approach |
@@ -256,3 +301,5 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Go reconciler | `services/reconciler/README.md` |
 | Marcel's own explanation | `docs/portfolio/EXPLAIN_IT_IN_YOUR_OWN_WORDS.md` |
 | SPA client deploy (CI) | `.github/workflows/deploy-clients.yml`, `deploy-clients.sh` |
+| Demo recorder (Playwright) | `apps/web/scripts/record-demo.mjs` |
+| Walkthrough video | `docs/portfolio/demo/platform-demo-leda-final.mp4` |
