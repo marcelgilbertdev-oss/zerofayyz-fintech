@@ -152,7 +152,10 @@ test("the permitted amount range is visible, not only announced", async ({ page 
   await page.goto("/");
 
   const amount = page.getByLabel(/test payment amount/i);
-  const hint = page.getByText(/Any amount from ¥50 to ¥1,500,000/i);
+  // Matched on the range alone, not the whole sentence. The hint also carries
+  // the sandbox test card, and that wording will change again — a test that
+  // pins every word of a string fails for edits that break nothing.
+  const hint = page.getByText(/¥50.*¥1,500,000/i);
 
   await amount.focus();
   await expect(hint).toBeVisible();
