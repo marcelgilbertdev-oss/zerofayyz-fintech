@@ -27,6 +27,19 @@ around how payment systems actually fail, and everything is gated by CI.
 - **Context pack for an AI assistant:** [docs/knowledge/EXTERNAL_AI_CONTEXT.md](docs/knowledge/EXTERNAL_AI_CONTEXT.md)
 - **The briefing — everything built and why:** [docs/portfolio/THE_BRIEFING.md](docs/portfolio/THE_BRIEFING.md)
 
+## Watch it work
+
+[![Watch the 69-second walkthrough](docs/portfolio/demo/endcard.png)](docs/portfolio/demo/platform-demo-leda-final.mp4)
+
+**[▶ 69-second walkthrough](docs/portfolio/demo/platform-demo-leda-final.mp4)** — a payment
+through hosted checkout, the signed webhook returning, the ledger updating, and the audit
+trail recording it.
+
+Recorded by the same Playwright suite that tests the platform
+([`apps/web/scripts/record-demo.mjs`](apps/web/scripts/record-demo.mjs)), so it regenerates in
+a minute whenever the figures change rather than being re-shot by hand. The narration is a
+synthesised voice.
+
 ## Try it yourself
 
 The live demo runs against Stripe's sandbox. **No real payment is possible** — real card
