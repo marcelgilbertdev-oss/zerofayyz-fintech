@@ -94,7 +94,11 @@ export const metricRoutes: FastifyPluginAsync<MetricRouteOptions> = async (
             SELECT
               COALESCE(SUM(scoped.amount_minor) FILTER (WHERE scoped.status = 'succeeded'), 0)::TEXT AS gross_minor,
               COUNT(*) FILTER (WHERE scoped.status = 'succeeded')::TEXT AS succeeded_count,
-              COUNT(*) FILTER (WHERE scoped.status IN ('succeeded', 'failed', 'canceled'))::TEXT AS settled_count,
+              -- Authorization success rate: of payments actually attempted, how many
+              -- the platform completed. A cancelled checkout is a person changing
+              -- their mind before entering a card, not a failure of this system, so
+              -- it is excluded. A declined card still counts against us, as it should.
+              COUNT(*) FILTER (WHERE scoped.status IN ('succeeded', 'failed'))::TEXT AS settled_count,
               COALESCE(SUM(scoped.amount_minor) FILTER (WHERE scoped.status IN ('created', 'processing')), 0)::TEXT AS pending_minor,
               COUNT(*) FILTER (WHERE scoped.status IN ('created', 'processing'))::TEXT AS pending_count,
               (

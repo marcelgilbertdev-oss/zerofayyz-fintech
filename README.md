@@ -52,10 +52,10 @@ To exercise the failure paths, swap the card number:
 | `4000 0000 0000 9995` | insufficient funds |
 | `4000 0025 0000 3155` | 3D Secure authentication required |
 
-The dashboard's success-rate tile divides succeeded payments by settled ones, where settled
-means succeeded, failed **or cancelled**. So clicking cancel on Stripe's page lowers it, while
-simply closing the tab does not — an unfinished checkout stays `created`, and counts as pending
-rather than failed.
+The success-rate tile is an **authorization** success rate: succeeded payments over payments
+actually attempted (succeeded or failed). A cancelled checkout is a person changing their mind
+before entering a card, not a failure of the platform, so it is excluded; a declined card still
+counts against it. An unfinished checkout stays `created` and is reported as pending.
 
 ## Stack
 

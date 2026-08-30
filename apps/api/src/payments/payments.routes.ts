@@ -195,6 +195,13 @@ export const paymentRoutes: FastifyPluginAsync<PaymentRouteOptions> = async (
             // dead-end discovered in a live charter run. The demo's story is
             // the documented 4242 path; a wallet button that errors teaches a
             // reviewer nothing except distrust.
+            //
+            // This setting cannot reach Apple Pay, Google Pay or Link. Apple Pay and
+            // Google Pay have no API enum — they are presentations of `card`, so any
+            // card integration carries them. Link has an enum but is governed by the
+            // account's wallet settings, not by this list. All three are switched off
+            // in the Dashboard under Settings > Payment methods > Wallets, in TEST
+            // mode, because the Dashboard keeps test and live settings apart.
             payment_method_types: ["card"],
             // The reviewer is on checkout.stripe.com by now, so a hint on our own
             // page is already out of sight. This is the only surface that reaches
