@@ -118,15 +118,15 @@ costs a join and it's what makes the ledger auditable."*
 | Layer | Count | What it catches | What it's blind to |
 |---|---|---|---|
 | Unit (API, web, MCP, Go) | 136 | Logic, branching, hashing, cookies, rate limiting, tool schemas | Anything involving real SQL |
-| Integration | 42 | Real database: SQL, constraints, triggers, idempotency, auth | Rendering, the user's path |
+| Integration | 52 | Real database: SQL, constraints, triggers, idempotency, auth, row-level security | Rendering, the user's path |
 | End-to-end + visual | 71 | Real browser: sign-in, roles, accessibility, both locales, layout | Whether the deployed thing works |
 | Client (Vue/Svelte) | 79 | Contract validation, state, sign-in, partial failure | — |
 | Business rules (Cucumber) | 13 | The payment rules as readable, executable specifications | — |
 | Production smoke | 30 | That what *shipped* actually runs — hourly, with an email on failure | — |
 
-*(Counts verified by running every suite on 2026-08-29 — 341 in total.)*
+*(Counts verified by running every suite on 2026-08-31 — 351 in total.)*
 
-**Say:** *"341 automated tests plus 30 production checks, all gated in CI.
+**Say:** *"351 automated tests plus 30 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
 structurally cannot — the integration suite exists because 19 green unit tests
 never once executed the SQL that was broken."*
@@ -258,6 +258,32 @@ table."*
 
 That last sentence is worth memorising. It's the kind of thing that sounds like
 experience because it is — it came from a real collision, not a book.
+
+### Row-level security — the database decides who sees whose rows
+
+**Plain:** Until now, "a customer only sees their own payments" was a rule the
+API kept, with WHERE clauses. Now the *database* keeps it. When the API serves
+a signed-in person, it briefly becomes a low-privilege database role carrying
+that person's identity, and PostgreSQL's own policies decide which rows exist.
+A query with no filter at all still returns only that person's rows.
+
+**Say:** *"Row-level security in a request lane. User-serving reads adopt a
+NOLOGIN role for the span of one transaction, with the user id and role as
+transaction-local settings — so the context dies at COMMIT and can never leak
+across the connection pool, which is the classic RLS-with-a-pool hazard. The
+proof is the shape of the tests: they SELECT with no per-user WHERE clause,
+and the other customer's rows come back absent because the policy refused
+them. Missing context fails closed — no context means zero rows, not all
+rows. And the lane holds no UPDATE grant on anything: the request lane
+structurally cannot write the ledger."*
+
+**If they ask "doesn't your service role bypass it?"** — agree, and name the
+trade: *"Yes, deliberately. Webhooks and the public dashboard's aggregates
+have no user on whose behalf they act, so forcing RLS there would mean
+threading a synthetic context through the highest-risk plumbing for no
+observable gain. It's the service-role/authenticated split — the guarantee
+covers the lane that carries user requests, and the tests prove that lane
+from the database's side."*
 
 ### Two details worth volunteering
 
@@ -434,12 +460,42 @@ monitoring."*
 - A portfolio prototype, **not a product**
 - **Stripe test mode.** No real money can move
 - **No users**
-- **Sign-in and admin are not built** — on a published roadmap. The payment path
-  was finished properly first, on the view that one complete thing beats three
-  partial ones
+- **No real users.** Sign-in, roles and the audit log *are* built (section 10) —
+  what doesn't exist is anyone actually using them
+- **Wallets are off.** Apple Pay and Google Pay are deliberately disabled, because
+  a reviewer cannot complete a wallet payment with a test card
 - Free hosting tiers; the API sleeps when idle and a scheduled job keeps it warm
 
 **Say:** *"I'd rather tell you the limits up front than have you find them."*
+
+---
+
+## 11b. Two numbers a reviewer will ask about
+
+### "Why does the success rate say 98.6%?"
+
+**Plain:** It used to count abandoned checkouts as failures. Someone who opens
+the payment page and closes the tab never tried to pay — counting that as a
+failed payment made the platform look broken when nothing had gone wrong.
+
+**Say:** *"It's an authorization success rate: of payments actually attempted,
+how many the platform completed. A cancelled checkout is a person changing their
+mind before entering a card, so it's excluded from the denominator. A declined
+card still counts against us, as it should. The old number measured how many
+visitors finished, which is a funnel metric wearing a reliability metric's name."*
+
+**The general point, and it's the good one:** *"A metric with the wrong
+denominator isn't a rounding error, it's a different question being answered."*
+
+### "How do I pay it without a real card?"
+
+**Plain:** The test card number is printed on the payment page itself, so nobody
+has to ask.
+
+**Say:** *"The card is `4242 4242 4242 4242`, any future expiry, any CVC, any
+postcode — and it's written on the checkout screen rather than buried in the
+README, because a reviewer who has to ask how to use your demo has already
+stopped reviewing it."*
 
 ---
 

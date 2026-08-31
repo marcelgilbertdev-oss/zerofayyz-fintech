@@ -12,6 +12,9 @@ function databaseStub(): Database {
     async query() {
       throw new Error("unexpected query");
     },
+    async queryAsUser(): Promise<never> {
+      throw new Error("queryAsUser is not stubbed in this test");
+    },
     async close() {},
   };
 }

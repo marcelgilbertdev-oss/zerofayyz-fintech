@@ -65,8 +65,22 @@ export const adminRoutes: FastifyPluginAsync<AdminRouteOptions> = async (
     "/admin/sessions",
     { preHandler: requireRole("admin") },
     async (request) => {
-      const result = await database.query<SessionRow>(
-        `
+      // The route guard says an admin is asking; the request lane makes the
+      // database agree. Inside queryAsUser the connection holds the
+      // zerofayyz_request role, so the sessions policy — not this SQL — is
+      // what decides that a non-admin would see only their own row here.
+      const session = request.session;
+      if (!session) {
+        // requireRole already refused unauthenticated callers; this narrows
+        // the type and guards the invariant if the preHandler ever changes.
+        return { data: [] };
+      }
+
+      const result = await database.queryAsUser(
+        { userId: session.userId, role: session.role },
+        (query) =>
+          query<SessionRow>(
+            `
           SELECT s.id,
                  u.email,
                  u.display_name,
@@ -82,6 +96,7 @@ export const adminRoutes: FastifyPluginAsync<AdminRouteOptions> = async (
            ORDER BY s.last_seen_at DESC
            LIMIT 100
         `,
+          ),
       );
 
       return {

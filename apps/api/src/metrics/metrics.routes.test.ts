@@ -50,6 +50,9 @@ function createMetricsDatabaseStub(summary: SummaryShape): Database {
 
       return queryResult([summary] as unknown as Row[]);
     },
+    async queryAsUser(): Promise<never> {
+      throw new Error("queryAsUser is not stubbed in this test");
+    },
     async close() {},
   };
 }

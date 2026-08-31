@@ -41,6 +41,9 @@ function createPaymentDatabaseStub(): Database {
 
       return queryResult<Row>([]);
     },
+    async queryAsUser(): Promise<never> {
+      throw new Error("queryAsUser is not stubbed in this test");
+    },
     async close() {},
   };
 }
@@ -158,6 +161,9 @@ test("POST /api/v1/payments/checkout-session honours a caller-supplied amount", 
 
       return queryResult<Row>([]);
     },
+    async queryAsUser(): Promise<never> {
+      throw new Error("queryAsUser is not stubbed in this test");
+    },
     async close() {},
   };
   const app = buildApp({
@@ -238,6 +244,9 @@ for (const [name, amountMinor] of [
         }
 
         return queryResult<Row>([]);
+      },
+      async queryAsUser(): Promise<never> {
+        throw new Error("queryAsUser is not stubbed in this test");
       },
       async close() {},
     };

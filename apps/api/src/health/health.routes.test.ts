@@ -14,6 +14,9 @@ function createDatabaseStub(operational: boolean): Database {
     async query() {
       throw new Error("Unexpected database query in health test");
     },
+    async queryAsUser(): Promise<never> {
+      throw new Error("queryAsUser is not stubbed in this test");
+    },
     async close() {},
   };
 }

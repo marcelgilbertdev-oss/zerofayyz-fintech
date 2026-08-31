@@ -185,9 +185,22 @@ export const refundRoutes: FastifyPluginAsync<RefundRouteOptions> = async (
   app.get(
     "/admin/refund-requests",
     { preHandler: requireRole("operator") },
-    async () => {
-      const result = await database.query<RefundRow>(
-        `${refundListQuery} ORDER BY r.requested_at DESC LIMIT 100`,
+    async (request) => {
+      const session = request.session;
+      if (!session) {
+        return { data: [] };
+      }
+
+      // Request lane: the refund_requests, payments and users policies all
+      // apply to this read at the database level. An operator sees the whole
+      // queue because the policy admits staff — not because this SQL was
+      // trusted to filter.
+      const result = await database.queryAsUser(
+        { userId: session.userId, role: session.role },
+        (query) =>
+          query<RefundRow>(
+            `${refundListQuery} ORDER BY r.requested_at DESC LIMIT 100`,
+          ),
       );
 
       return { data: result.rows.map(toPublic) };

@@ -176,7 +176,7 @@ TypeScript throughout, ESM, Node 20+.
   and `/health` says `unconfigured` rather than pretending
 - Visual regression on the chrome at desktop and phone width, deliberately excluding
   data-driven pages: a suite that fails whenever the ledger moves is one people learn to ignore
-- 341 automated tests across ten suites, all gated in CI, plus a 30-check smoke suite
+- 351 automated tests across ten suites, all gated in CI, plus a 30-check smoke suite
   that verifies the live deployment from outside
 
 ## Security posture
@@ -194,6 +194,7 @@ meet a login wall. What follows describes how the privileged half is separated f
 | Authorisation | Checked on the API for every request; hidden UI is presentation, and the integration suite proves the refusals independently |
 | Brute force | Five failed attempts per account per fifteen minutes, keyed on the attempted account rather than a forgeable client address |
 | Enumeration | Decoy-hash verification for missing accounts; identical responses and comparable timing |
+| Row visibility | PostgreSQL row-level security in a request lane: user-serving reads adopt a `NOLOGIN` role for one transaction, and the database's policies — not the SQL's WHERE clauses — decide which rows exist. Proven by integration tests that SELECT with no per-user filter ([ADR 14](docs/decisions/0014-enforce-row-level-security-in-a-request-lane.md)) |
 | Audit integrity | Append-only by database trigger; no foreign key with an `ON DELETE` action may write into it ([ADR 9](docs/decisions/0009-make-the-audit-log-append-only-in-the-database.md)) |
 | Privacy | Client identity is a keyed hash of the network prefix, never an IP address — enough to distinguish sessions and rate-limit abuse, not enough to locate a person |
 | Security headers | Every origin: `nosniff`, `frame-ancestors 'none'`, referrer policy, HSTS; the JSON API additionally ships `default-src 'none'` and CORP. Asserted exactly in unit tests, on error paths too, and verified from the wire by the smoke suite |

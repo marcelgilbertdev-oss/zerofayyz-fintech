@@ -267,6 +267,21 @@ to lengthen a wait rather than re-shoot. **Rule:** if an artefact carries live n
 generate it from the system rather than capturing it by hand, or it becomes a stale claim
 nobody remembers to refresh.
 
+### Row-level security over a pool: the context must die with the transaction
+
+Enforcing per-user row visibility in PostgreSQL while connecting through a
+connection pool has one classic hazard: session state that outlives the
+request. The safe shape is a request lane — a NOLOGIN role adopted with `SET
+LOCAL ROLE`, identity carried in `set_config(..., true)` settings — because
+all of it is transaction-local by construction and evaporates at COMMIT. Two
+design points travel to any project: missing context must resolve to *zero*
+rows, never all rows (NULLIF makes an absent setting fail every policy); and
+the proof of the guarantee is a test that SELECTs **with no per-user WHERE
+clause** and shows the other user's rows absent. A second lane that bypasses
+RLS for system work (webhooks, aggregates, migrations) is not a weakness to
+hide but a decision to record — forcing RLS through plumbing that has no user
+adds risk and nothing observable.
+
 ## 3. The security posture, as a reusable checklist
 
 | Concern | Approach |
@@ -300,6 +315,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Kubernetes + failure-mode transcript | `docs/runbooks/KUBERNETES.md` |
 | Go reconciler | `services/reconciler/README.md` |
 | Marcel's own explanation | `docs/portfolio/EXPLAIN_IT_IN_YOUR_OWN_WORDS.md` |
+| Row-level security | `database/postgres/migrations/007_row_level_security.sql`, `apps/api/src/database/rls.integration-test.ts`, ADR 14 |
 | SPA client deploy (CI) | `.github/workflows/deploy-clients.yml`, `deploy-clients.sh` |
 | Demo recorder (Playwright) | `apps/web/scripts/record-demo.mjs` |
 | Walkthrough video | `docs/portfolio/demo/platform-demo-leda-final.mp4` |
