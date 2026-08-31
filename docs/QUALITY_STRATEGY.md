@@ -18,7 +18,7 @@ cannot see.
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
 | Unit | 82 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
-| Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation |
+| Integration | 52 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation, row-level security |
 | End-to-end | 65 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
 | **BDD (Gherkin)** | **13 scenarios** | The whole stack, seeded and booted | Whether the platform's *business rules* still hold — stated in language a non-engineer can dispute |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |

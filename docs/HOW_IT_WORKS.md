@@ -146,7 +146,7 @@ Layers, each catching what the layer beneath structurally cannot. Full detail in
 | --- | --- | --- | --- |
 | Unit | 82 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
 | Client unit | 69 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
-| Integration | 42 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals |
+| Integration | 52 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals, row-level security |
 | End-to-end | 65 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
 | Business rules (Gherkin) | 13 scenarios | The whole stack, seeded and booted | Whether the *rules* still hold — written so a non-engineer can read and dispute them |
 | QA MCP server | 31 | Its own tools, plus a live protocol handshake | That an agent can run the suites and check the live API on demand |
@@ -213,6 +213,18 @@ change nothing. An `admin` sees live sessions and accounts, and can end anyone's
 inside each hash so they can be raised later without invalidating existing ones. Argon2 is
 the better algorithm and was rejected because it ships as platform-specific native binaries
 — the dependency shape that had already broken this project's CI twice.
+
+**The database itself now decides who sees whose rows.** Until recently, "a customer
+only sees their own payments" was a rule the API kept, with WHERE clauses and route
+guards. Migration 007 moved it into PostgreSQL: when the API serves a signed-in person
+it briefly becomes a low-privilege database role carrying that person's identity, and
+the database's own policies decide which rows exist for them. A query with no filter at
+all still returns only that person's rows; a person with no identity attached sees
+nothing rather than everything; and that lane cannot modify the ledger at all. System
+work — webhooks, the public dashboard's totals — keeps its full view, deliberately, and
+[ADR 14](decisions/0014-enforce-row-level-security-in-a-request-lane.md) records why.
+The tests for this are the interesting part: they run SELECTs with *no* per-user filter
+and prove the other customer's rows come back absent.
 
 **Sessions are opaque and server-side.** The cookie holds 32 random bytes; the database
 holds only its SHA-256. A JWT would have been simpler and cannot be revoked before it
