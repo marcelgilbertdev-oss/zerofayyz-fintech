@@ -295,6 +295,21 @@ failure mode — an unhandled kind waiting forever — visible on an ops surface
 Both were found by tests, not foresight: four failures argued the design into a
 better one.
 
+### A magic link is a credential in flight — hash it at rest, mail it through the queue
+
+Passwordless sign-in (migration 009, ADR 16) reduced to two rules worth
+reusing anywhere. One: the raw token must exist only in transit — the emailed
+URL and the queue payload that carries it there. The database stores the
+SHA-256; the logs store nothing; single-use, expiry, and account-disabled are
+all one atomic UPDATE's WHERE clause, so a race of clicks yields exactly one
+session and the clock that decides expiry is the database's. Two: the email
+send belongs in the job queue, not the request handler — a mail provider is
+precisely the flaky dependency backoff exists for, and an unconfigured mailer
+should surface as a dead job on an ops page, never as a link printed to a log
+(a credential in a log is a leak with a retention policy). Gotcha met on the
+way: Fastify's ajv enforces `format: "email"` for real — a bare-host address
+like `user@test` is a 400, so test fixtures need dotted domains.
+
 ## 3. The security posture, as a reusable checklist
 
 | Concern | Approach |
