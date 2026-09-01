@@ -10,6 +10,8 @@ import {
 import { accountRoutes, adminRoutes } from "./admin/admin.routes.js";
 import { refundRoutes } from "./admin/refunds.routes.js";
 import { authRoutes, sessionResolver } from "./auth/auth.routes.js";
+import { magicLinkRoutes } from "./auth/magic.js";
+import { createQueue } from "./jobs/queue.js";
 import { healthRoutes } from "./health/health.routes.js";
 import {
   initialiseErrorTracking,
@@ -166,6 +168,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   // Registering it inside the auth plugin would scope it to the auth routes
   // alone and silently leave every other guard looking at undefined.
   app.addHook("onRequest", sessionResolver(database));
+  app.register(magicLinkRoutes, {
+    prefix: "/api/v1",
+    database,
+    queue: createQueue(database),
+  });
+
   app.register(authRoutes, {
     prefix: "/api/v1",
     database,

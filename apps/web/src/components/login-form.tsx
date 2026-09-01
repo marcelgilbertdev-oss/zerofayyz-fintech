@@ -22,6 +22,14 @@ type LoginFormProps = {
     email: string;
     password: string;
   };
+  magic: {
+    action: string;
+    sending: string;
+    sent: string;
+    needEmail: string;
+    invalid: string;
+    initialNotice: string | null;
+  };
 };
 
 export function LoginForm({
@@ -34,12 +42,15 @@ export function LoginForm({
   showPassword,
   hidePassword,
   demo,
+  magic,
 }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filled, setFilled] = useState(false);
+  const [magicState, setMagicState] = useState<"idle" | "sending" | "sent">("idle");
+  const [magicNotice, setMagicNotice] = useState<string | null>(magic.initialNotice);
   const emailId = useId();
   const passwordId = useId();
 
@@ -61,6 +72,33 @@ export function LoginForm({
     setPassword(demo.password);
     setError(null);
     setFilled(true);
+  }
+
+  async function requestMagicLink() {
+    if (!email) {
+      setMagicNotice(magic.needEmail);
+      return;
+    }
+    setMagicState("sending");
+    setMagicNotice(null);
+    try {
+      // The response is 202 whether or not the account exists — this UI must
+      // not become the enumeration oracle the API refuses to be, so "sent"
+      // here means "request accepted", nothing more.
+      const response = await fetch("/api/auth/magic-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: unknown };
+        throw new Error(typeof payload.error === "string" ? payload.error : fallbackError);
+      }
+      setMagicState("sent");
+    } catch (magicError) {
+      setMagicState("idle");
+      setMagicNotice(magicError instanceof Error ? magicError.message : fallbackError);
+    }
   }
 
   async function submit(event: React.FormEvent) {
@@ -150,6 +188,20 @@ export function LoginForm({
             account exists or is disabled — this line gives the confused
             legitimate person a next step while confirming nothing. */}
         {error && <p className="text-xs leading-5 text-white/50">{contactAdmin}</p>}
+
+        {/* The passwordless door. Reuses the email field above; the button is
+            secondary because the demo path is the password one. */}
+        <button
+          type="button"
+          onClick={requestMagicLink}
+          disabled={magicState !== "idle"}
+          className="w-full rounded-xl border border-white/15 px-4 py-2.5 text-xs font-semibold text-white/80 transition hover:border-emerald-300/40 hover:text-white disabled:cursor-default disabled:opacity-60"
+        >
+          {magicState === "sending" ? magic.sending : magicState === "sent" ? magic.sent : magic.action}
+        </button>
+        <p aria-live="polite" className="min-h-4 text-xs text-amber-200/90">
+          {magicNotice}
+        </p>
       </form>
 
       <section className="mt-8 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-5">

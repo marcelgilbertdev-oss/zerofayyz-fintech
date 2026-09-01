@@ -15,9 +15,11 @@
  * booted" and "the job ran" converge on the same single row.
  */
 import type { Database } from "../database/database.js";
+import { sendMail } from "./mailer.js";
 import type { Job, JobQueue } from "./queue.js";
 
 export const SESSION_CLEANUP = "sessions.cleanup";
+export const MAGIC_LINK_EMAIL = "auth.magic_link_email";
 
 /** How long an expired or revoked session row is kept before deletion. */
 const SESSION_RETENTION_DAYS = 30;
@@ -52,6 +54,34 @@ export async function scheduleSessionCleanup(queue: JobQueue): Promise<void> {
 
 export function createHandlers(database: Database, queue: JobQueue) {
   return {
+    /**
+     * The magic-link email. A queue job rather than an inline send because a
+     * mail provider is exactly the flaky external dependency backoff exists
+     * for — and with no provider configured, the job dies visibly on
+     * /admin/jobs instead of the request handler failing silently.
+     *
+     * Safe under at-least-once: re-sending the same link twice is two emails
+     * carrying one single-use token, not two credentials.
+     */
+    [MAGIC_LINK_EMAIL]: async (job: Job): Promise<void> => {
+      const to = String(job.payload.to ?? "");
+      const link = String(job.payload.link ?? "");
+      if (!to || !link) {
+        throw new Error("magic-link email job missing to/link");
+      }
+      await sendMail({
+        to,
+        subject: "Your sign-in link",
+        text: [
+          "Use this link to sign in. It works once and expires in 15 minutes.",
+          "",
+          link,
+          "",
+          "If you did not request this, ignore it - nothing happens without the link.",
+        ].join("\n"),
+      });
+    },
+
     /**
      * Delete session rows that have been dead for longer than the retention
      * window. Expired and revoked sessions are already unusable — resolveSession

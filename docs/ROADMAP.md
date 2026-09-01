@@ -175,7 +175,7 @@ one has been watched, and watched stop.
 
 ## Shipped beyond the plan ✅
 
-Two pieces landed that no phase asked for, both pulled forward because live job
+Three pieces landed that no phase asked for, pulled forward because live job
 postings screen for them by name. Recorded here so the roadmap stays the map of
 what exists, not what was once intended:
 
@@ -188,6 +188,13 @@ what exists, not what was once intended:
   backoff, dead-lettering, idempotent enqueue, and a self-chaining recurring
   pattern. First consumer: hourly session-retention cleanup. Honest guarantee:
   at-least-once. Surface: `/admin/jobs`.
+- **Passwordless sign-in via magic links** (2026-09-01, migration 009, ADR 16).
+  SHA-256 token hashes at rest, single-use via one atomic UPDATE, 15-minute
+  expiry decided in SQL, always-202 anti-enumeration, per-mailbox rate limit.
+  The email leg is the queue's second consumer — unconfigured mailer = a
+  visible dead job on `/admin/jobs`, never a silent failure. Completes the
+  "passwordless authentication with session revocation" requirement named in
+  operations-portal briefs.
 - Phase 9's "Go service — one narrow, well-chosen responsibility" was already
   satisfied by the **reconciler** before this section existed; noted so nobody
   builds it twice.

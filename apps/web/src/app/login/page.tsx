@@ -8,7 +8,11 @@ import { DEFAULT_LOCALE, isLocale } from "@/i18n/locale";
 import { getSessionUser } from "@/lib/api-session";
 import { LOCALE_HEADER } from "@/proxy";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ magic?: string | string[] }>;
+}) {
   const requested = (await headers()).get(LOCALE_HEADER);
   const locale = isLocale(requested) ? requested : DEFAULT_LOCALE;
   const t = getDictionary(locale);
@@ -17,6 +21,12 @@ export default async function LoginPage() {
   if (await getSessionUser()) {
     redirect("/admin");
   }
+
+  // A bounced magic link lands here with ?magic=invalid — surfaced as a
+  // notice, never an error, because "expired" is normal life, not failure.
+  const query = await searchParams;
+  const magicParam = Array.isArray(query.magic) ? query.magic[0] : query.magic;
+  const magicNotice = magicParam === "invalid" ? t.auth.magicInvalid : null;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
@@ -46,6 +56,14 @@ export default async function LoginPage() {
           // password is the one stored for the demo account.
           email: "demo@zerofayyz.test",
           password: "view-the-ledger",
+        }}
+        magic={{
+          action: t.auth.magicAction,
+          sending: t.auth.magicSending,
+          sent: t.auth.magicSent,
+          needEmail: t.auth.magicNeedEmail,
+          invalid: t.auth.magicInvalid,
+          initialNotice: magicNotice,
         }}
       />
 
