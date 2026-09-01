@@ -13,7 +13,12 @@ import { expect, test } from "@playwright/test";
 const PHONE = { width: 390, height: 844 };
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
-test.use({ viewport: PHONE });
+// Reduced motion for the same reason as accessibility.spec.ts: the axe scan
+// below runs against the dashboard, whose entrance animation fades tiles in
+// behind the open drawer. On a slow runner axe reads that text at partial
+// opacity and reports a contrast violation that exists for a quarter of a
+// second. The settled state is the one under test.
+test.use({ viewport: PHONE, contextOptions: { reducedMotion: "reduce" } });
 
 test("every primary destination is reachable from a phone", async ({ page }) => {
   await page.goto("/?lang=en");
