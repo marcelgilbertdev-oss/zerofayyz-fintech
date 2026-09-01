@@ -61,6 +61,37 @@ export const adminRoutes: FastifyPluginAsync<AdminRouteOptions> = async (
    * unrevoked and unexpired — so this list and the door itself can never
    * disagree about whether someone is inside.
    */
+  /**
+   * Operational read: the job queue by kind and status. The row that matters
+   * is `dead` — work the platform has given up on — and `pending` for a kind
+   * no deployed worker handles, which is the queue's honest way of saying a
+   * handler is missing rather than silently burning the job's attempts.
+   */
+  app.get(
+    "/admin/jobs",
+    { preHandler: requireRole("admin") },
+    async () => {
+      const result = await database.query<{
+        kind: string;
+        status: string;
+        count: string;
+        oldest: Date | null;
+      }>(
+        `SELECT kind, status, COUNT(*)::TEXT AS count, MIN(run_at) AS oldest
+           FROM jobs GROUP BY kind, status ORDER BY kind, status`,
+      );
+
+      return {
+        data: result.rows.map((row) => ({
+          kind: row.kind,
+          status: row.status,
+          count: Number(row.count),
+          oldest: row.oldest ? row.oldest.toISOString() : null,
+        })),
+      };
+    },
+  );
+
   app.get(
     "/admin/sessions",
     { preHandler: requireRole("admin") },

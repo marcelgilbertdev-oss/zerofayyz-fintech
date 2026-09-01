@@ -100,9 +100,31 @@ test("a viewer is refused everywhere on the admin surface", async (context) => {
     ["GET", "/api/v1/admin/sessions"],
     ["GET", "/api/v1/admin/audit-logs"],
     ["GET", "/api/v1/admin/users"],
+    ["GET", "/api/v1/admin/jobs"],
   ] as const) {
     const response = await app.inject({ method, url, headers: { cookie } });
     assert.equal(response.statusCode, 403, `${method} ${url} let a viewer in`);
+  }
+});
+
+test("an admin reads the job queue stats", async (context) => {
+  const app = buildApp({ database, logger: false, stripe: null });
+  context.after(async () => app.close());
+
+  const cookie = await login(app, "surface.admin@zerofayyz.test");
+  const response = await app.inject({
+    method: "GET",
+    url: "/api/v1/admin/jobs",
+    headers: { cookie },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json() as { data: Array<{ kind: string; status: string; count: number }> };
+  assert.ok(Array.isArray(body.data));
+  // Shape, not contents: other suites and the live worker own the rows.
+  for (const row of body.data) {
+    assert.equal(typeof row.kind, "string");
+    assert.ok(Number.isInteger(row.count));
   }
 });
 

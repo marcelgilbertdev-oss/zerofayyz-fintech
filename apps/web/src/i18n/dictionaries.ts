@@ -32,7 +32,7 @@ const en = {
     planned: "Planned",
     plannedTitle: "Planned — see the roadmap in the README",
   },
-  build: { label: "Portfolio build", stage: "Ledger, clients & monitoring live", phase: "Phase 6" },
+  build: { label: "Portfolio build", stage: "Ledger, RLS, job queue & monitoring live", phase: "Live" },
   header: {
     overview: "Operations overview",
     apiConnected: "API connected",
@@ -355,7 +355,7 @@ const ja: Dictionary = {
     planned: "実装予定",
     plannedTitle: "実装予定 — 詳細は README のロードマップへ",
   },
-  build: { label: "ポートフォリオ開発", stage: "台帳・クライアント・監視を運用中", phase: "第6段階" },
+  build: { label: "ポートフォリオ開発", stage: "台帳・RLS・ジョブ・監視を運用中", phase: "稼働中" },
   header: {
     overview: "オペレーション概要",
     apiConnected: "API 接続済み",
