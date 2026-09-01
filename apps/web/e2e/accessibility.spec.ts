@@ -100,14 +100,14 @@ test("the sidebar marks the current page for assistive tech", async ({ page }) =
  * test matrix now, not an assumption.
  *
  * Two profiles rather than one generic viewport, because the widths genuinely
- * differ: the Galaxy is 360px against the iPhone's 393px, and 360 is the
+ * differ: the Galaxy is 360px against the iPhone's 430px, and 360 is the
  * tighter squeeze — the width where an overflow shows first. Device profiles
  * (not bare viewports) also carry the mobile user agent and touch flags, so
  * the page is exercised the way those phones actually present it.
  */
 for (const [phone, profile] of [
   ["a Galaxy S24", devices["Galaxy S24"]],
-  ["an iPhone 15", devices["iPhone 15"]],
+  ["an iPhone 17 Pro Max", devices["iPhone 17 Pro Max"]],
 ] as const) {
   test.describe(`on ${phone}`, () => {
     // defaultBrowserType would force a new worker and is illegal inside a
