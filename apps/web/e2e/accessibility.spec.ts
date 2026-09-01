@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { devices, expect, test } from "@playwright/test";
 
 /**
  * Automated accessibility checks against WCAG 2.1 A and AA.
@@ -11,6 +11,16 @@ import { expect, test } from "@playwright/test";
  */
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+
+/**
+ * Scan the page standing still. The overview's entrance animation fades tiles
+ * in, and axe's contrast check has no notion of "mid-transition": on a slow CI
+ * runner it reads text at partial opacity and reports a violation that exists
+ * for a quarter of a second. Emulating reduced motion removes the race AND
+ * audits the very rendering a motion-sensitive visitor gets — the settled
+ * state is the one that must hold, and earlier runs proved it does.
+ */
+test.use({ contextOptions: { reducedMotion: "reduce" } });
 
 test("the English dashboard has no detectable WCAG A/AA violations", async ({ page }) => {
   await page.goto("/?lang=en");
@@ -80,7 +90,7 @@ test("the sidebar marks the current page for assistive tech", async ({ page }) =
 });
 
 /**
- * The same pages at a phone viewport.
+ * The same pages on real phone profiles — a Samsung and an iPhone.
  *
  * Everything above runs at the project's default desktop width, and that was a
  * blind spot rather than a choice: at desktop the ledger tables fit, so they
@@ -88,19 +98,43 @@ test("the sidebar marks the current page for assistive tech", async ({ page }) =
  * At phone width they scroll and a keyboard could not reach them — a WCAG A
  * failure that had been shipping under a green suite. Viewport is part of the
  * test matrix now, not an assumption.
+ *
+ * Two profiles rather than one generic viewport, because the widths genuinely
+ * differ: the Galaxy is 360px against the iPhone's 393px, and 360 is the
+ * tighter squeeze — the width where an overflow shows first. Device profiles
+ * (not bare viewports) also carry the mobile user agent and touch flags, so
+ * the page is exercised the way those phones actually present it.
  */
-test.describe("at a phone viewport", () => {
-  test.use({ viewport: { width: 390, height: 844 } });
+for (const [phone, profile] of [
+  ["a Galaxy S24", devices["Galaxy S24"]],
+  ["an iPhone 15", devices["iPhone 15"]],
+] as const) {
+  test.describe(`on ${phone}`, () => {
+    // defaultBrowserType would force a new worker and is illegal inside a
+    // describe; every profile here is chromium anyway, which is the project.
+    const { defaultBrowserType: _browser, ...phoneProfile } = profile;
+    test.use({ ...phoneProfile, contextOptions: { reducedMotion: "reduce" } });
 
-  for (const [name, path] of [
-    ["dashboard", "/?lang=en"],
-    ["payments", "/payments?lang=en"],
-    ["transactions", "/transactions?lang=en"],
-    ["customers", "/customers?lang=en"],
-    ["login", "/login?lang=en"],
-  ] as const) {
-    test(`the ${name} has no detectable WCAG A/AA violations on a phone`, async ({ page }) => {
-      await page.goto(path);
+    for (const [name, path] of [
+      ["dashboard", "/?lang=en"],
+      ["payments", "/payments?lang=en"],
+      ["transactions", "/transactions?lang=en"],
+      ["customers", "/customers?lang=en"],
+      ["login", "/login?lang=en"],
+    ] as const) {
+      test(`the ${name} has no detectable WCAG A/AA violations`, async ({ page }) => {
+        await page.goto(path);
+
+        const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+
+        expect(
+          results.violations.map((violation) => `${violation.id}: ${violation.help}`),
+        ).toEqual([]);
+      });
+    }
+
+    test("the Japanese dashboard is clean too", async ({ page }) => {
+      await page.goto("/?lang=ja");
 
       const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
 
@@ -108,15 +142,5 @@ test.describe("at a phone viewport", () => {
         results.violations.map((violation) => `${violation.id}: ${violation.help}`),
       ).toEqual([]);
     });
-  }
-
-  test("the Japanese dashboard is clean on a phone too", async ({ page }) => {
-    await page.goto("/?lang=ja");
-
-    const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-
-    expect(
-      results.violations.map((violation) => `${violation.id}: ${violation.help}`),
-    ).toEqual([]);
   });
-});
+}
