@@ -47,6 +47,13 @@ type AuditEntry = {
   createdAt: string;
 };
 
+type JobEntry = {
+  kind: string;
+  status: string;
+  count: number;
+  oldest: string | null;
+};
+
 type UserEntry = {
   id: string;
   email: string;
@@ -122,7 +129,7 @@ const TABLE = "w-full text-left text-xs";
 const THEAD = "bg-white/[0.04] text-[10px] uppercase tracking-wider text-white/50";
 const TBODY = "divide-y divide-white/5";
 
-type TabId = "refunds" | "sessions" | "accounts" | "audit";
+type TabId = "refunds" | "sessions" | "accounts" | "jobs" | "audit";
 
 export default async function AdminPage({
   searchParams,
@@ -143,7 +150,7 @@ export default async function AdminPage({
   const isAdmin = user.role === "admin";
   const canReadConsole = user.role === "admin" || user.role === "operator";
 
-  const [sessions, audit, users, payments, refunds] = await Promise.all([
+  const [sessions, audit, users, payments, refunds, jobs] = await Promise.all([
     isAdmin
       ? fetchPanel<{ data: SessionEntry[] }>("/api/v1/admin/sessions", cookie)
       : Promise.resolve(null),
@@ -159,6 +166,9 @@ export default async function AdminPage({
     canReadConsole
       ? fetchPanel<{ data: RefundEntry[] }>("/api/v1/admin/refund-requests", cookie)
       : Promise.resolve(null),
+    isAdmin
+      ? fetchPanel<{ data: JobEntry[] }>("/api/v1/admin/jobs", cookie)
+      : Promise.resolve(null),
   ]);
 
   const pendingRefunds =
@@ -170,6 +180,13 @@ export default async function AdminPage({
       ? [
           { id: "sessions" as const, label: t.admin.presenceTitle, count: sessions?.data.length },
           { id: "accounts" as const, label: t.admin.usersTitle },
+          {
+            id: "jobs" as const,
+            label: t.admin.jobsTitle,
+            count: jobs?.data
+              .filter((row) => row.status === "dead")
+              .reduce((sum, row) => sum + row.count, 0),
+          },
         ]
       : []),
     { id: "audit", label: t.admin.auditTitle },
@@ -532,6 +549,59 @@ export default async function AdminPage({
                                 }}
                               />
                             )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </ScrollableTable>
+              )}
+            </section>
+          )}
+
+          {tab === "jobs" && (
+            <section aria-labelledby="jobs-title">
+              <h2 id="jobs-title" className="text-sm font-bold text-white">
+                {t.admin.jobsTitle}
+              </h2>
+              <p className="mt-1 mb-4 text-xs text-white/50">{t.admin.jobsSubtitle}</p>
+              {jobs === null ? (
+                <p className="text-xs text-rose-200">{t.admin.loadError}</p>
+              ) : jobs.data.length === 0 ? (
+                <p className="text-xs text-white/50">{t.admin.jobsEmpty}</p>
+              ) : (
+                <ScrollableTable label={t.admin.jobsTitle}>
+                  <table className={TABLE}>
+                    <thead className={THEAD}>
+                      <tr>
+                        <th className="px-4 py-3">{t.admin.jobsColumns.kind}</th>
+                        <th className="px-4 py-3">{t.admin.jobsColumns.status}</th>
+                        <th className="px-4 py-3">{t.admin.jobsColumns.count}</th>
+                        <th className="px-4 py-3">{t.admin.jobsColumns.oldest}</th>
+                      </tr>
+                    </thead>
+                    <tbody className={TBODY}>
+                      {jobs.data.map((row) => (
+                        <tr key={`${row.kind}-${row.status}`}>
+                          <td className="px-4 py-3 font-mono text-emerald-100/90">{row.kind}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                                row.status === "dead"
+                                  ? "border-rose-300/30 bg-rose-300/10 text-rose-200"
+                                  : row.status === "running"
+                                    ? "border-sky-300/30 bg-sky-300/10 text-sky-200"
+                                    : row.status === "succeeded"
+                                      ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
+                                      : "border-white/15 bg-white/5 text-white/70"
+                              }`}
+                            >
+                              {row.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 tabular-nums text-white/80">{row.count}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-white/60">
+                            {row.oldest ? formatTime(row.oldest, locale) : "—"}
                           </td>
                         </tr>
                       ))}

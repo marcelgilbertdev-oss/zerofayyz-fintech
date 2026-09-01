@@ -54,3 +54,34 @@ a:focus-visible {
   border-radius: 999px;
   background: #243b34;
 }
+
+/* ---------------------------------------------------------------- motion
+   Entrance choreography for the overview. CSS-only on purpose: it costs no
+   hydration, no client components, and the visual-regression suite already
+   runs with animations disabled, so snapshots see the end state.
+
+   Everything lives behind prefers-reduced-motion: the animation is a
+   greeting, not information, and a vestibular-safe page shows the same
+   truth standing still. */
+@media (prefers-reduced-motion: no-preference) {
+  .anim-rise {
+    animation: anim-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--anim-delay, 0s);
+  }
+
+  .anim-grow {
+    transform-origin: bottom;
+    animation: anim-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--anim-delay, 0s);
+  }
+}
+
+@keyframes anim-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes anim-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}

@@ -588,8 +588,12 @@ export default async function Home({
           </section>
 
           <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t.metrics.sectionLabel}>
-            {metrics.map((metric) => (
-              <article key={metric.label} className="group rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.16)] transition hover:-translate-y-0.5 hover:border-emerald-300/20">
+            {metrics.map((metric, index) => (
+              <article
+                key={metric.label}
+                style={{ "--anim-delay": `${index * 80}ms` } as React.CSSProperties}
+                className="anim-rise group rounded-2xl border border-white/[0.075] bg-[#0d1a17]/85 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.16)] transition hover:-translate-y-0.5 hover:border-emerald-300/20"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-medium text-white/65">{metric.label}</p>
@@ -623,17 +627,18 @@ export default async function Home({
                 </div>
               </div>
               <div className="mt-8 flex h-44 items-end gap-2 border-b border-white/[0.06] sm:gap-3">
-                {paymentMetrics.dailyVolume.map((bucket) => (
+                {paymentMetrics.dailyVolume.map((bucket, barIndex) => (
                   <div
                     key={bucket.date}
                     className="group relative flex h-full flex-1 items-end"
                     title={`${bucket.date}: ${formatMoney(bucket.amountMinor, currency, locale)}`}
                   >
                     <div
-                      className="w-full rounded-t-sm bg-gradient-to-t from-emerald-500/30 to-emerald-300/85 transition group-hover:from-emerald-400/50 group-hover:to-emerald-200"
+                      className="anim-grow w-full rounded-t-sm bg-gradient-to-t from-emerald-500/30 to-emerald-300/85 transition group-hover:from-emerald-400/50 group-hover:to-emerald-200"
                       style={{
                         height: `${Math.max(2, Math.round((bucket.amountMinor / peakDailyVolume) * 100))}%`,
-                      }}
+                        "--anim-delay": `${200 + barIndex * 45}ms`,
+                      } as React.CSSProperties}
                     />
                   </div>
                 ))}

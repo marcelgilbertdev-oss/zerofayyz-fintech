@@ -308,6 +308,16 @@ const en = {
     tabRefunds: "Refunds",
     tabOverviewNote:
       "Primary sections live in the sidebar; these tabs are the console's views.",
+    jobsTitle: "Background jobs",
+    jobsSubtitle:
+      "The durable queue, live from PostgreSQL. Dead rows are work the platform has given up on — every one keeps the error that killed it.",
+    jobsColumns: {
+      kind: "Kind",
+      status: "Status",
+      count: "Count",
+      oldest: "Oldest due",
+    },
+    jobsEmpty: "No jobs yet — the queue seeds itself at the top of the hour.",
     accountDisable: "Disable",
     accountEnable: "Enable",
     accountDisabled: "Disabled",
@@ -625,6 +635,16 @@ const ja: Dictionary = {
     createSubmitting: "作成中…",
     tabRefunds: "返金",
     tabOverviewNote: "主要セクションはサイドバーから、コンソール内のビューはこのタブから開けます。",
+    jobsTitle: "バックグラウンドジョブ",
+    jobsSubtitle:
+      "PostgreSQL上の耐久キューの現況。dead は処理を断念したジョブで、失敗原因のエラーを保持しています。",
+    jobsColumns: {
+      kind: "種別",
+      status: "状態",
+      count: "件数",
+      oldest: "最古の実行予定",
+    },
+    jobsEmpty: "ジョブはまだありません。毎時0分にキューが自動投入されます。",
     accountDisable: "無効化",
     accountEnable: "有効化",
     accountDisabled: "無効",

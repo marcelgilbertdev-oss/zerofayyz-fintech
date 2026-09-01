@@ -282,6 +282,19 @@ RLS for system work (webhooks, aggregates, migrations) is not a weakness to
 hide but a decision to record — forcing RLS through plumbing that has no user
 adds risk and nothing observable.
 
+### A job queue's honest guarantee is at-least-once — and workers must claim only what they handle
+
+Building a durable queue on PostgreSQL (FOR UPDATE SKIP LOCKED claim, lease
+reclaim, capped backoff, dead-letter): two transferable findings. First, state
+the delivery guarantee truthfully — exactly-once does not exist over a channel
+that can die between the work and the acknowledgement, so design handlers to be
+safe to run twice and say so in the ADR. Second, a worker that claims jobs it
+has no handler for turns a deployment gap into data loss (it burns the job's
+attempts); filter the claim by the worker's handler list, and make the new
+failure mode — an unhandled kind waiting forever — visible on an ops surface.
+Both were found by tests, not foresight: four failures argued the design into a
+better one.
+
 ## 3. The security posture, as a reusable checklist
 
 | Concern | Approach |

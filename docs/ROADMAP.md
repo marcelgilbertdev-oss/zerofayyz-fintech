@@ -173,6 +173,27 @@ one has been watched, and watched stop.
 
 ---
 
+## Shipped beyond the plan ✅
+
+Two pieces landed that no phase asked for, both pulled forward because live job
+postings screen for them by name. Recorded here so the roadmap stays the map of
+what exists, not what was once intended:
+
+- **Row-level security in a request lane** (2026-08-31, migration 007, ADR 14).
+  User-serving reads adopt a NOLOGIN role per transaction; policies — not WHERE
+  clauses — decide row visibility. Proven by tests that SELECT with no per-user
+  filter.
+- **A durable job queue in PostgreSQL** (2026-09-01, migration 008, ADR 15).
+  Atomic claims over FOR UPDATE SKIP LOCKED, lease-based crash recovery, capped
+  backoff, dead-lettering, idempotent enqueue, and a self-chaining recurring
+  pattern. First consumer: hourly session-retention cleanup. Honest guarantee:
+  at-least-once. Surface: `/admin/jobs`.
+- Phase 9's "Go service — one narrow, well-chosen responsibility" was already
+  satisfied by the **reconciler** before this section existed; noted so nobody
+  builds it twice.
+
+---
+
 ## Phase 7 — Activity events in MongoDB
 
 **Why next:** it demonstrates polyglot persistence with an honest reason rather than
