@@ -162,6 +162,12 @@ draw a general lesson. That is more convincing than a project with no scars.
 **Plain:** The same dashboard, built three times — React, Vue, and Svelte — all
 talking to one API and sharing one description of what that API returns.
 
+**New since 31 Aug — the fourth consumer:** a Manifest V3 browser extension,
+[endpoint-pulse](https://github.com/marcelgilbertdev-oss/endpoint-pulse), watches this
+platform's `/health` from the toolbar. **Say:** *"The strongest test of a clean API
+boundary is a consumer I don't control from inside the repo — so I built one. Different
+runtime, different constraints, same contract, zero API changes needed."*
+
 **Say:** *"One API, one contract, three independently-built clients. It
 demonstrates that the API boundary is clean enough for three different consumers
 to use unmodified, and that the fundamentals — state, data fetching, validation,

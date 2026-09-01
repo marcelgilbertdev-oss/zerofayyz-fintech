@@ -179,6 +179,11 @@ TypeScript throughout, ESM, Node 20+.
 - 351 automated tests across ten suites, all gated in CI, plus a 30-check smoke suite
   that verifies the live deployment from outside
 
+**A fourth consumer lives outside this repository:**
+[endpoint-pulse](https://github.com/marcelgilbertdev-oss/endpoint-pulse), a Manifest V3
+browser extension that watches this platform's health endpoint — the API boundary tested
+by a consumer the repo doesn't control.
+
 ## Security posture
 
 The public half of this platform is genuinely public: the dashboard is readable without an
