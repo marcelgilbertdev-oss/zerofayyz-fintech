@@ -71,17 +71,18 @@ counts against it. An unfinished checkout stays `created` and is reported as pen
 
 ## How I built it
 
-I built this on my own, and I used AI tooling heavily and deliberately — the commits are
-co-authored and there is no reason to pretend otherwise. What it changed is where the effort
-went: less typing, considerably more verifying.
+I built this myself, with AI tooling in the loop — the commits are co-authored and there is no
+reason to hide it. What matters is where the judgement sat. The architecture is mine, the
+trade-offs are written down in `docs/decisions/` with what I rejected and why, and the manual
+acceptance charter in `docs/runbooks/` was worked through by hand, on real devices, by me. Every
+defect it records is one I hit myself.
 
-The defect worth citing is the argument for that discipline. The webhook handler had nineteen
-passing unit tests and had never once worked — every one of them swapped the real database for
-a stand-in, so none ever executed the SQL, and the SQL was invalid. What caught it was
-insisting on a test against real PostgreSQL. Not the tool that wrote the code, and not more
-tests of the kind that were already passing.
+The one worth citing is why that division matters. The webhook handler had nineteen passing unit
+tests and had never once worked: every one of them swapped the real database for a stand-in, so
+none ever executed the SQL, and the SQL was invalid. No tool caught that, and no amount of the
+same kind of test would have. Insisting on a test against real PostgreSQL did.
 
-That is the habit twenty-one years in aviation maintenance left me with: the claim is not the
+That is the habit twenty-one years in aviation maintenance left me with — the claim is not the
 evidence. Everything asserted in this README is gated in CI, and the parts I have not built are
 named in the roadmap rather than hidden.
 
