@@ -143,6 +143,12 @@ TypeScript throughout, ESM, Node 20+.
   asserting the same contract line for line
 - Account-enumeration protection: a missing account is verified against a decoy hash, so a
   wrong password and a nonexistent user return byte-identical responses in comparable time
+- Passwordless sign-in by magic link: the raw token exists only in the emailed URL, the
+  database keeps a SHA-256 of it, and single use is one atomic UPDATE — two clicks racing
+  produce exactly one session. Expiry and the disabled-account check are decided in SQL, the
+  request answers 202 whether or not the account exists, and the mail is sent through the job
+  queue, so an unconfigured mailer is a visible dead job rather than a link written into a log.
+  See [ADR 0016](docs/decisions/0016-magic-links-store-hashes-send-through-the-queue.md)
 - Load testing with asserted latency and error-rate thresholds, scheduled in CI
 - Structured JSON logging with a request id on every line and returned to the caller in
   `x-request-id` — an upstream id is honoured so a trace is not broken here, but only after
@@ -153,6 +159,13 @@ TypeScript throughout, ESM, Node 20+.
   into it
 - Monitoring with a person on the end of it: the smoke suite runs hourly against production,
   and a failed scheduled run is an email rather than a log line
+- A durable job queue in PostgreSQL rather than a second piece of infrastructure: claims are
+  atomic over `FOR UPDATE SKIP LOCKED`, a lease reclaims work from a worker that died holding
+  it, retries back off to a cap and then dead-letter, and enqueue is idempotent through a
+  UNIQUE key. The guarantee is stated as at-least-once, because exactly-once does not survive
+  a process dying between the work and the acknowledgement. Depth, dead jobs and the recurring
+  schedule are visible on `/admin/jobs`; the first consumer is hourly session-retention
+  cleanup. See [ADR 0015](docs/decisions/0015-put-the-job-queue-in-postgresql.md)
 - A container image that has actually served traffic — multi-stage, production dependencies
   only, unprivileged, health-checked against `/ready`, and started in CI on every push
 - Accessibility verified at phone width as well as desktop, in both locales. Adding the
@@ -176,7 +189,7 @@ TypeScript throughout, ESM, Node 20+.
   and `/health` says `unconfigured` rather than pretending
 - Visual regression on the chrome at desktop and phone width, deliberately excluding
   data-driven pages: a suite that fails whenever the ledger moves is one people learn to ignore
-- 351 automated tests across ten suites, all gated in CI, plus a 30-check smoke suite
+- 384 automated tests across ten suites, all gated in CI, plus a 30-check smoke suite
   that verifies the live deployment from outside
 
 **A fourth consumer lives outside this repository:**
@@ -198,7 +211,8 @@ meet a login wall. What follows describes how the privileged half is separated f
 | Cookies | `HttpOnly`, `Secure`, `SameSite=Lax` (Lax, not Strict, so the Stripe return keeps the session; a test pins this) |
 | Authorisation | Checked on the API for every request; hidden UI is presentation, and the integration suite proves the refusals independently |
 | Brute force | Five failed attempts per account per fifteen minutes, keyed on the attempted account rather than a forgeable client address |
-| Enumeration | Decoy-hash verification for missing accounts; identical responses and comparable timing |
+| Enumeration | Decoy-hash verification for missing accounts; identical responses and comparable timing — and a magic-link request answers `202` whether or not the mailbox has an account |
+| Magic-link tokens | Only their SHA-256 reaches the database; single use, the fifteen-minute expiry and the disabled-account check are one atomic UPDATE's WHERE clause, and requests are rate limited per mailbox ([ADR 16](docs/decisions/0016-magic-links-store-hashes-send-through-the-queue.md)) |
 | Row visibility | PostgreSQL row-level security in a request lane: user-serving reads adopt a `NOLOGIN` role for one transaction, and the database's policies — not the SQL's WHERE clauses — decide which rows exist. Proven by integration tests that SELECT with no per-user filter ([ADR 14](docs/decisions/0014-enforce-row-level-security-in-a-request-lane.md)) |
 | Audit integrity | Append-only by database trigger; no foreign key with an `ON DELETE` action may write into it ([ADR 9](docs/decisions/0009-make-the-audit-log-append-only-in-the-database.md)) |
 | Privacy | Client identity is a keyed hash of the network prefix, never an IP address — enough to distinguish sessions and rate-limit abuse, not enough to locate a person |

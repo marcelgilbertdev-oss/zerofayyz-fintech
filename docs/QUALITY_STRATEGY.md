@@ -18,14 +18,17 @@ cannot see.
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
 | Unit | 82 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
-| Integration | 52 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation, row-level security |
-| End-to-end | 65 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
+| Web unit | 11 | jsdom, fetch stubbed | Whether the dashboard can tell a waking API from a dead one — the distinction that once made a cold start render "Unavailable" |
+| Integration | 80 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation, row-level security, job claiming under concurrency, magic-link single use |
+| End-to-end | 70 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
+| Visual regression | 6 | Chrome surfaces, in the renderer the baselines were recorded in | Layout breaking silently: the sign-in page, the sidebar, the phone drawer, and a header that once pushed the document wider than the viewport |
 | **BDD (Gherkin)** | **13 scenarios** | The whole stack, seeded and booted | Whether the platform's *business rules* still hold — stated in language a non-engineer can dispute |
 | Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
-| Vue client unit | 40 | jsdom, fetch mocked at the network seam | Contract validation, store state, sign-in and audit-trail flow, partial failure, rendered output |
-| Svelte client unit | 29 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
+| Vue client unit | 45 | jsdom, fetch mocked at the network seam | Contract validation, store state, sign-in and audit-trail flow, partial failure, rendered output |
+| Svelte client unit | 34 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
+| Go reconciler | 12 | Event sequences the checker re-derives state from | Whether independently derived payment state agrees with the payments table, and whether a disagreement is reported rather than swallowed |
 | **QA MCP server** | **31** | Its own tools, plus a live protocol handshake | That an agent can drive the suites, and that contract drift and webhook idempotency are checkable on demand |
-| Production smoke | 28 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
+| Production smoke | 30 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
 
 Total wall-clock for all local suites: under thirty seconds.
 
@@ -188,7 +191,8 @@ Stated openly, because unstated gaps read as oversights:
 
   It runs on a schedule and on demand rather than on every push: a failure on a normal
   commit would usually mean the instance was cold, not that the commit regressed.
-- **Visual regression.** No baseline screenshots. The layout is not the thing under test.
+- **Layout on data-driven pages.** The visual suite covers the chrome only; a screenshot of a
+  page whose height moves with the ledger cannot be a stable baseline.
 
 ## Manual and regression charter
 

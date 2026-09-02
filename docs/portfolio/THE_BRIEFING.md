@@ -25,8 +25,8 @@ It is sandbox only. No real money moves, ever.
   with it
 - **PostgreSQL** underneath all of it
 
-**The numbers:** 351 automated tests across ten suites, 30 production checks running
-hourly, 8 CI jobs, all green.
+**The numbers:** 384 automated tests across ten suites, 30 production checks running
+hourly, 10 CI jobs, all green.
 
 **The one sentence to have ready:** *"It's a payments platform — the API, three frontends,
 the database, the deployment, the tests and the operations. I built all of it, and the parts
@@ -56,9 +56,11 @@ can list features, and almost nobody can explain the reasoning.
 | scrypt password hashing | Deliberately slow and memory-hard, so a stolen database is not a stolen password list. Cost parameters live inside each hash, so they can be raised later without locking anyone out |
 | Opaque sessions, SHA-256 stored | Only the hash of the session token reaches the database. A database dump grants nobody a session |
 | Roles enforced on the API | Hiding a button is decoration. The guard is on the server, and the tests prove it by making the **refused** request |
+| **Row-level security in a request lane** | User-serving reads adopt a NOLOGIN role for one transaction, so the database's policies decide which rows exist rather than a WHERE clause someone can forget. The test SELECTs with no per-user filter at all and the other user's rows are simply not there |
 | **Append-only audit log** | A database trigger refuses UPDATE and DELETE — even from your own application. "We only ever insert" is not an answer when the application is the thing under suspicion |
 | Failure-only rate limiting | Five wrong passwords per account per fifteen minutes. Counting *successes* once locked the shared demo account out of its own demo |
 | Enumeration defence | A missing account is checked against a decoy hash, so "wrong password" and "no such user" return identical responses in comparable time. Otherwise your login page is a tool for discovering who has an account |
+| Magic-link sign-in | Only the token's SHA-256 is stored, and single use is one atomic UPDATE — two clicks racing produce exactly one session. Expiry and the disabled-account check happen in SQL, the request always answers 202 whether or not the mailbox has an account, and the link is mailed through the job queue so it never reaches a log |
 | **Four-eyes refunds** | An operator requests, an admin approves, and the same person can never do both — enforced by the API *and* by a database constraint. Money moving backwards needs two signatures |
 | Published demo password | On the login page on purpose, so a reviewer walks in without asking. Safe because the *role* is the boundary: an operator reads everything and changes nothing |
 
@@ -66,7 +68,7 @@ can list features, and almost nobody can explain the reasoning.
 
 | Built | Why |
 |---|---|
-| 351 tests in ten layers | Each layer catches what the one beneath structurally cannot |
+| 384 tests in ten layers | Each layer catches what the one beneath structurally cannot |
 | Integration tests against real PostgreSQL | **The story:** the webhook had nineteen passing unit tests and had never worked. Every test stubbed the database, so none ran the real SQL — and the SQL was invalid |
 | Accessibility scanned at two viewports | Adding phone width found a real WCAG failure that had been shipping under a green suite |
 | Visual regression on the chrome | Catches layout silently breaking. Scoped to surfaces without live data, because a suite that fails whenever the ledger moves is one people learn to ignore |
@@ -80,6 +82,7 @@ can list features, and almost nobody can explain the reasoning.
 | Structured JSON logs with a request id | Returned to the caller in a header, so someone reporting a failure hands you the exact string to search for |
 | `/ready` separate from `/health` | Different questions. Health stays 200 while degraded, because a process that can describe its own degradation is worth inspecting. Ready returns 503, so a load balancer stops sending payments to an instance that cannot record them |
 | Hourly production monitoring | The smoke suite on a schedule. A failed run is an email — monitoring with a person on the end of it |
+| A durable job queue in PostgreSQL | Background work that survives a crash without adding a broker: atomic claims over `FOR UPDATE SKIP LOCKED`, leases, capped backoff, dead-lettering. The guarantee is at-least-once and says so, because exactly-once does not survive a worker dying between the work and the acknowledgement |
 | A container, non-root, health-checked | Built *and started* in CI on every push, because a Dockerfile nobody has run is decoration |
 | Kubernetes manifests | Applied to a real cluster and tested by removing the database: both pods left the load balancer with **zero restarts** |
 | Security headers everywhere | Asserted exactly, including on error pages, and verified from the wire |
@@ -115,7 +118,7 @@ This is the section to reread before each interview.
 ### Tiger Data — Senior Test Tooling Engineer · *global remote*
 **They care about:** release process ownership, GitHub Actions, Python, PostgreSQL,
 stress testing and benchmarking.
-**Show them:** the eight test layers, the 8 CI jobs, the smoke suite, the load test.
+**Show them:** the ten test layers, the 10 CI jobs, the smoke suite, the load test.
 **Lead with:** the webhook that had nineteen passing tests and had never worked — it is a
 *PostgreSQL* defect at a PostgreSQL company, found by changing test infrastructure rather
 than by writing more assertions.

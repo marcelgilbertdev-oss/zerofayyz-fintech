@@ -75,16 +75,18 @@ refusals, spoken through Pinia on one page and runes on the other.
 | --- | --- |
 | **Payments** | Hosted Stripe Checkout, signature-verified webhooks, an auditable ledger |
 | **Idempotency** | Duplicate webhook deliveries are refused by a database constraint, not by application branching — it holds under concurrency and across restarts |
-| **Authentication** | scrypt password hashing, opaque server-side sessions, role-based access enforced on the API |
+| **Authentication** | scrypt password hashing, opaque server-side sessions, passwordless magic links whose tokens are stored only as a SHA-256 and spent by a single atomic UPDATE, role-based access enforced on the API |
+| **Row visibility** | PostgreSQL row-level security in a request lane — the database's policies, not the query's WHERE clauses, decide which rows a user-serving read can see |
 | **Auditability** | Append-only history the application itself cannot rewrite |
 | **Internationalisation** | English and Japanese, with translations enforced by the type system — a missing string is a compile error |
 | **Accessibility** | WCAG 2.1 AA, scanned by axe-core in CI against both locales |
-| **Testing** | 351 automated tests across ten suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, end-to-end against a production build, and thirteen Cucumber/Gherkin scenarios stating the payment rules in plain language — plus a 30-check smoke suite that verifies the live deployment from outside |
+| **Background work** | A durable job queue in the database itself — atomic claims over `FOR UPDATE SKIP LOCKED`, leases that recover a crashed worker's job, capped backoff and dead-lettering, with an at-least-once guarantee stated rather than overclaimed |
+| **Testing** | 384 automated tests across ten suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, end-to-end against a production build, and thirteen Cucumber/Gherkin scenarios stating the payment rules in plain language — plus a 30-check smoke suite that verifies the live deployment from outside |
 | **Operations** | Three-tier deployment colocated in Singapore, CI gating every merge, migrations applied before traffic. The smoke suite runs **hourly against production** and a failed run emails the owner — including a *signed-webhook probe*, because a health endpoint reports that a signing secret is present, not that it is correct |
 | **Agent-drivable QA** | A [Model Context Protocol server](../decisions/0011-expose-the-qa-surface-over-mcp.md) exposing the platform's QA surface as six tools, so an AI agent can run the suites, replay webhooks and check the ledger. Its first human-driven run found a live pagination defect |
 
 **Built by Marcel Gilbert** · [github.com/marcelgilbertdev-oss/zerofayyz-fintech](https://github.com/marcelgilbertdev-oss/zerofayyz-fintech)
 
-For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), thirteen
+For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), sixteen
 [decision records](../decisions/), and a [manual acceptance charter](../runbooks/MANUAL_ACCEPTANCE_TEST.md)
 carrying every defect found during development and how each was closed.

@@ -5,7 +5,7 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-08-29:** live, 341 automated tests, 30/30 production smoke, 10 CI jobs
+**Status as of 2026-09-02:** live, 384 automated tests, 30/30 production smoke, 10 CI jobs
 green — all ten re-verified green on this date, including visual regression and end-to-end.
 The two SPA clients now deploy from CI rather than by hand, after serving a stale bundle for
 days (§2, the delivery lessons). Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
@@ -336,7 +336,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Subject | Path |
 | --- | --- |
 | Architecture | `docs/architecture/SYSTEM_OVERVIEW.md` |
-| Decisions (10) | `docs/decisions/` |
+| Decisions (16) | `docs/decisions/` |
 | Test doctrine | `docs/QUALITY_STRATEGY.md` |
 | Charter, with every defect found | `docs/runbooks/MANUAL_ACCEPTANCE_TEST.md` |
 | Container | `docs/runbooks/CONTAINER.md` |
@@ -344,6 +344,8 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Go reconciler | `services/reconciler/README.md` |
 | Marcel's own explanation | `docs/portfolio/EXPLAIN_IT_IN_YOUR_OWN_WORDS.md` |
 | Row-level security | `database/postgres/migrations/007_row_level_security.sql`, `apps/api/src/database/rls.integration-test.ts`, ADR 14 |
+| Job queue | `database/postgres/migrations/008_job_queue.sql`, `apps/api/src/jobs/queue.integration-test.ts`, ADR 15 |
+| Magic links | `database/postgres/migrations/009_magic_links.sql`, `apps/api/src/auth/magic.integration-test.ts`, ADR 16 |
 | SPA client deploy (CI) | `.github/workflows/deploy-clients.yml`, `deploy-clients.sh` |
 | Demo recorder (Playwright) | `apps/web/scripts/record-demo.mjs` |
 | Walkthrough video | `docs/portfolio/demo/platform-demo-leda-final.mp4` |

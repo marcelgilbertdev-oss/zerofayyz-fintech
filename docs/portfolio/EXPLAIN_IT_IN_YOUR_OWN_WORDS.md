@@ -118,15 +118,15 @@ costs a join and it's what makes the ledger auditable."*
 | Layer | Count | What it catches | What it's blind to |
 |---|---|---|---|
 | Unit (API, web, MCP, Go) | 136 | Logic, branching, hashing, cookies, rate limiting, tool schemas | Anything involving real SQL |
-| Integration | 52 | Real database: SQL, constraints, triggers, idempotency, auth, row-level security | Rendering, the user's path |
-| End-to-end + visual | 71 | Real browser: sign-in, roles, accessibility, both locales, layout | Whether the deployed thing works |
+| Integration | 80 | Real database: SQL, constraints, triggers, idempotency, auth, row-level security | Rendering, the user's path |
+| End-to-end + visual | 76 | Real browser: sign-in, roles, accessibility, both locales, layout | Whether the deployed thing works |
 | Client (Vue/Svelte) | 79 | Contract validation, state, sign-in, partial failure | — |
 | Business rules (Cucumber) | 13 | The payment rules as readable, executable specifications | — |
 | Production smoke | 30 | That what *shipped* actually runs — hourly, with an email on failure | — |
 
-*(Counts verified by running every suite on 2026-08-31 — 351 in total.)*
+*(Counts verified by running every suite on 2026-09-02 — 384 in total.)*
 
-**Say:** *"351 automated tests plus 30 production checks, all gated in CI.
+**Say:** *"384 automated tests plus 30 production checks, all gated in CI.
 The layers exist because each catches a class of failure the layer beneath
 structurally cannot — the integration suite exists because 19 green unit tests
 never once executed the SQL that was broken."*

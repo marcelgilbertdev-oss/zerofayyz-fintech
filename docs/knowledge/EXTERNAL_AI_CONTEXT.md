@@ -73,10 +73,31 @@ how a deploy passes its check and then serves 500s.
 exits non-zero when it disagrees with the payments table. Separate language on purpose: a
 checker sharing code with what it checks agrees with its bugs. It reads and never writes.
 
-## Current numbers (2026-08-23)
+**Row visibility is decided by the database, in a request lane.** User-serving reads adopt a
+NOLOGIN role for the length of one transaction, and PostgreSQL policies — not WHERE clauses —
+decide which rows exist. The proof is a test that SELECTs with no per-user filter and finds
+the other user's rows absent. A second lane deliberately bypasses RLS for system work
+(webhooks, aggregates, migrations), recorded as a decision rather than hidden (ADR 14).
 
-- **341 automated tests** across ten suites: 82 API unit · 42 integration against real
-  PostgreSQL · 11 web unit · 65 Playwright end-to-end · 45 Vue · 34 Svelte · 12 Go ·
+**The job queue is PostgreSQL, not a second piece of infrastructure.** Claims are atomic over
+`FOR UPDATE SKIP LOCKED`, a lease reclaims work from a crashed worker, retries back off to a
+cap and then dead-letter, and enqueue is idempotent through a UNIQUE key. The guarantee is
+at-least-once and is stated that way, because exactly-once does not survive a worker dying
+between the work and the acknowledgement. Operator surface: `/admin/jobs`. First consumer: an
+hourly session-retention cleanup that re-chains itself (ADR 15).
+
+**Passwordless sign-in by magic link.** The database stores only a SHA-256 of the token;
+single use is one atomic UPDATE (`used_at IS NULL` in the WHERE), so two clicks racing produce
+exactly one session. The fifteen-minute expiry and the disabled-account check are decided in
+SQL. The request path always answers 202 whether or not the account exists, and is rate
+limited per mailbox counting every request. The email leg is the queue's second consumer, so
+an unconfigured mailer surfaces as a visible dead job rather than a silent failure — and the
+link is never written to a log (ADR 16).
+
+## Current numbers (2026-09-02)
+
+- **384 automated tests** across ten suites: 82 API unit · 80 integration against real
+  PostgreSQL · 11 web unit · 70 Playwright end-to-end · 45 Vue · 34 Svelte · 12 Go ·
   6 visual regression · 31 MCP · 13 Cucumber/BDD scenarios
 - **30/30** production smoke checks, run hourly against the live system — including a signed-webhook probe that catches a stale signing secret, which `/health` cannot see because it reports the variable's presence rather than its correctness
 - **10 CI jobs**, all green
