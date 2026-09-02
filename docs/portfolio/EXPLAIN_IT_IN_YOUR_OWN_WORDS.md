@@ -291,6 +291,80 @@ observable gain. It's the service-role/authenticated split — the guarantee
 covers the lane that carries user requests, and the tests prove that lane
 from the database's side."*
 
+### A durable job queue — in the database that already holds the ledger
+
+**Plain:** Some work does not belong inside a web request. Sending an email
+means waiting on somebody else's server; clearing out dead sessions is nobody's
+business but the platform's. Do either in the request and a slow provider makes
+a person wait, and a crash loses the work with nothing to show for it. So the
+platform grew a queue — not Redis, not SQS, but the PostgreSQL that already
+holds the ledger.
+
+**Say:** *"A durable job queue in PostgreSQL. Workers claim with SELECT … FOR
+UPDATE SKIP LOCKED, so two workers racing on the same row never both get it —
+one takes it and the other skips straight past to the next. Crash recovery is a
+lease: a claimed job carries an expiry, and if the worker dies the lease lapses
+and someone else picks it up. Retries are capped exponential backoff computed in
+SQL, and after the final attempt the job is dead-lettered with its last error
+kept. Enqueue is idempotent through a UNIQUE key. And the guarantee is
+at-least-once, not exactly-once — exactly-once does not exist over a channel
+that can die between doing the work and acknowledging it, so the handlers are
+written to be safe to run twice and the ADR says so in those words."*
+
+**If they ask "why not Redis or SQS?"** — *"Because the queue and the ledger
+have to agree. If I enqueue in Redis and the transaction that justified the job
+then rolls back, I am holding a job for work that never happened. In the same
+database the enqueue is in the same transaction, so that state cannot exist. It
+is also one thing to operate, one thing to back up, one thing that can be down.
+If throughput ever outgrew a single Postgres that is the moment to move — and it
+is not close."*
+
+**Recurring work, and the bug the tests found:** *"Recurring work is not a cron
+entry. Each run enqueues the next one, keyed to the hour it belongs to. That
+survives a restart because the next run is a row rather than a timer in memory,
+it cannot double-fire because two instances collide on the same key, and if the
+platform was down across the boundary the next claim after startup finds the
+overdue row and runs it late instead of losing it. The design got better because
+four tests failed: a worker was claiming jobs it had no handler for, which turned
+an ordinary deployment gap into data loss — it burned the job's attempts and
+dead-lettered work nobody had actually failed. Now the claim is filtered by the
+worker's own handler list, and the new failure mode, an unhandled kind waiting
+forever, is visible on /admin/jobs instead of silent."*
+
+### Passwordless sign-in — a credential in flight
+
+**Plain:** Operations-portal briefs keep asking for this by name. A magic link is
+a sign-in email: click it and you are in, no password typed. The interesting part
+is not the feature — it is that a live credential is travelling through email, so
+what the database keeps, and what the logs keep, is the whole design.
+
+**Say:** *"The database stores only a SHA-256 hash of the token. The raw token
+exists in exactly two places, both in flight — the emailed URL and the queue
+payload carrying it there — and it is never written to a log, because a
+credential in a log is a leak with a retention policy. Single-use is one atomic
+UPDATE with used_at IS NULL in the WHERE, so two clicks racing on the same link
+produce exactly one session; the row lock is the entire guarantee. Expiry at
+fifteen minutes and the disabled-account check live in that same WHERE, so the
+clock that decides is the database's, not the application's. The request path
+answers 202 whether or not the account exists — the same anti-enumeration posture
+as the decoy hash on the password door. And the email leaves through the job
+queue rather than inline, because a mail provider is precisely the flaky
+dependency backoff exists for: with no provider configured the job dies visibly
+on /admin/jobs instead of a request failing quietly."*
+
+**If they notice the link is a GET** — *"It is, and I wrote it down as a
+deliberate concession rather than leaving it to be found. A GET with a side
+effect is normally a CSRF smell. It is not exploitable here: the side effect is
+spending a single-use token the attacker would have to already hold, and holding
+it means they are already reading the mailbox. The alternative is an interstitial
+page with a POST button, which costs every real person a click to defend against
+an attacker who has already won."*
+
+**Rate limiting:** *"Per mailbox, and it counts every request — unlike the
+password limiter, which counts only failures. There is no successful attempt to
+exempt: each request sends somebody an email, so the thing being limited is
+outbound mail, not guessing."*
+
 ### Two details worth volunteering
 
 **Enumeration:** *"A wrong password and a nonexistent account return identical

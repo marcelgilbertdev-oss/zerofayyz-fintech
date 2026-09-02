@@ -48,6 +48,17 @@ async function main() {
     await page.waitForLoadState("networkidle");
     await beat(page, 4000);
 
+    // 2b — the password form is not the only door. A sign-in link can be
+    //      emailed instead: single-use, fifteen minutes, and the database keeps
+    //      only a hash of it. Shipped after this video was first recorded, which
+    //      is the argument for a recorder that is code rather than a screen
+    //      capture — it re-shoots itself.
+    const magic = page.getByRole("button", { name: /sign-in link/i }).first();
+    if (await magic.count()) {
+      await magic.scrollIntoViewIfNeeded();
+      await beat(page, 5000);
+    }
+
     // 3 — the credentials are printed on the page. A reviewer should never have
     //     to ask anyone for access, so the button fills them in.
     const fill = page.getByRole("button", { name: /Fill these in for me/i });
@@ -67,13 +78,13 @@ async function main() {
     if (await refunds.count()) {
       await refunds.click();
       await page.waitForLoadState("networkidle");
-      await beat(page, 6000);
+      await beat(page, 8000);
     }
 
     const rule = page.getByText(/four-eyes|cannot be the one who approves/i).first();
     if (await rule.count()) {
       await rule.scrollIntoViewIfNeeded();
-      await beat(page, 6000);
+      await beat(page, 8000);
     }
 
     // 5 — the audit log: a history the application itself cannot rewrite.
