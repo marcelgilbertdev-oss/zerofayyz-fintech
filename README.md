@@ -34,10 +34,17 @@ around how payment systems actually fail, and everything is gated by CI.
 through hosted checkout, the signed webhook returning, the ledger updating, and the audit
 trail recording it.
 
-Recorded by the same Playwright suite that tests the platform
-([`apps/web/scripts/record-demo.mjs`](apps/web/scripts/record-demo.mjs)), so it regenerates in
-a minute whenever the figures change rather than being re-shot by hand. The narration is a
-synthesised voice.
+**[▶ 56-second walkthrough of the operations console](docs/portfolio/demo/admin-console-narrated.mp4)**
+— the half behind the login: the passwordless sign-in link, the refund queue and its four-eyes
+rule, the append-only audit log, and an operator account stating plainly what it is not allowed
+to do.
+
+Both are recorded by the same Playwright suite that tests the platform
+([`record-demo.mjs`](apps/web/scripts/record-demo.mjs) and
+[`record-admin-demo.mjs`](apps/web/scripts/record-admin-demo.mjs)), so they regenerate in a
+minute whenever the platform changes rather than being re-shot by hand — which is how the
+console walkthrough came to include a sign-in door that shipped hours after the first take. The
+narration is a synthesised voice.
 
 ## Try it yourself
 
