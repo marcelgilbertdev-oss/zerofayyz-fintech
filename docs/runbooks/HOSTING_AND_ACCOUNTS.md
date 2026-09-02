@@ -19,7 +19,7 @@ This matters more than it sounds. Everything a reviewer touches is hosted:
 | Payments | Stripe **test mode** | Free |
 | Source | GitHub, public | Free |
 
-**A recruiter needs no account, no login, and nothing installed.** They click a link. The
+**A reviewer needs no account, no login, and nothing installed.** They click a link. The
 development machine could be switched off or sold and every link in an application would keep
 working.
 
@@ -199,4 +199,4 @@ Doing only the second one is temporary; the next sync restores whatever the file
 - `DEPLOYMENT.md` — standing the whole stack up from nothing
 - `LOCAL_DEVELOPMENT.md` — running it on a laptop, and the lockfile trap
 - `MOBILE_AND_BROWSER_TESTING.md` — verifying on a phone, and what desktop browsers cannot see
-- `../portfolio/THE_BRIEFING.md` — what was built, why, and how it maps to each company
+- `../portfolio/CASE_STUDY.md` — what was built and why, in plain language

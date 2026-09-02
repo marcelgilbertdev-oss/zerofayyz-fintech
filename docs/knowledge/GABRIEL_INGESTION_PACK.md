@@ -342,7 +342,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Container | `docs/runbooks/CONTAINER.md` |
 | Kubernetes + failure-mode transcript | `docs/runbooks/KUBERNETES.md` |
 | Go reconciler | `services/reconciler/README.md` |
-| Marcel's own explanation | `docs/portfolio/EXPLAIN_IT_IN_YOUR_OWN_WORDS.md` |
+| Marcel's own explanation | `docs/_marcel_private/EXPLAIN_IT_IN_YOUR_OWN_WORDS.md` (local only, not published) |
 | Row-level security | `database/postgres/migrations/007_row_level_security.sql`, `apps/api/src/database/rls.integration-test.ts`, ADR 14 |
 | Job queue | `database/postgres/migrations/008_job_queue.sql`, `apps/api/src/jobs/queue.integration-test.ts`, ADR 15 |
 | Magic links | `database/postgres/migrations/009_magic_links.sql`, `apps/api/src/auth/magic.integration-test.ts`, ADR 16 |

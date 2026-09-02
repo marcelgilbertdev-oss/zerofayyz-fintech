@@ -16,7 +16,7 @@ charter nobody ran.
 
 ## Part A — The reviewer's journey (browser only)
 
-This is the exact path a recruiter or engineer takes. Do it on a phone too if
+This is the exact path a reviewer takes. Do it on a phone too if
 you have five spare minutes; it is responsive and they will try.
 
 ### A1 · The main dashboard loads with real data
@@ -154,7 +154,7 @@ same test from any of them.
 
 **Proves:** one API, one contract, three independently-built frontends (React /
 Next.js, Vue 3, Svelte 5). The API boundary is clean enough that three different
-consumers use it unmodified. This is the artifact for the HENNGE applications.
+consumers use it unmodified.
 
 ### A8 · The sandbox framing is visible
 
@@ -215,8 +215,8 @@ live count badge) and **Accounts**.
 
 23. In Active sessions, find your own row.
 
-**Expect:** it is marked **“This is you.”** Any recruiter using the demo login
-appears here as *Demo Operator*, live, while they are looking at your work.
+**Expect:** it is marked **“This is you.”** Anyone using the demo login appears
+here as *Demo Operator*, live, while they are looking at the platform.
 
 24. From another browser (or a private window), sign in as the demo operator,
     then refresh the console in your first browser.

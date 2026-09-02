@@ -56,3 +56,8 @@ docs/runbooks/HANDOFF.md
 # Go build output
 services/reconciler/reconciler
 services/reconciler/cmd/reconcile/reconcile
+
+# Marcel's own prep — interview scripts, per-company briefings, anything written TO him.
+# A folder inside a public repo is public unless it is ignored, so it is ignored here.
+# Public-facing explanation of the platform lives in docs/portfolio/ and docs/architecture/.
+docs/_marcel_private/

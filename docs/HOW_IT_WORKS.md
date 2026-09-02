@@ -267,7 +267,7 @@ platform must keep its own record rather than relying on the processor's dashboa
 **Subscription and SaaS businesses** — the same lifecycle, with recurring events. The
 payments/transactions split matters even more when a subscription changes state repeatedly.
 
-**Payment gateways and processors** themselves — companies like KOMOJU exist to give
+**Payment gateways and processors** themselves — the companies that exist to give
 merchants this infrastructure. Their engineers spend their days on webhook reliability,
 idempotency, and reconciliation.
 

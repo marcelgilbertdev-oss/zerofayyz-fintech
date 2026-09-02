@@ -25,7 +25,6 @@ around how payment systems actually fail, and everything is gated by CI.
 - **Hosting, accounts and cost:** [docs/runbooks/HOSTING_AND_ACCOUNTS.md](docs/runbooks/HOSTING_AND_ACCOUNTS.md)
 - **Phone and browser testing:** [docs/runbooks/MOBILE_AND_BROWSER_TESTING.md](docs/runbooks/MOBILE_AND_BROWSER_TESTING.md)
 - **Context pack for an AI assistant:** [docs/knowledge/EXTERNAL_AI_CONTEXT.md](docs/knowledge/EXTERNAL_AI_CONTEXT.md)
-- **The briefing — everything built and why:** [docs/portfolio/THE_BRIEFING.md](docs/portfolio/THE_BRIEFING.md)
 
 ## Watch it work
 
@@ -69,6 +68,22 @@ The success-rate tile is an **authorization** success rate: succeeded payments o
 actually attempted (succeeded or failed). A cancelled checkout is a person changing their mind
 before entering a card, not a failure of the platform, so it is excluded; a declined card still
 counts against it. An unfinished checkout stays `created` and is reported as pending.
+
+## How I built it
+
+I built this on my own, and I used AI tooling heavily and deliberately — the commits are
+co-authored and there is no reason to pretend otherwise. What it changed is where the effort
+went: less typing, considerably more verifying.
+
+The defect worth citing is the argument for that discipline. The webhook handler had nineteen
+passing unit tests and had never once worked — every one of them swapped the real database for
+a stand-in, so none ever executed the SQL, and the SQL was invalid. What caught it was
+insisting on a test against real PostgreSQL. Not the tool that wrote the code, and not more
+tests of the kind that were already passing.
+
+That is the habit twenty-one years in aviation maintenance left me with: the claim is not the
+evidence. Everything asserted in this README is gated in CI, and the parts I have not built are
+named in the roadmap rather than hidden.
 
 ## Stack
 
