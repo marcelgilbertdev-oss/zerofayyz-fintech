@@ -57,7 +57,7 @@ deployment and no API URL or key reaches the client.
 | Migrations | `apps/api/src/database/migrate.ts` | Ordered, recorded, transactional |
 | Container | `apps/api/Dockerfile` | Multi-stage, non-root, health-checked against `/ready` |
 | Orchestration | `infrastructure/kubernetes` | Applied manifests; probes split across `/ready` and `/health` |
-| Pipeline | `.github/workflows/ci.yml` | Eight jobs: API, container, reconciler, three clients, visual, end-to-end |
+| Pipeline | `.github/workflows/ci.yml` | Ten jobs: API, container, reconciler, three clients, MCP, BDD, visual, end-to-end |
 | Monitoring | `.github/workflows/production-watch.yml` | Hourly smoke against production; a failed run is an email |
 
 ## Data model
