@@ -219,7 +219,8 @@ TypeScript throughout, ESM, Node 20+.
 [endpoint-pulse](https://github.com/marcelgilbertdev-oss/endpoint-pulse), a Manifest V3
 browser extension that watches this platform's health endpoint — the API boundary tested
 by a consumer the repo doesn't control — and
-[receipt-portal](https://github.com/marcelgilbertdev-oss/receipt-portal), a customer
+[receipt-portal](https://github.com/marcelgilbertdev-oss/receipt-portal)
+([live](https://receipt-portal-one.vercel.app)), a customer
 receipt portal built entirely on Supabase (Auth, row-level security, Storage, an Edge
 Function that mirrors from this API). It exists so that the platform's hand-rolled RLS
 lane and Supabase's `auth.uid()` policy model could be built side by side and compared

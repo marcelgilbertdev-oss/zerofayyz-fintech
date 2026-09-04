@@ -31,3 +31,47 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           SMOKE_REQUIRE_WEBHOOK_PROBE: "1"
         run: node scripts/production-smoke.mjs
+
+  keep-supabase-awake:
+    name: Keep the receipt portal's Supabase project awake
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A Supabase free project pauses after about a week without activity, and a
+      # paused project makes the receipt portal — linked from this README and from
+      # job proposals — return nothing to a reviewer. One request an hour prevents
+      # that. It goes through PostgREST to PostgreSQL rather than pinging a status
+      # page, because only real traffic resets the timer.
+      #
+      # The key is the PUBLISHABLE key, already published in the portal's browser
+      # bundle by design; row-level security, not this key's secrecy, is what keeps
+      # one customer out of another's rows.
+      #
+      # The healthy answer is a REFUSAL. `anon` holds no grant on these tables
+      # (receipt-portal's migration revokes the Supabase defaults), so PostgreSQL
+      # answers 401 with SQLSTATE 42501. That response still comes from the
+      # database, which is what keeps the project awake — and it simultaneously
+      # proves the deny is still in place. A 200 here would mean someone granted
+      # anon access to a customer's payments, so it is treated as a failure, not
+      # a success. Anything else means paused, rotated or misconfigured.
+      - name: Read through the REST layer, and expect to be refused
+        env:
+          SUPABASE_URL: https://ezjisssfdcgozenfegqo.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_LDqApcSmhG27KrQr7qJKcw_G9lYBLYT
+        run: |
+          code=$(curl -s --max-time 30 -o /tmp/body.txt -w "%{http_code}" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
+            "$SUPABASE_URL/rest/v1/payments?select=id&limit=1")
+          body=$(cat /tmp/body.txt)
+          echo "status=$code body=$body"
+          if [ "$code" = "200" ]; then
+            echo "REGRESSION: anon can read public.payments. RLS default-deny has been weakened." >&2
+            exit 1
+          fi
+          if [ "$code" = "401" ] && echo "$body" | grep -q "42501"; then
+            echo "Healthy: the project is awake and PostgreSQL refused the anonymous read."
+            exit 0
+          fi
+          echo "Supabase did not answer as expected — the project may be paused or the key rotated." >&2
+          exit 1
