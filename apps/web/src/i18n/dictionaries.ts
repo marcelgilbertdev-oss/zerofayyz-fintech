@@ -187,8 +187,10 @@ const en = {
   footer: {
     left: "ZEROFAYYZ FINTECH · Portfolio Prototype · Next.js dashboard",
     right: "Sandbox data only · No real funds processed",
-    // "Consumed unmodified by three clients" is the platform's central claim, and it was
+    // "Consumed unmodified by N clients" is the platform's central claim, and it was
     // unverifiable from inside any one of them. These make it two clicks to check.
+    // The receipt portal is the fifth consumer and the only one on someone else's
+    // backend entirely (Supabase), which is the sharpest version of the claim.
     siblings: "Same API, other clients:",
   },
   checkout: {
