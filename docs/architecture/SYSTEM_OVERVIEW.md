@@ -152,3 +152,4 @@ payment, and a report with false positives is a report nobody opens.
 - [Container](../runbooks/CONTAINER.md) — the image, and what it was verified to do
 - [Kubernetes](../runbooks/KUBERNETES.md) — the manifests, and the failure mode they were tested against
 - [Reconciler](../../services/reconciler/README.md) — why the ledger check is written in Go
+- [ADR 17 — two row-level security models, side by side](../decisions/0017-two-row-level-security-models.md), and the [receipt portal](https://github.com/marcelgilbertdev-oss/receipt-portal) that exists to make the comparison real

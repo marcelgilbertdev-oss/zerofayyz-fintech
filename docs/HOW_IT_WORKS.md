@@ -42,6 +42,15 @@ Everything on the dashboard is computed from the database. There are no hardcode
 | Languages | **English + Japanese** | Typed dictionaries, no i18n dependency: two locales in server components did not justify one, and `Intl` already handles currency, number and date formatting per locale. |
 | Accessibility | **axe-core in CI** | WCAG 2.1 AA checked on every push, against both locales. |
 
+### Consumers outside this repository
+
+Two more clients consume the same API from their own repositories: **endpoint-pulse**, a
+Manifest V3 browser extension that watches the health endpoint, and **receipt-portal**, a
+customer receipt portal built entirely on Supabase — its Auth, its row-level security
+policies, its Storage, and an Edge Function that mirrors payments from this API. The portal
+exists so the platform's hand-rolled row-level security could be compared honestly with
+Supabase's `auth.uid()` model; that comparison is [ADR 17](decisions/0017-two-row-level-security-models.md).
+
 ### The services it runs on
 
 | Service | What it hosts | Why | Cost |

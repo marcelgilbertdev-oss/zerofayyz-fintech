@@ -27,7 +27,7 @@ A cloud payments and operations platform. Stripe **sandbox only** — no real mo
 ever. Live at `zerofayyz-fintech.vercel.app`; source public at
 `github.com/marcelgilbertdev-oss/zerofayyz-fintech`.
 
-**Shape:** one API, three frontends, one database, one independent checker.
+**Shape:** one API, three frontends, one database, one independent checker — plus two consumers outside the repository: a Manifest V3 extension (endpoint-pulse) and a customer receipt portal built entirely on Supabase (receipt-portal, ADR 17).
 
 | Piece | Technology | Deployed on |
 | --- | --- | --- |

@@ -19,7 +19,8 @@ shared code.**
 A cloud payments and operations platform, built as the demonstration artifact for four
 Japan-market job applications plus one global remote role. Stripe sandbox only; no real
 funds move. Three frontends and one API share a single Zod-validated contract, backed by
-PostgreSQL, with an independent ledger reconciler in Go.
+PostgreSQL, with an independent ledger reconciler in Go. Two further consumers live outside
+the repository: a Manifest V3 extension and a receipt portal built on Supabase (ADR 17).
 
 **Architecture in one line:** Fastify/TypeScript API on PostgreSQL, consumed unmodified by
 a Next.js dashboard, a Vue 3 SPA and a SvelteKit SPA, each validating every response at the
@@ -157,6 +158,25 @@ verifies but does not act on (here, a real provider event type the handler ignor
 verified delivery writes nothing), and make a missing credential fail the monitor rather than
 silently skip the probe. A negative control proves bad input is refused; only a positive one
 proves good input is still accepted.
+
+### Row-level security has two honest models, and the platform now carries both
+The request-lane pattern (ADR 14) adopts a `NOLOGIN` role per transaction so a pooled
+connection carries no user context past COMMIT; Supabase's model compares a column to
+`auth.uid()` from a JWT its gateway already verified. Same guarantee, different trust: here
+the API is code this repo tests; there it is a platform trusted by its documentation. The
+receipt portal was built on Supabase specifically so the comparison could be written from
+two implementations rather than one and a reading. **Rule:** when a claim is "I have done X",
+the strongest form is "I have done X two ways and can say when each is right" — build the
+second way small, and write the comparison (ADR 17).
+
+### Default-deny can reach the privileged lane, and that is correct
+Supabase's project form offers "Automatically expose new tables" (its own copy says turn it
+off). With it off, a new table carries no grants for *any* role — the service role included —
+and the secret key was refused with `42501` until the migration granted it explicitly. The
+same symptom appears when a publishable key is pasted into the secret slot, so the diagnosis
+order is: key prefix first, grants second. **Rule:** a migration grants the privileged role
+explicitly, next to the narrowed grants for the user role, so it is correct on projects with
+either default.
 
 ### A deploy path that is not in the pipeline will drift, whatever the runbook says
 Two of the three frontends served a bundle from before a currency fix for several days,
@@ -346,6 +366,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Row-level security | `database/postgres/migrations/007_row_level_security.sql`, `apps/api/src/database/rls.integration-test.ts`, ADR 14 |
 | Job queue | `database/postgres/migrations/008_job_queue.sql`, `apps/api/src/jobs/queue.integration-test.ts`, ADR 15 |
 | Magic links | `database/postgres/migrations/009_magic_links.sql`, `apps/api/src/auth/magic.integration-test.ts`, ADR 16 |
+| Two RLS models compared | ADR 17; the receipt portal at github.com/marcelgilbertdev-oss/receipt-portal (`supabase/migrations/0001_schema_and_policies.sql`, `tests/isolation.integration-test.ts`) |
 | SPA client deploy (CI) | `.github/workflows/deploy-clients.yml`, `deploy-clients.sh` |
 | Demo recorder (Playwright) | `apps/web/scripts/record-demo.mjs` |
 | Walkthrough video | `docs/portfolio/demo/platform-demo-leda-final.mp4` |
