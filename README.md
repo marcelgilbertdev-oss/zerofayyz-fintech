@@ -215,10 +215,15 @@ TypeScript throughout, ESM, Node 20+.
 - 384 automated tests across ten suites, all gated in CI, plus a 30-check smoke suite
   that verifies the live deployment from outside
 
-**A fourth consumer lives outside this repository:**
+**Two more consumers live outside this repository:**
 [endpoint-pulse](https://github.com/marcelgilbertdev-oss/endpoint-pulse), a Manifest V3
 browser extension that watches this platform's health endpoint — the API boundary tested
-by a consumer the repo doesn't control.
+by a consumer the repo doesn't control — and
+[receipt-portal](https://github.com/marcelgilbertdev-oss/receipt-portal), a customer
+receipt portal built entirely on Supabase (Auth, row-level security, Storage, an Edge
+Function that mirrors from this API). It exists so that the platform's hand-rolled RLS
+lane and Supabase's `auth.uid()` policy model could be built side by side and compared
+honestly: [ADR 17](docs/decisions/0017-two-row-level-security-models.md).
 
 ## Security posture
 
