@@ -52,7 +52,8 @@ very next request, without their cookie changing or expiring.
 
 ## The same API through two more frameworks
 
-The API is consumed unmodified by five independent consumers — three frontends sharing one runtime-validated
+The API is consumed unmodified by five independent consumers — the fifth, a Supabase receipt
+portal at https://receipt-portal-one.vercel.app, syncs from it through an Edge Function — three frontends sharing one runtime-validated
 contract:
 
 - **Vue 3** (Composition API + Pinia) — [zerofayyz-fintech-vue.vercel.app](https://zerofayyz-fintech-vue.vercel.app)

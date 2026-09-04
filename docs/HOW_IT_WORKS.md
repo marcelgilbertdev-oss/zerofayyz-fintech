@@ -46,8 +46,10 @@ Everything on the dashboard is computed from the database. There are no hardcode
 
 Two more clients consume the same API from their own repositories: **endpoint-pulse**, a
 Manifest V3 browser extension that watches the health endpoint, and **receipt-portal**, a
-customer receipt portal built entirely on Supabase — its Auth, its row-level security
-policies, its Storage, and an Edge Function that mirrors payments from this API. The portal
+customer receipt portal ([live](https://receipt-portal-one.vercel.app)) built entirely on
+Supabase — its Auth, its row-level security policies, its Storage, and a `sync-payments`
+Edge Function that mirrors payments from this API, holding the only privileged key at
+runtime and authenticating its own caller with a constant-time secret compare. The portal
 exists so the platform's hand-rolled row-level security could be compared honestly with
 Supabase's `auth.uid()` model; that comparison is [ADR 17](decisions/0017-two-row-level-security-models.md).
 

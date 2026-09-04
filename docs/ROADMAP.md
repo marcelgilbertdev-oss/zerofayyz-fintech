@@ -189,7 +189,7 @@ what exists, not what was once intended:
   pattern. First consumer: hourly session-retention cleanup. Honest guarantee:
   at-least-once. Surface: `/admin/jobs`.
 - **Passwordless sign-in via magic links** (2026-09-01, migration 009, ADR 16).
-- **A fifth consumer on Supabase** (2026-09-04): the [receipt portal](https://github.com/marcelgilbertdev-oss/receipt-portal) enforces the same row-visibility guarantee with Supabase's `auth.uid()` policy model, so the two RLS models could be compared honestly — [ADR 17](decisions/0017-two-row-level-security-models.md).
+- **A fifth consumer on Supabase** (2026-09-04): the [receipt portal](https://github.com/marcelgilbertdev-oss/receipt-portal) — [live](https://receipt-portal-one.vercel.app) — enforces the same row-visibility guarantee with Supabase's `auth.uid()` policy model, so the two RLS models could be compared honestly ([ADR 17](decisions/0017-two-row-level-security-models.md)). Its `sync-payments` Edge Function consumes this API, and the hourly production watch keeps the free-tier project awake by expecting a `401` refusal.
   SHA-256 token hashes at rest, single-use via one atomic UPDATE, 15-minute
   expiry decided in SQL, always-202 anti-enumeration, per-mailbox rate limit.
   The email leg is the queue's second consumer — unconfigured mailer = a
