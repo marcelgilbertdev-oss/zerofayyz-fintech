@@ -159,6 +159,17 @@ verified delivery writes nothing), and make a missing credential fail the monito
 silently skip the probe. A negative control proves bad input is refused; only a positive one
 proves good input is still accepted.
 
+**Second instance, 2026-09-09 — the lesson above was already written down, and the next
+subsystem shipped with the same defect anyway.** `errorTrackingStatus()` reported Sentry as
+`configured` whenever `SENTRY_DSN` was non-empty, which is precisely "the variable's presence"
+again, one subsystem over. The tell was that an empty Sentry project and a misdirected one
+looked identical, so there was no observation that could distinguish them. The fix generalises
+the rule past credentials: **a health field must report state the process actually reached, not
+configuration it was handed** — here, the module's `initialised` flag rather than the env var —
+and where the live leg cannot be unit-tested, emit a positive control from production itself
+(one `api.startup` event per boot, ADR 18). Writing a lesson in a pack does not transfer it;
+only a check that fails does.
+
 ### Row-level security has two honest models, and the platform now carries both
 The request-lane pattern (ADR 14) adopts a `NOLOGIN` role per transaction so a pooled
 connection carries no user context past COMMIT; Supabase's model compares a column to
