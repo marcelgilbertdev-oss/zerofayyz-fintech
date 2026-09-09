@@ -5,7 +5,7 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-09-02:** live, 384 automated tests, 30/30 production smoke, 10 CI jobs
+**Status as of 2026-09-02:** live, 386 automated tests, 30/30 production smoke, 10 CI jobs
 green — all ten re-verified green on this date, including visual regression and end-to-end.
 The two SPA clients now deploy from CI rather than by hand, after serving a stale bundle for
 days (§2, the delivery lessons). Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
@@ -366,6 +366,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Row-level security | `database/postgres/migrations/007_row_level_security.sql`, `apps/api/src/database/rls.integration-test.ts`, ADR 14 |
 | Job queue | `database/postgres/migrations/008_job_queue.sql`, `apps/api/src/jobs/queue.integration-test.ts`, ADR 15 |
 | Magic links | `database/postgres/migrations/009_magic_links.sql`, `apps/api/src/auth/magic.integration-test.ts`, ADR 16 |
+| Verifiable error tracking | `apps/api/src/observability/error-tracking.ts`, `error-tracking.test.ts`, ADR 18 |
 | Two RLS models compared | ADR 17; the receipt portal at github.com/marcelgilbertdev-oss/receipt-portal (`supabase/migrations/0001_schema_and_policies.sql`, `tests/isolation.integration-test.ts`) |
 | SPA client deploy (CI) | `.github/workflows/deploy-clients.yml`, `deploy-clients.sh` |
 | Demo recorder (Playwright) | `apps/web/scripts/record-demo.mjs` |

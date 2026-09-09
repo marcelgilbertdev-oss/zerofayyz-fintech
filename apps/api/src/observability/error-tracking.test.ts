@@ -51,6 +51,25 @@ describe("error tracking", () => {
     assert.equal(errorTrackingStatus(), "unconfigured");
   });
 
+  it("does not claim configured merely because SENTRY_DSN is set", () => {
+    // The defect this replaced: errorTrackingStatus() read the environment
+    // variable, so /health reported "configured" for a typo'd key or a deleted
+    // project. An empty Sentry dashboard then looked exactly like a healthy
+    // one, which is the failure mode an error tracker exists to prevent.
+    process.env.SENTRY_DSN = "https://public@example.invalid/1";
+
+    assert.equal(errorTrackingStatus(), "unconfigured");
+  });
+
+  it("status agrees with what initialisation actually returned", () => {
+    // /health must never report more than initialisation achieved.
+    delete process.env.SENTRY_DSN;
+
+    const result = initialiseErrorTracking();
+
+    assert.equal(errorTrackingStatus(), result);
+  });
+
   it("scrubs every credential-bearing header before an event leaves the process", () => {
     // This is a payments API. A cookie is a session, and stripe-signature is a
     // shared secret; an error report carrying either turns an incident

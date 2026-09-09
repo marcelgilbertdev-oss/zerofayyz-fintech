@@ -193,6 +193,17 @@ Stated openly, because unstated gaps read as oversights:
   commit would usually mean the instance was cold, not that the commit regressed.
 - **Layout on data-driven pages.** The visual suite covers the chrome only; a screenshot of a
   page whose height moves with the ledger cannot be a stable baseline.
+- **That events actually reach Sentry.** No test can prove this: the DSN is a secret the
+  suite never holds, and a unit test that reached Sentry's ingest would be testing Sentry.
+
+  The proof is in production instead. Every boot emits one `api.startup` event (ADR 18), so
+  each deploy demonstrates DSN, network and project routing end to end. The unit tests cover
+  the half that *is* testable — that `/health` never claims more than initialisation achieved,
+  and that the subsystem stays inert and silent without a DSN.
+
+  This distinction is the point: before ADR 18, `/health` reported `configured` whenever the
+  environment variable was non-empty, so a typo'd key produced a healthy-looking API with no
+  error reporting at all. A check that cannot fail is not a check.
 
 ## Manual and regression charter
 

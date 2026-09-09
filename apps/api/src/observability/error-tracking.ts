@@ -39,7 +39,7 @@ export function initialiseErrorTracking(): ErrorTrackingStatus {
     return "configured";
   }
 
-  Sentry.init({
+  const options: NonNullable<Parameters<typeof Sentry.init>[0]> = {
     dsn,
     environment: process.env.NODE_ENV ?? "development",
     // Release tagging so "did the last deploy cause this" is answerable. Absent
@@ -67,15 +67,41 @@ export function initialiseErrorTracking(): ErrorTrackingStatus {
 
       return event;
     },
-  });
+  };
+
+  try {
+    Sentry.init(options);
+  } catch (cause) {
+    // A malformed DSN throws here. Boot must not depend on the error tracker
+    // being correct: this API is far more useful up and untracked than down
+    // because a third-party endpoint was typed wrong.
+    console.warn("error tracking: Sentry.init failed, continuing without it", cause);
+    return "unconfigured";
+  }
 
   initialised = true;
+
+  // Prove the pipeline on every deploy. Without this, an empty Sentry project
+  // is ambiguous: a correctly wired tracker with nothing to report and one
+  // pointed at a deleted project look identical from the dashboard. A single
+  // info-level event per boot is negligible against the quota, and it turns
+  // "we have seen no errors" from an assumption into evidence.
+  Sentry.captureMessage("api.startup", "info");
+
   return "configured";
 }
 
-/** What /health reports: whether the tracker is wired, never the DSN itself. */
+/**
+ * What /health reports: whether the tracker is actually running, never the DSN
+ * itself.
+ *
+ * This reflects initialisation, NOT the presence of SENTRY_DSN. An env var
+ * proves somebody set a string; it does not prove events reach Sentry. A health
+ * check that cannot tell those apart reports "configured" for a typo'd key and
+ * is worse than no check at all, because it is believed.
+ */
 export function errorTrackingStatus(): ErrorTrackingStatus {
-  return process.env.SENTRY_DSN?.trim() ? "configured" : "unconfigured";
+  return initialised ? "configured" : "unconfigured";
 }
 
 /**

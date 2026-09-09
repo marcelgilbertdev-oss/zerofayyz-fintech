@@ -196,6 +196,13 @@ what exists, not what was once intended:
   visible dead job on `/admin/jobs`, never a silent failure. Completes the
   "passwordless authentication with session revocation" requirement named in
   operations-portal briefs.
+- **A verifiable error tracker** (2026-09-09, [ADR 18](decisions/0018-prove-the-error-tracker-instead-of-asserting-it.md)).
+  The Sentry project had been empty since 2026-08-23. Not a broken integration — the
+  API returns its failures rather than throwing, so nothing had crashed. The real
+  defect was that an empty project and a misdirected one looked identical, and
+  `/health` reported `configured` from the presence of an environment variable.
+  `/health` now reports actual initialisation, a malformed DSN no longer risks boot,
+  and every deploy emits one startup event so the pipeline proves itself.
 - Phase 9's "Go service — one narrow, well-chosen responsibility" was already
   satisfied by the **reconciler** before this section existed; noted so nobody
   builds it twice.
