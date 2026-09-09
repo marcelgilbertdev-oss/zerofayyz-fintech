@@ -116,6 +116,12 @@ deploy passes its check and then serves 500s.
 | `/api/v1/health` | Is this process alive and what does it know? | **200**, `status: degraded` — a process that can describe its own degradation is worth inspecting, not killing |
 | `/api/v1/ready` | May traffic come here? | **503** — the instance leaves the load balancer's pool rather than accepting payments it cannot record |
 
+`/health` reports only what it can prove. Each check answers for a subsystem the process has
+actually reached — `errorTracking`, for instance, reflects whether Sentry initialised, not
+whether `SENTRY_DSN` happens to be set (ADR 18). A health field derived from configuration
+rather than from state reports success for a typo, and is trusted precisely because it is a
+health check.
+
 Demonstrated rather than asserted: removing the database from a running Kubernetes
 deployment took both pods out of the Service's endpoints with `restarts=0`, and restoring
 it returned them with no intervention. Transcript in
