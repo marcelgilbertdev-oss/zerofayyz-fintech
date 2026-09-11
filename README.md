@@ -180,7 +180,7 @@ TypeScript throughout, ESM, Node 20+.
   that can describe its own degradation is alive, while `/ready` returns 503 the moment the
   ledger is unreachable, so an orchestrator drains the instance instead of routing payments
   into it
-- Monitoring with a person on the end of it: the smoke suite runs hourly against production,
+- Monitoring with a person on the end of it: the smoke suite runs on an hourly schedule against production,
   and a failed scheduled run is an email rather than a log line
 - A durable job queue in PostgreSQL rather than a second piece of infrastructure: claims are
   atomic over `FOR UPDATE SKIP LOCKED`, a lease reclaims work from a worker that died holding

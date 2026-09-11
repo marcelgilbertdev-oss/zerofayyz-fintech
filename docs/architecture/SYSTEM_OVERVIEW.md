@@ -58,7 +58,7 @@ deployment and no API URL or key reaches the client.
 | Container | `apps/api/Dockerfile` | Multi-stage, non-root, health-checked against `/ready` |
 | Orchestration | `infrastructure/kubernetes` | Applied manifests; probes split across `/ready` and `/health` |
 | Pipeline | `.github/workflows/ci.yml` | Ten jobs: API, container, reconciler, three clients, MCP, BDD, visual, end-to-end |
-| Monitoring | `.github/workflows/production-watch.yml` | Hourly smoke against production; a failed run is an email |
+| Monitoring | `.github/workflows/production-watch.yml` | Scheduled smoke against production (hourly cron, fired every few hours by GitHub); a failed run is an email. Also the receipt portal's Supabase keep-alive — a positive control (`keepalive()` must return 200) beside the negative one (a customer table must refuse `anon`) |
 
 ## Data model
 

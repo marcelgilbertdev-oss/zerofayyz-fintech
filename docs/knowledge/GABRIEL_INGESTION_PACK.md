@@ -170,6 +170,18 @@ and where the live leg cannot be unit-tested, emit a positive control from produ
 (one `api.startup` event per boot, ADR 18). Writing a lesson in a pack does not transfer it;
 only a check that fails does.
 
+**Third instance, 2026-09-11 — the same shape, now in a keep-alive.** The job that keeps the
+receipt portal's free-tier Supabase project awake made one request, an anonymous read of a
+customer table, and treated the database's *refusal* (`401`, `42501`) as proof the project was
+awake. Supabase warned it would pause the project for seven days of inactivity while every run
+was green: a refused request is not activity. The check was a negative control wearing a
+keep-alive's name. Fix (ADR 19, portal migration 0002): a `keepalive()` function `anon` may
+execute, required to return 200, *then* the refusal still required. **Rule, general form:** a
+check must measure the property it is named for, with a positive control that exercises the
+property and requires success; a negative control proves the fence, only a positive control
+proves the thing inside it is alive. And verify the check against what the *provider* measures,
+not against what its author reasoned it should measure.
+
 ### Row-level security has two honest models, and the platform now carries both
 The request-lane pattern (ADR 14) adopts a `NOLOGIN` role per transaction so a pooled
 connection carries no user context past COMMIT; Supabase's model compares a column to

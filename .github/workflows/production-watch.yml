@@ -8,7 +8,7 @@ name: Production watch
 # this one lands in email.
 on:
   schedule:
-    - cron: "17 * * * *" # hourly, off the hour to avoid the top-of-hour thundering herd
+    - cron: "17 * * * *" # scheduled hourly; GitHub actually fires it every few hours (see the keep-alive job)
   workflow_dispatch: {}
 
 jobs:
@@ -39,22 +39,49 @@ jobs:
     steps:
       # A Supabase free project pauses after about a week without activity, and a
       # paused project makes the receipt portal — linked from this README and from
-      # job proposals — return nothing to a reviewer. One request an hour prevents
-      # that. It goes through PostgREST to PostgreSQL rather than pinging a status
-      # page, because only real traffic resets the timer.
+      # job proposals — return nothing to a reviewer. This job makes the request that
+      # resets the timer.
+      #
+      # What this job used to assume, and why it was wrong. Until 2026-09-11 it made
+      # ONE request: an anonymous read of `public.payments`, which PostgreSQL refuses
+      # (401, SQLSTATE 42501) because `anon` holds no grant there. The comment claimed
+      # the refusal "still comes from the database, which is what keeps the project
+      # awake". On 2026-09-11 Supabase warned the project would be paused for seven
+      # days without activity — while every run of this job was green. A refused
+      # request is not activity. The check was a negative control only: it proved
+      # the deny was in place and proved nothing about the thing it was named for.
+      #
+      # So there are two requests now. First a positive control: call
+      # `public.keepalive()` (receipt-portal migration 0002 — `select now()`,
+      # SECURITY INVOKER, executable by `anon`, touches no customer table) and
+      # require 200. That is the request that counts. Then the negative control,
+      # unchanged: read `payments` and require the 401/42501 refusal, because a 200
+      # there would mean someone granted anon access to a customer's payments.
+      #
+      # The cron above says hourly. GitHub runs scheduled jobs when it has capacity,
+      # and in practice this one fires every three to five hours. That is still far
+      # inside a seven-day window; do not describe it as hourly anywhere it matters.
       #
       # The key is the PUBLISHABLE key, already published in the portal's browser
       # bundle by design; row-level security, not this key's secrecy, is what keeps
       # one customer out of another's rows.
-      #
-      # The healthy answer is a REFUSAL. `anon` holds no grant on these tables
-      # (receipt-portal's migration revokes the Supabase defaults), so PostgreSQL
-      # answers 401 with SQLSTATE 42501. That response still comes from the
-      # database, which is what keeps the project awake — and it simultaneously
-      # proves the deny is still in place. A 200 here would mean someone granted
-      # anon access to a customer's payments, so it is treated as a failure, not
-      # a success. Anything else means paused, rotated or misconfigured.
-      - name: Read through the REST layer, and expect to be refused
+      - name: Make a request the database accepts (positive control)
+        env:
+          SUPABASE_URL: https://ezjisssfdcgozenfegqo.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_LDqApcSmhG27KrQr7qJKcw_G9lYBLYT
+        run: |
+          code=$(curl -s --max-time 30 -o /tmp/keepalive.txt -w "%{http_code}" \
+            -X POST -H "Content-Type: application/json" -d '{}' \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
+            "$SUPABASE_URL/rest/v1/rpc/keepalive")
+          echo "status=$code body=$(cat /tmp/keepalive.txt)"
+          if [ "$code" != "200" ]; then
+            echo "keepalive() did not succeed — the project may be paused, the key rotated, or migration 0002 not applied." >&2
+            exit 1
+          fi
+          echo "Awake: PostgreSQL executed keepalive() for anon."
+      - name: Read a customer table as anon, and expect to be refused (negative control)
         env:
           SUPABASE_URL: https://ezjisssfdcgozenfegqo.supabase.co
           SUPABASE_PUBLISHABLE_KEY: sb_publishable_LDqApcSmhG27KrQr7qJKcw_G9lYBLYT
@@ -70,8 +97,8 @@ jobs:
             exit 1
           fi
           if [ "$code" = "401" ] && echo "$body" | grep -q "42501"; then
-            echo "Healthy: the project is awake and PostgreSQL refused the anonymous read."
+            echo "Healthy: PostgreSQL refused the anonymous read of a customer table."
             exit 0
           fi
-          echo "Supabase did not answer as expected — the project may be paused or the key rotated." >&2
+          echo "Unexpected answer from the payments read — key rotated or grants changed." >&2
           exit 1

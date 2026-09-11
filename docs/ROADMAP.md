@@ -112,7 +112,7 @@ endpoint exists; nothing consumed it until the first slice below.
   orchestrator drains the instance instead of routing payments into a dead ledger. Tested
   on both branches, including the divergence itself: database down asserts 503 from one
   endpoint and 200 from the other in the same test.
-- Scheduled monitoring with alerting: the 30-check smoke suite now runs hourly against the
+- Scheduled monitoring with alerting: the 30-check smoke suite now runs on an hourly cron against the
   live deployment (`production-watch.yml`), and a failed scheduled run is GitHub's own
   email to the owner — an alert with a person on the end of it and no new infrastructure.
 
@@ -189,7 +189,8 @@ what exists, not what was once intended:
   pattern. First consumer: hourly session-retention cleanup. Honest guarantee:
   at-least-once. Surface: `/admin/jobs`.
 - **Passwordless sign-in via magic links** (2026-09-01, migration 009, ADR 16).
-- **A fifth consumer on Supabase** (2026-09-04): the [receipt portal](https://github.com/marcelgilbertdev-oss/receipt-portal) — [live](https://receipt-portal-one.vercel.app) — enforces the same row-visibility guarantee with Supabase's `auth.uid()` policy model, so the two RLS models could be compared honestly ([ADR 17](decisions/0017-two-row-level-security-models.md)). Its `sync-payments` Edge Function consumes this API, and the hourly production watch keeps the free-tier project awake by expecting a `401` refusal.
+- **A fifth consumer on Supabase** (2026-09-04): the [receipt portal](https://github.com/marcelgilbertdev-oss/receipt-portal) — [live](https://receipt-portal-one.vercel.app) — enforces the same row-visibility guarantee with Supabase's `auth.uid()` policy model, so the two RLS models could be compared honestly ([ADR 17](decisions/0017-two-row-level-security-models.md)). Its `sync-payments` Edge Function consumes this API, and the production watch keeps the free-tier project awake.
+- **The keep-alive learned what counts as activity** (2026-09-11, portal migration 0002, [ADR 19](decisions/0019-a-keep-alive-must-make-the-request-the-provider-counts.md)): Supabase warned the portal's project would be paused while the watch job was green, because the job's only request was one the database *refused*. It now calls a `keepalive()` function as `anon` and requires 200, then still requires the `401` refusal on a customer table — a positive control beside the negative one. The cron is written hourly; GitHub fires it every three to five hours in practice.
   SHA-256 token hashes at rest, single-use via one atomic UPDATE, 15-minute
   expiry decided in SQL, always-202 anti-enumeration, per-mailbox rate limit.
   The email leg is the queue's second consumer — unconfigured mailer = a
