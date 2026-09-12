@@ -182,6 +182,14 @@ property and requires success; a negative control proves the fence, only a posit
 proves the thing inside it is alive. And verify the check against what the *provider* measures,
 not against what its author reasoned it should measure.
 
+### A blacklist of literal values will one day match real data
+The smoke suite forbade the dashboard's old hardcoded figures (`98.7%` among them) so that their
+return would prove the page had stopped reading the ledger. On 2026-09-12 one real sandbox payment
+moved the live success rate to exactly 98.7%, and the check called live data a placeholder. **Rule:**
+a check that forbids specific values must first establish what the live system reports, with a
+positive control (the page shows the ledger's own figure), and exempt any forbidden value the live
+system genuinely holds. A negative check on a literal is a coincidence waiting for its date.
+
 ### Row-level security has two honest models, and the platform now carries both
 The request-lane pattern (ADR 14) adopts a `NOLOGIN` role per transaction so a pooled
 connection carries no user context past COMMIT; Supabase's model compares a column to

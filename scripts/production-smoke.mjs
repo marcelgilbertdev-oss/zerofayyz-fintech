@@ -235,13 +235,26 @@ await check("the dashboard renders live data, not placeholders", async () => {
   assert(html.includes("Live sandbox records from PostgreSQL"), "transactions table is not live");
   assert(html.includes("Operational"), "no health tile reports operational");
 
+  // Positive control first: the success rate the page shows must be the one the
+  // ledger reports right now. That proves the page is reading the ledger, which
+  // is the property this check exists for.
+  const { body: metrics } = await fetchJson("/api/v1/metrics");
+  const liveRate = metrics.successRate === null ? null : `${metrics.successRate}%`;
+  if (liveRate !== null) {
+    assert(html.includes(`${liveRate} success rate`), `page does not show the ledger's success rate (${liveRate})`);
+  }
+
   // The figures the dashboard used to hardcode. Their return means the page has
-  // stopped reading the ledger.
+  // stopped reading the ledger — unless the ledger itself now reports that value.
+  // Learned 2026-09-12: one real sandbox payment moved the live success rate to
+  // exactly 98.7%, and a blind blacklist called live data a placeholder.
+  const liveFigures = new Set([liveRate].filter(Boolean));
   for (const placeholder of ["$48,920", "1,284", "98.7%", "0.18%"]) {
+    if (liveFigures.has(placeholder)) continue;
     assert(!html.includes(placeholder), `retired placeholder is back on the page: ${placeholder}`);
   }
 
-  return "no placeholder figures present";
+  return liveRate === null ? "no placeholder figures present" : `shows the ledger's ${liveRate}, no placeholder figures present`;
 });
 
 await check("the sandbox framing is visible to any visitor", async () => {
