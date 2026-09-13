@@ -82,12 +82,12 @@ refusals, spoken through Pinia on one page and runes on the other.
 | **Internationalisation** | English and Japanese, with translations enforced by the type system — a missing string is a compile error |
 | **Accessibility** | WCAG 2.1 AA, scanned by axe-core in CI against both locales |
 | **Background work** | A durable job queue in the database itself — atomic claims over `FOR UPDATE SKIP LOCKED`, leases that recover a crashed worker's job, capped backoff and dead-lettering, with an at-least-once guarantee stated rather than overclaimed |
-| **Testing** | 386 automated tests across ten suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, end-to-end against a production build, and thirteen Cucumber/Gherkin scenarios stating the payment rules in plain language — plus a 30-check smoke suite that verifies the live deployment from outside |
-| **Operations** | Three-tier deployment colocated in Singapore, CI gating every merge, migrations applied before traffic. The smoke suite runs **hourly against production** and a failed run emails the owner — including a *signed-webhook probe*, because a health endpoint reports that a signing secret is present, not that it is correct |
+| **Testing** | 389 automated tests across ten suites — unit, integration against real PostgreSQL, component suites for the Vue and Svelte clients, end-to-end against a production build, and thirteen Cucumber/Gherkin scenarios stating the payment rules in plain language — plus a 30-check smoke suite that verifies the live deployment from outside |
+| **Operations** | Three-tier deployment colocated in Singapore, CI gating every merge, migrations applied before traffic. The smoke suite runs **on a schedule against production** and a failed run emails the owner — including a *signed-webhook probe*, because a health endpoint reports that a signing secret is present, not that it is correct |
 | **Agent-drivable QA** | A [Model Context Protocol server](../decisions/0011-expose-the-qa-surface-over-mcp.md) exposing the platform's QA surface as six tools, so an AI agent can run the suites, replay webhooks and check the ledger. Its first human-driven run found a live pagination defect |
 
 **Built by Marcel Gilbert** · [github.com/marcelgilbertdev-oss/zerofayyz-fintech](https://github.com/marcelgilbertdev-oss/zerofayyz-fintech)
 
-For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), sixteen
+For engineers: the [architecture overview](../architecture/SYSTEM_OVERVIEW.md), twenty
 [decision records](../decisions/), and a [manual acceptance charter](../runbooks/MANUAL_ACCEPTANCE_TEST.md)
 carrying every defect found during development and how each was closed.

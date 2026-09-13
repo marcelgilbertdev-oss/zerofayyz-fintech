@@ -99,7 +99,7 @@ link is never written to a log (ADR 16).
 
 ## Current numbers (2026-09-02)
 
-- **386 automated tests** across ten suites: 84 API unit · 80 integration against real
+- **389 automated tests** across ten suites: 85 API unit · 82 integration against real
   PostgreSQL · 11 web unit · 70 Playwright end-to-end · 45 Vue · 34 Svelte · 12 Go ·
   6 visual regression · 31 MCP · 13 Cucumber/BDD scenarios
 - **30/30** production smoke checks, run hourly against the live system — including a signed-webhook probe that catches a stale signing secret, which `/health` cannot see because it reports the variable's presence rather than its correctness

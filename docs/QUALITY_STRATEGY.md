@@ -17,9 +17,9 @@ cannot see.
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 82 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
+| Unit | 85 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
 | Web unit | 11 | jsdom, fetch stubbed | Whether the dashboard can tell a waking API from a dead one — the distinction that once made a cold start render "Unavailable" |
-| Integration | 80 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation, row-level security, job claiming under concurrency, magic-link single use |
+| Integration | 82 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation, row-level security, job claiming under concurrency, magic-link single use |
 | End-to-end | 70 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
 | Visual regression | 6 | Chrome surfaces, in the renderer the baselines were recorded in | Layout breaking silently: the sign-in page, the sidebar, the phone drawer, and a header that once pushed the document wider than the viewport |
 | **BDD (Gherkin)** | **13 scenarios** | The whole stack, seeded and booted | Whether the platform's *business rules* still hold — stated in language a non-engineer can dispute |
