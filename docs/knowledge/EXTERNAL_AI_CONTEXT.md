@@ -65,9 +65,12 @@ same account can never do both — enforced by the API *and* by a CHECK constrai
 claims the request in an atomic UPDATE before calling Stripe and reverts on failure. The
 ledger moves only on the signed `charge.refunded` webhook.
 
-**Two health endpoints, answering different questions.** `/api/v1/health` stays 200 while
+**Three health endpoints, answering different questions.** `/api/v1/health` stays 200 while
 degraded; `/api/v1/ready` returns 503 when the database is unreachable. Conflating them is
-how a deploy passes its check and then serves 500s.
+how a deploy passes its check and then serves 500s. `/api/v1/live` touches nothing: it is
+what Render's every-few-seconds health check and the canary hit, so neither keeps the
+compute-billed Neon database awake (ADR 20). The job worker likewise sleeps until a job is
+due rather than polling.
 
 **An independent reconciler in Go** re-derives every payment's state from the event log and
 exits non-zero when it disagrees with the payments table. Separate language on purpose: a

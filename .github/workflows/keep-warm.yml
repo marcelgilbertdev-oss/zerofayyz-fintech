@@ -31,8 +31,12 @@ name: API liveness canary
 # with the wrong idea, because "the scheduler quietly did not run when I told it
 # to" is worth leaving where the next person will find it.
 #
+# It pings the dependency-free liveness route, /api/v1/live, not /api/v1/health.
+# /health queries the database, and a canary that wakes a compute-billed
+# database on every run is paying to ask a question about the API (ADR 20).
+#
 # Set the repository variable API_HEALTH_URL once the API is deployed:
-#   gh variable set API_HEALTH_URL --body "https://<service>.onrender.com/api/v1/health"
+#   gh variable set API_HEALTH_URL --body "https://<service>.onrender.com/api/v1/live"
 on:
   schedule:
     - cron: "*/30 * * * *"

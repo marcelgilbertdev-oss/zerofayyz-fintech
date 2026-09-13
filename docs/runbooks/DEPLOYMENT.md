@@ -135,6 +135,11 @@ If you do not have `psql` installed, use Neon's **SQL Editor** in the browser in
 If the database block says `unavailable`, the connection string is wrong or is missing
 `?sslmode=require`.
 
+Render's own health check is `render.yaml`'s `healthCheckPath: /api/v1/live`, which touches
+no dependency. Keep it that way: Render checks every few seconds, and pointed at `/health` it
+kept Neon's free compute awake around the clock (ADR 20). The canary below uses the same
+route for the same reason.
+
 Copy your API's URL. You need it in the next step.
 
 ### Turn on the liveness canary
@@ -142,7 +147,7 @@ Copy your API's URL. You need it in the next step.
 From the project root, once you have the URL:
 
 ```bash
-gh variable set API_HEALTH_URL --body "https://YOUR-SERVICE.onrender.com/api/v1/health"
+gh variable set API_HEALTH_URL --body "https://YOUR-SERVICE.onrender.com/api/v1/live"
 ```
 
 ---

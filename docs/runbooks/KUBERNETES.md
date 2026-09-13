@@ -38,6 +38,11 @@ this platform has two health endpoints at all:
 | **readiness** | `/api/v1/ready` | May traffic come here? | **503** → pod leaves the Service's endpoints |
 | **liveness** | `/api/v1/health` | Is this process worth keeping? | **200** → pod is left alone |
 
+A cluster pointed at Neon's free plan should probe liveness at `/api/v1/live` instead, which
+touches no dependency: a probe every few seconds against `/health` keeps a compute-billed
+database from ever scaling to zero (ADR 20). Against a local or always-on database it makes
+no difference, so the manifests are left as written.
+
 Wiring liveness to `/ready` is the tempting mistake. It converts a database
 blip into a cluster-wide crashloop: every pod fails its liveness probe at once,
 every pod is killed, every replacement fails too, and an outage that would have

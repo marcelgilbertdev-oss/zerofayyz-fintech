@@ -9,8 +9,18 @@
  * "slightly late" beats the clever one whose failure mode is "never".
  *
  * Pace: after finding work the loop runs again immediately — a burst drains
- * at full speed. After an empty poll it sleeps idleMs, so a quiet queue costs
- * a few queries a minute, which matters on a database billed by compute time.
+ * at full speed. After an empty poll it asks the queue when the next job is
+ * due and sleeps until then, capped at idleMs. An enqueue made in this process
+ * wakes it at once, so a quiet queue costs one query when a job comes due and
+ * one safety poll an hour — not a query every thirty seconds.
+ *
+ * Why the change (2026-09-13, ADR 20). The old loop slept a fixed 30 seconds.
+ * Neon suspends its compute after five minutes without activity and bills the
+ * hours it is awake; a query every thirty seconds meant it never slept, and the
+ * free tier's monthly allowance was 81% gone by the 13th. The safety poll is
+ * hourly rather than every few minutes for the same reason: each poll wakes the
+ * database for at least five minutes, so a fifteen-minute poll would still keep
+ * it awake a third of the day. The hourly session-cleanup job wakes it anyway.
  */
 import type { FastifyBaseLogger } from "fastify";
 
@@ -20,7 +30,11 @@ export type WorkerOptions = {
   queue: JobQueue;
   handlers: Record<string, (job: Job) => Promise<void>>;
   log: FastifyBaseLogger;
-  /** Sleep between polls when the queue was empty. */
+  /**
+   * The longest the worker sleeps after an empty poll. It usually wakes sooner:
+   * when the next job is due, or when this process enqueues one. The cap is the
+   * safety net for a job added some other way (a manual INSERT, another process).
+   */
   idleMs?: number;
   workerId?: string;
 };
@@ -32,11 +46,19 @@ export type Worker = {
 
 export function startWorker(options: WorkerOptions): Worker {
   const { queue, handlers, log } = options;
-  const idleMs = options.idleMs ?? 30_000;
+  const idleMs = options.idleMs ?? 60 * 60_000;
   const workerId = options.workerId ?? `api-${process.pid}`;
 
   let running = true;
   let wake: (() => void) | null = null;
+  // Set by an enqueue that lands while the loop is busy rather than asleep, so
+  // the notice is not lost between the empty poll and the start of the sleep.
+  let notified = false;
+  const kinds = Object.keys(handlers);
+  const unsubscribe = queue.onEnqueue(() => {
+    notified = true;
+    wake?.();
+  });
 
   const loop = (async () => {
     log.info({ workerId, kinds: Object.keys(handlers) }, "job worker started");
@@ -55,16 +77,44 @@ export function startWorker(options: WorkerOptions): Worker {
 
       if (!running) break;
       if (!didWork) {
+        if (notified) {
+          notified = false;
+          continue;
+        }
+        const sleepMs = await nextSleepMs();
+        if (!running) break;
+        if (notified) {
+          notified = false;
+          continue;
+        }
         await new Promise<void>((resolve) => {
-          wake = resolve;
-          setTimeout(resolve, idleMs);
+          const timer = setTimeout(resolve, sleepMs);
+          wake = () => {
+            clearTimeout(timer);
+            resolve();
+          };
         });
         wake = null;
+        notified = false;
       }
     }
 
+    unsubscribe();
     log.info({ workerId }, "job worker stopped");
   })();
+
+  async function nextSleepMs(): Promise<number> {
+    try {
+      const due = await queue.nextDueAt(kinds);
+      if (due === null) return idleMs;
+      return Math.min(idleMs, Math.max(0, due.getTime() - Date.now()));
+    } catch (error) {
+      // Not knowing when the next job is due is not a reason to spin: fall back
+      // to the cap, exactly as the old fixed-interval loop would have.
+      log.error(error, "job worker could not read the next due time");
+      return idleMs;
+    }
+  }
 
   return {
     async stop() {

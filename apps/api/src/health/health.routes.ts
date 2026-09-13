@@ -133,6 +133,37 @@ export const healthRoutes: FastifyPluginAsync<HealthRouteOptions> = async (
   );
 
   /**
+   * Liveness with no dependencies at all: the process is up and answering.
+   *
+   * This is what Render's health check and the scheduled canary hit. Render
+   * sends a health check "every few seconds"; pointed at /health, which asks
+   * the database for its latency, that alone kept the Neon compute awake around
+   * the clock and burned the free tier's monthly allowance by mid-month
+   * (2026-09-13, ADR 20). A probe that runs every few seconds must not touch a
+   * dependency billed by the hour. /health keeps its database check for the
+   * dashboard and the smoke suite, which call it on real visits and a few times
+   * a day.
+   */
+  app.get(
+    "/live",
+    {
+      schema: {
+        tags: ["health"],
+        summary: "Report that the process is up, without touching any dependency",
+        response: {
+          200: {
+            type: "object",
+            additionalProperties: false,
+            required: ["live"],
+            properties: { live: { type: "boolean", enum: [true] } },
+          },
+        },
+      },
+    },
+    async () => ({ live: true as const }),
+  );
+
+  /**
    * Readiness, as distinct from liveness.
    *
    * /health answers "is the process up and what does it know about its

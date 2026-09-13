@@ -54,6 +54,13 @@ ran on schedule, and a mitigation nobody measured is a belief rather than a cont
 The workflow still exists as `API liveness canary`, renamed to what it can honestly do, with
 the measurement preserved in its header comment.
 
+**Neon's free allowance is the other clock (2026-09-13).** The free plan gives the project
+100 compute-hours a month, suspends the compute when they run out, and lets it sleep after
+five idle minutes. It was 81% spent by the 13th, because Render's every-few-seconds health
+check hit `/health` (which queries the database) and the job worker polled every 30 seconds —
+between them the database never slept. Both now leave it alone (ADR 20). Check the project
+dashboard's compute figure after any change that adds a schedule, a probe or a loop.
+
 ---
 
 ## What the $7 covers

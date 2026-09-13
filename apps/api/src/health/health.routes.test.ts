@@ -136,3 +136,32 @@ test("GET /api/v1/ready refuses traffic when the database is down — where /hea
   assert.deepEqual(ready.json(), { ready: false, reason: "database unreachable" });
   assert.equal(health.statusCode, 200);
 });
+
+test("GET /api/v1/live answers without touching the database", async (context) => {
+  // Render health-checks every few seconds. If this route ever reached the
+  // database, Neon would never scale to zero (ADR 20) — so the stub throws.
+  let touched = false;
+  const database: Database = {
+    async checkHealth() {
+      touched = true;
+      throw new Error("liveness must not check the database");
+    },
+    async query() {
+      touched = true;
+      throw new Error("liveness must not query the database");
+    },
+    async queryAsUser(): Promise<never> {
+      touched = true;
+      throw new Error("liveness must not query the database");
+    },
+    async close() {},
+  };
+  const app = buildApp({ database, logger: false });
+  context.after(async () => app.close());
+
+  const response = await app.inject({ method: "GET", url: "/api/v1/live" });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), { live: true });
+  assert.equal(touched, false, "the liveness route reached the database");
+});

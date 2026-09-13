@@ -108,13 +108,15 @@ The platform is built to degrade visibly rather than pretend.
 
 ## Operational surface
 
-Two health endpoints, deliberately answering different questions. Conflating them is how a
-deploy passes its check and then serves 500s.
+Three health endpoints, deliberately answering different questions. Conflating the first two
+is how a deploy passes its check and then serves 500s; putting a database behind the third is
+how a probe that runs every few seconds keeps a compute-billed database awake all month.
 
 | Endpoint | Question | When the database is unreachable |
 | --- | --- | --- |
 | `/api/v1/health` | Is this process alive and what does it know? | **200**, `status: degraded` — a process that can describe its own degradation is worth inspecting, not killing |
 | `/api/v1/ready` | May traffic come here? | **503** — the instance leaves the load balancer's pool rather than accepting payments it cannot record |
+| `/api/v1/live` | Is the process answering at all? | **200** — it touches no dependency, which is the point: Render health-checks it every few seconds and the canary pings it, and neither may wake Neon ([ADR 20](../decisions/0020-probes-and-idle-loops-must-let-the-database-sleep.md)) |
 
 `/health` reports only what it can prove. Each check answers for a subsystem the process has
 actually reached — `errorTracking`, for instance, reflects whether Sentry initialised, not

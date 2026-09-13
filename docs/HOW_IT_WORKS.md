@@ -306,8 +306,11 @@ happened**. That is the actual product.
 - The login rate limiter is **in memory, and therefore per-instance**. One instance runs
   today. Documented in the code rather than left to be discovered, because a limiter that
   silently stops working at two instances is worse than none.
-- The free hosting tier **sleeps when idle**; a scheduled job pings it every ten minutes to
-  keep the demo responsive.
+- The API runs on a paid Render instance that never sleeps. The **database** is on Neon's free
+  plan: 100 compute-hours a month, suspended when they run out, and asleep after five idle
+  minutes. So nothing that runs often may touch it: Render's health check and the scheduled
+  canary hit a dependency-free `/api/v1/live`, and the job worker sleeps until a job is due
+  instead of polling ([ADR 20](decisions/0020-probes-and-idle-loops-must-let-the-database-sleep.md)).
 - Metrics are scoped to a **single currency**, because summing across currencies is
   meaningless and pretending otherwise would be worse than the limitation.
 

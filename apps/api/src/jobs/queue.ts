@@ -79,7 +79,22 @@ function toJob(row: JobRow): Job {
 }
 
 export function createQueue(database: Database) {
+  // In-process enqueue notifications. The API adds every job it will ever run
+  // from inside this same process, so an idle worker can be woken directly
+  // instead of asking the database every few seconds whether anything arrived.
+  // On a database billed by compute time and suspended after five idle minutes,
+  // that polling was what kept it awake around the clock (2026-09-13, ADR 20).
+  const enqueueListeners = new Set<() => void>();
+
   return {
+    /** Subscribe to enqueues made through this queue. Returns an unsubscribe. */
+    onEnqueue(listener: () => void): () => void {
+      enqueueListeners.add(listener);
+      return () => {
+        enqueueListeners.delete(listener);
+      };
+    },
+
     /**
      * Add a job. With an idempotencyKey, a repeated enqueue returns the job
      * that already exists rather than creating a second one — refused by the
@@ -103,7 +118,10 @@ export function createQueue(database: Database) {
       );
 
       const row = inserted.rows[0];
-      if (row) return toJob(row);
+      if (row) {
+        for (const listener of enqueueListeners) listener();
+        return toJob(row);
+      }
 
       // DO NOTHING fired: the key already exists. Return the original.
       const existing = await database.query<JobRow>(
@@ -226,6 +244,26 @@ export function createQueue(database: Database) {
         await this.fail(job.id, error instanceof Error ? error.message : String(error));
       }
       return true;
+    },
+
+    /**
+     * When the next job of these kinds becomes claimable: the earliest pending
+     * run_at, or the moment a running job's lease lapses and it can be
+     * reclaimed. Null when there is nothing waiting at all. The worker sleeps
+     * until then instead of polling on a fixed beat.
+     */
+    async nextDueAt(kinds?: readonly string[]): Promise<Date | null> {
+      const result = await database.query<{ due: Date | null }>(
+        `SELECT LEAST(
+                  MIN(run_at) FILTER (WHERE status = 'pending'),
+                  MIN(claimed_at + ($2::int * INTERVAL '1 millisecond')) FILTER (WHERE status = 'running')
+                ) AS due
+           FROM jobs
+          WHERE ($1::text[] IS NULL OR kind = ANY($1::text[]))`,
+        [kinds && kinds.length > 0 ? kinds : null, LEASE_MS],
+      );
+      const due = result.rows[0]?.due ?? null;
+      return due === null ? null : new Date(due);
     },
 
     /** Operational read: how much work is in each state, by kind. */

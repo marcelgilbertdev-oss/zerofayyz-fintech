@@ -39,7 +39,13 @@ services:
     # Migrations run before the server accepts traffic, so a deploy that
     # changes the schema cannot serve requests against the old one.
     startCommand: node dist/database/migrate.js && node dist/server.js
-    healthCheckPath: /api/v1/health
+    # The dependency-free liveness route, not /api/v1/health. Render sends a
+    # health check every few seconds; /health asks the database for its latency,
+    # so pointing Render at it kept the Neon compute from ever scaling to zero
+    # and spent the free tier's monthly allowance by the 13th (ADR 20). /health
+    # already returned 200 with the database down, so Render's view of the
+    # service does not change — only the database stops being woken for it.
+    healthCheckPath: /api/v1/live
     envVars:
       # Pinned to match CI. Left unset, Render installs whatever Node is
       # newest, which means deploying on a different major version than the

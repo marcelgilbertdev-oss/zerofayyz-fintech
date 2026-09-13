@@ -88,6 +88,58 @@ test("stop() resolves promptly even from an idle sleep", async () => {
   assert.ok(Date.now() - started < 2_000, "stop() waited out the idle sleep");
 });
 
+test("an enqueue in this process wakes an idle worker at once", async () => {
+  // The worker must not need to poll to discover in-process work (ADR 20):
+  // with a one-minute cap it would otherwise sit on this job for a minute.
+  const k = `wtest_${RUN}_wake`;
+  const handled: string[] = [];
+  const worker = startWorker({
+    queue,
+    handlers: { [k]: async (job) => { handled.push(job.id); } },
+    log: silentLog,
+    idleMs: 60_000,
+    workerId: `wtest-${RUN}-wake`,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 300)); // let it reach the sleep
+  const started = Date.now();
+  await queue.enqueue({ kind: k });
+
+  const deadline = Date.now() + 5_000;
+  while (handled.length < 1 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  await worker.stop();
+
+  assert.equal(handled.length, 1, "the enqueue did not wake the worker");
+  assert.ok(Date.now() - started < 5_000, "the worker waited out its idle cap");
+});
+
+test("an idle worker sleeps until the next job is due, not the full cap", async () => {
+  // A delayed job (the hourly cleanup, a retry's backoff) must run when it
+  // comes due. Enqueued before the worker starts, so no wake-up notice helps:
+  // only the next-due lookup can get this right.
+  const k = `wtest_${RUN}_due`;
+  await queue.enqueue({ kind: k, delayMs: 800 });
+
+  const handled: string[] = [];
+  const worker = startWorker({
+    queue,
+    handlers: { [k]: async (job) => { handled.push(job.id); } },
+    log: silentLog,
+    idleMs: 60_000,
+    workerId: `wtest-${RUN}-due`,
+  });
+
+  const deadline = Date.now() + 6_000;
+  while (handled.length < 1 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  await worker.stop();
+
+  assert.equal(handled.length, 1, "the worker slept past the job's due time");
+});
+
 test("session cleanup deletes long-dead sessions and keeps everything else", async () => {
   const mk = (suffix: string, sql: string) =>
     database.query(

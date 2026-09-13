@@ -190,6 +190,17 @@ a check that forbids specific values must first establish what the live system r
 positive control (the page shows the ledger's own figure), and exempt any forbidden value the live
 system genuinely holds. A negative check on a literal is a coincidence waiting for its date.
 
+### A probe must not cost what the provider bills
+Neon's free plan bills compute-hours and sleeps after five idle minutes. Render health-checks
+"every few seconds", and the health path asked the database for its latency; the job worker
+also polled every 30 seconds. Either alone kept the database awake around the clock, and the
+monthly allowance was 81% gone by the 13th (ADR 20). **Rule:** anything that runs on a short
+fixed beat — a platform health check, a canary, an idle loop — must touch nothing billed by
+the hour. Give it a dependency-free route; make loops sleep until work is due and wake on the
+event that creates work; size any safety poll against the provider's idle threshold, not
+against how fresh you would like the answer to be. Read the provider's billing and idle rules
+when you add the schedule, not after their warning email.
+
 ### Row-level security has two honest models, and the platform now carries both
 The request-lane pattern (ADR 14) adopts a `NOLOGIN` role per transaction so a pooled
 connection carries no user context past COMMIT; Supabase's model compares a column to
