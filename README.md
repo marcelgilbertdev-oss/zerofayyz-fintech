@@ -217,8 +217,9 @@ TypeScript throughout, ESM, Node 20+.
 
 **Two more consumers live outside this repository:**
 [endpoint-pulse](https://github.com/marcelgilbertdev-oss/endpoint-pulse), a Manifest V3
-browser extension that watches this platform's health endpoint — the API boundary tested
-by a consumer the repo doesn't control — and
+browser extension that watches this platform's liveness endpoint — the API boundary tested
+by a consumer the repo doesn't control (its earlier `/health` poll is the third poller in
+ADR 20) — and
 [receipt-portal](https://github.com/marcelgilbertdev-oss/receipt-portal)
 ([live](https://receipt-portal-one.vercel.app)), a customer
 receipt portal built entirely on Supabase (Auth, row-level security, Storage, an Edge
