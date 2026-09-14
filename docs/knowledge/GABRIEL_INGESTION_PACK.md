@@ -182,6 +182,17 @@ property and requires success; a negative control proves the fence, only a posit
 proves the thing inside it is alive. And verify the check against what the *provider* measures,
 not against what its author reasoned it should measure.
 
+### Count every probe, including the ones you built to watch the thing
+ADR 20 removed the platform's own polling (Render's health check, the worker's fixed sleep) and
+the database stayed awake anyway. `pg_stat_activity` showed the `/health` query landing on the
+minute every five minutes — a `chrome.alarms` cadence — from **Endpoint Pulse**, the platform's
+own browser-extension consumer, loaded in the founder's Chrome and seeded to poll `/health`. The
+audit had listed the platform's probes and not its consumers' probes. **Rule:** when hunting what
+keeps a metered resource awake, enumerate every client that can reach it — monitors, extensions,
+dashboards left open, other people's tools — and read the resource's own activity view
+(`pg_stat_activity`, request logs) rather than reasoning from the code you own. Fix at the
+consumer: point it at a dependency-free route, and migrate stored configs so installed copies heal.
+
 ### A blacklist of literal values will one day match real data
 The smoke suite forbade the dashboard's old hardcoded figures (`98.7%` among them) so that their
 return would prove the page had stopped reading the ledger. On 2026-09-12 one real sandbox payment

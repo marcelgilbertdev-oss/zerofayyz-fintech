@@ -80,3 +80,22 @@ The general rule sits beside ADR 19's. That one said a check must measure what
 the provider measures. This one says a check must not cost what the provider
 bills. Both came from reading the provider's own documentation after the
 provider's own warning email — which is the order to avoid next time.
+
+### What the next morning showed (14 September)
+
+The compute was still active around the clock: 85.36 CU-hours at 05:22, about
+4.6 a day. Render's check was clean — its request log showed `/api/v1/live`
+every five seconds and nothing else on a beat — so a third poller existed.
+`pg_stat_activity` named it: the pooler's server connection ran the `/health`
+query (`SELECT current_database()`) at 02:06:00, 02:31:00 and 02:41:00 — on the
+minute, every five minutes. That cadence is a `chrome.alarms` tick.
+**Endpoint Pulse**, the platform's own fourth consumer, is loaded unpacked in
+the founder's Chrome and ships seeded to poll `/api/v1/health` every five
+minutes. A browser that is open all day is a probe that runs all day.
+
+The consumer's fix is the same rule applied one hop out: its seeded endpoint
+moves to `/api/v1/live` (expecting `live: true`), and it migrates an existing
+stored `/health` entry for the platform on startup, so an installed copy heals
+itself on reload. The lesson ADR 20 stated gains a clause: *count every probe,
+including the ones you built to watch the thing.* The monitor was a consumer,
+and consumers were not on the list.
