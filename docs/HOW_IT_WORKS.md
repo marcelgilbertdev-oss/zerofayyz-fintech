@@ -155,13 +155,13 @@ Layers, each catching what the layer beneath structurally cannot. Full detail in
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 82 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
-| Client unit | 69 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
-| Integration | 52 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals, row-level security |
-| End-to-end | 65 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
+| Unit | 90 | Stubbed database and Stripe | Branching, status mapping, guard clauses, hashing, cookies, rate limiting |
+| Client unit | 79 | jsdom, fetch mocked at the network seam | Contract validation, state and sign-in logic in the Vue and Svelte clients — both suites assert the same behavioural contract, so a drifted port fails |
+| Integration | 82 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, auth refusals, row-level security |
+| End-to-end | 70 | Built servers in a real browser | Rendering, hydration, both locales, accessibility, the reviewer's whole path |
 | Business rules (Gherkin) | 13 scenarios | The whole stack, seeded and booted | Whether the *rules* still hold — written so a non-engineer can read and dispute them |
 | QA MCP server | 31 | Its own tools, plus a live protocol handshake | That an agent can run the suites and check the live API on demand |
-| Production smoke | 28 | The live deployment | That what shipped actually works |
+| Production smoke | 30 | The live deployment | That what shipped actually works |
 
 **One layer is unusual and worth a sentence.** The business rules are written in Gherkin —
 plain English of the form *Given / When / Then* — and executed by Cucumber. For example, the
@@ -311,6 +311,11 @@ happened**. That is the actual product.
   minutes. So nothing that runs often may touch it: Render's health check and the scheduled
   canary hit a dependency-free `/api/v1/live`, and the job worker sleeps until a job is due
   instead of polling ([ADR 20](decisions/0020-probes-and-idle-loops-must-let-the-database-sleep.md)).
+  The cost of that is real and is paid by the first visitor after a quiet spell: waking the
+  database takes about **1.7 seconds**, against roughly 0.28s once it is awake. The
+  connection pool is budgeted for the wake rather than the warm case, and retries a
+  connection once, so that visitor waits instead of meeting an error
+  ([ADR 21](decisions/0021-a-connection-timeout-must-cover-a-cold-start.md)).
 - Metrics are scoped to a **single currency**, because summing across currencies is
   meaningless and pretending otherwise would be worse than the limitation.
 

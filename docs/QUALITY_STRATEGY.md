@@ -17,7 +17,7 @@ cannot see.
 
 | Layer | Count | Runs against | Catches |
 | --- | --- | --- | --- |
-| Unit | 85 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic |
+| Unit | 90 | Stubbed database and Stripe | Branching, mapping, status logic, guard clauses, password hashing, cookie attributes, rate-limit arithmetic, and which connection failures may be retried |
 | Web unit | 11 | jsdom, fetch stubbed | Whether the dashboard can tell a waking API from a dead one — the distinction that once made a cold start render "Unavailable" |
 | Integration | 82 | Real PostgreSQL | SQL validity, constraints, triggers, idempotency, migrations, authentication and authorisation, row-level security, job claiming under concurrency, magic-link single use |
 | End-to-end | 70 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
@@ -31,6 +31,35 @@ cannot see.
 | Production smoke | 30 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
 
 Total wall-clock for all local suites: under thirty seconds.
+
+### Every suite runs against a database in its easy state
+
+Every job in CI points `DATABASE_URL` at a local PostgreSQL service container.
+It is started before the tests and it is awake for all of them. Production's
+database is not: since ADR 20 it scales to zero after five idle minutes, and
+the first caller afterwards has to wait for it to resume.
+
+So there is a state the whole pyramid is blind to by construction. Ten suites
+and a production smoke run could not see that the pool's connection timeout
+was 1500ms against a resume that measures about 1.7 seconds, because none of
+them ever asked for a connection to a database that was asleep — the smoke
+suite least of all, since it runs often enough to find it already awake. The
+defect surfaced as two Sentry issues on a quiet morning and nowhere else
+(ADR 21).
+
+The tests added with that fix are honest about the limit rather than pretending
+past it. They inject the connect function and assert the decision — that the
+errors a waking compute produces are retried, and that a constraint violation,
+a syntax error or a rejected password are raised on the first attempt, because
+retrying a statement that did reach the database could repeat a write. What
+they cannot assert is how long Neon actually takes to wake. Only a measurement
+against production can, so the measurement is recorded in the ADR with its date
+attached, not asserted in a test that would pass whatever the real figure did.
+
+The general point is that a fixture chosen for speed also chooses which
+failures remain invisible. A local container is the right call for a suite that
+has to run in seconds; it just means "green" is scoped to a warm dependency,
+and settings that only bite a cold one need a different kind of proof.
 
 ### Visual regression is scoped to what does not move
 

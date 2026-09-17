@@ -5,7 +5,7 @@ platform is, how it is built, and — more usefully — the transferable enginee
 produced. Written to be read by a retrieval system, so each lesson states its own context
 rather than depending on the section above it.
 
-**Status as of 2026-09-13:** live, 389 automated tests, 30/30 production smoke, 10 CI jobs
+**Status as of 2026-09-17:** live, 394 automated tests, 30/30 production smoke, 10 CI jobs
 green — all ten re-verified green on this date, including visual regression and end-to-end.
 The two SPA clients now deploy from CI rather than by hand, after serving a stale bundle for
 days (§2, the delivery lessons). Repository is `~/Documents/ZEROFAYYZ FINTECH CLOUD PLATFORM`, public at
@@ -212,6 +212,22 @@ event that creates work; size any safety poll against the provider's idle thresh
 against how fresh you would like the answer to be. Read the provider's billing and idle rules
 when you add the schedule, not after their warning email.
 
+### Letting a dependency sleep makes every timeout around it newly reachable
+ADR 20 stopped the probes keeping Neon awake, and it worked — the compute began scaling to
+zero. Four days later Sentry raised the platform's first two error issues, both on the ADR 20
+release itself: the connection pool allowed 1500ms to open a connection, and a resume measures
+about 1.7 seconds. The setting had been correct for two years of a database that was never
+allowed to sleep, and ten test suites could not see it because every one of them runs against a
+local container that is always warm. **Rule:** when a change lets a dependency enter a state it
+could not previously reach — asleep, cold, scaled to zero, evicted — audit the settings that
+newly apply to it, not only the lines you edited. A timeout must be budgeted for the dependency's
+slowest legitimate state, not its typical one. Where a retry is the fix, put it on establishing
+the connection and never on the statement: if the connection was never established the statement
+never arrived, which is the only thing that makes a retry safe on a write path. And when a suite
+cannot reach the state at all, say so in the quality document and take the measurement from
+production with its date attached, rather than writing a test that would pass whatever the real
+figure did.
+
 ### Row-level security has two honest models, and the platform now carries both
 The request-lane pattern (ADR 14) adopts a `NOLOGIN` role per transaction so a pooled
 connection carries no user context past COMMIT; Supabase's model compares a column to
@@ -409,7 +425,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Subject | Path |
 | --- | --- |
 | Architecture | `docs/architecture/SYSTEM_OVERVIEW.md` |
-| Decisions (16) | `docs/decisions/` |
+| Decisions (21) | `docs/decisions/` |
 | Test doctrine | `docs/QUALITY_STRATEGY.md` |
 | Charter, with every defect found | `docs/runbooks/MANUAL_ACCEPTANCE_TEST.md` |
 | Container | `docs/runbooks/CONTAINER.md` |
@@ -420,6 +436,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Job queue | `database/postgres/migrations/008_job_queue.sql`, `apps/api/src/jobs/queue.integration-test.ts`, ADR 15 |
 | Magic links | `database/postgres/migrations/009_magic_links.sql`, `apps/api/src/auth/magic.integration-test.ts`, ADR 16 |
 | Verifiable error tracking | `apps/api/src/observability/error-tracking.ts`, `error-tracking.test.ts`, ADR 18 |
+| Sleeping database, cold connections | `apps/api/src/database/database.ts`, `database.test.ts`, ADR 20 and ADR 21 |
 | Two RLS models compared | ADR 17; the receipt portal at github.com/marcelgilbertdev-oss/receipt-portal (`supabase/migrations/0001_schema_and_policies.sql`, `tests/isolation.integration-test.ts`) |
 | SPA client deploy (CI) | `.github/workflows/deploy-clients.yml`, `deploy-clients.sh` |
 | Demo recorder (Playwright) | `apps/web/scripts/record-demo.mjs` |
