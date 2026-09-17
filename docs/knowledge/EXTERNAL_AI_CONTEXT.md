@@ -70,7 +70,9 @@ degraded; `/api/v1/ready` returns 503 when the database is unreachable. Conflati
 how a deploy passes its check and then serves 500s. `/api/v1/live` touches nothing: it is
 what Render's every-few-seconds health check and the canary hit, so neither keeps the
 compute-billed Neon database awake (ADR 20). The job worker likewise sleeps until a job is
-due rather than polling.
+due rather than polling. Because the database therefore does sleep, the connection pool is
+budgeted for waking it — a ten-second connection timeout against a ~1.7s resume — and
+retries a connection once, but never the statement, so a write is never repeated (ADR 21).
 
 **An independent reconciler in Go** re-derives every payment's state from the event log and
 exits non-zero when it disagrees with the payments table. Separate language on purpose: a
@@ -99,7 +101,7 @@ link is never written to a log (ADR 16).
 
 ## Current numbers (2026-09-02)
 
-- **389 automated tests** across ten suites: 85 API unit · 82 integration against real
+- **394 automated tests** across ten suites: 90 API unit · 82 integration against real
   PostgreSQL · 11 web unit · 70 Playwright end-to-end · 45 Vue · 34 Svelte · 12 Go ·
   6 visual regression · 31 MCP · 13 Cucumber/BDD scenarios
 - **30/30** production smoke checks, run hourly against the live system — including a signed-webhook probe that catches a stale signing secret, which `/health` cannot see because it reports the variable's presence rather than its correctness
