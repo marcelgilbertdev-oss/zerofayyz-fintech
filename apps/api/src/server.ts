@@ -30,7 +30,7 @@ if (process.env.JOB_WORKER !== "off") {
     log: app.log,
   });
   // Seed the recurring chain. Idempotent across restarts and instances: the
-  // hour-bucketed key means every boot converges on the same single row.
+  // day-bucketed key means every boot converges on the same single row.
   scheduleSessionCleanup(queue).catch((error) => {
     app.log.error(error, "failed to seed the session cleanup chain");
   });

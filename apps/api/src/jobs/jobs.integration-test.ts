@@ -4,7 +4,7 @@ import test, { after, before } from "node:test";
 
 import { createDatabase, type Database } from "../database/database.js";
 import { migrate } from "../database/migrate.js";
-import { createHandlers, hourBucket, scheduleSessionCleanup, SESSION_CLEANUP } from "./handlers.js";
+import { createHandlers, dayBucket, scheduleSessionCleanup, SESSION_CLEANUP } from "./handlers.js";
 import { createQueue, type JobQueue } from "./queue.js";
 import { startWorker } from "./worker.js";
 
@@ -178,12 +178,12 @@ test("the recurring chain converges on one row however many times it is seeded",
   const rows = await database.query<{ n: string }>(
     `SELECT COUNT(*)::TEXT AS n FROM jobs
       WHERE kind = $1 AND idempotency_key = $2`,
-    [SESSION_CLEANUP, `${SESSION_CLEANUP}:${hourBucket(new Date(Date.now() + 3_600_000))}`],
+    [SESSION_CLEANUP, `${SESSION_CLEANUP}:${dayBucket(new Date(Date.now() + 86_400_000))}`],
   );
   assert.equal(Number(rows.rows[0]?.n), 1, "seeding was not idempotent");
 });
 
-test("running the cleanup schedules the next run in the following hour", async () => {
+test("running the cleanup schedules the next run on the following day", async () => {
   const handlers = createHandlers(database, queue);
   await handlers[SESSION_CLEANUP]({} as never);
   await handlers[SESSION_CLEANUP]({} as never); // a crash-retry does not double the chain

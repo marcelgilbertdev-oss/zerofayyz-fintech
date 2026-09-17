@@ -228,6 +228,17 @@ cannot reach the state at all, say so in the quality document and take the measu
 production with its date attached, rather than writing a test that would pass whatever the real
 figure did.
 
+### Recurring work runs as rarely as its own retention allows
+After ADR 20 the database still burned ~1 CU-h/day and was projected to exhaust its 100-hour
+allowance on the 29th. Half of it was a session-cleanup job re-chaining itself every hour to run
+a delete with a thirty-day retention: the cadence decided nothing about what was deleted, only
+how often the database was woken (ADR 22). **Rule:** the interval of a recurring job is a cost
+decision; its honest floor is the job's own retention or freshness need, not the interval that
+was convenient when the dependency was always awake. And when a worker has a safety-poll cap,
+set it longer than the least frequent job — otherwise the cap becomes the thing doing the
+waking. Read the real figure from the provider's console before and after; a projection from
+owned code is a hypothesis, not a measurement.
+
 ### Row-level security has two honest models, and the platform now carries both
 The request-lane pattern (ADR 14) adopts a `NOLOGIN` role per transaction so a pooled
 connection carries no user context past COMMIT; Supabase's model compares a column to
@@ -425,7 +436,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Subject | Path |
 | --- | --- |
 | Architecture | `docs/architecture/SYSTEM_OVERVIEW.md` |
-| Decisions (21) | `docs/decisions/` |
+| Decisions (22) | `docs/decisions/` |
 | Test doctrine | `docs/QUALITY_STRATEGY.md` |
 | Charter, with every defect found | `docs/runbooks/MANUAL_ACCEPTANCE_TEST.md` |
 | Container | `docs/runbooks/CONTAINER.md` |

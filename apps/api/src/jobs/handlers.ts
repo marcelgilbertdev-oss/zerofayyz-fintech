@@ -6,7 +6,7 @@
  * window it belongs to. That one line is doing a lot, so, spelled out:
  *
  *   - survives restarts: the next run is a row, not a timer in memory
- *   - cannot double-fire: two instances both enqueueing "next hour" collide
+ *   - cannot double-fire: two instances both enqueueing "next day" collide
  *     on the same key and the UNIQUE index keeps one
  *   - self-heals: if the platform is down across a boundary, the next claim
  *     after startup finds the overdue row and runs it — late, not lost
@@ -24,16 +24,24 @@ export const MAGIC_LINK_EMAIL = "auth.magic_link_email";
 /** How long an expired or revoked session row is kept before deletion. */
 const SESSION_RETENTION_DAYS = 30;
 
-/** The hour bucket a timestamp belongs to, as an idempotency key suffix. */
-export function hourBucket(date = new Date()): string {
-  return date.toISOString().slice(0, 13); // e.g. 2026-09-01T18
+/**
+ * The UTC day a timestamp belongs to, as an idempotency key suffix.
+ *
+ * Daily, not hourly (2026-09-17, ADR 22). The delete below keeps rows for
+ * thirty days, so running it every hour bought nothing except twenty-four
+ * database wake-ups a day — about half a compute-hour on a plan that has a
+ * hundred a month, and the single largest remaining burner after ADR 20.
+ */
+export function dayBucket(date = new Date()): string {
+  return date.toISOString().slice(0, 10); // e.g. 2026-09-01
 }
 
-function nextHour(date = new Date()): { key: string; delayMs: number } {
+function nextDay(date = new Date()): { key: string; delayMs: number } {
   const next = new Date(date);
-  next.setUTCHours(next.getUTCHours() + 1, 0, 30, 0); // hh:00:30, clear of the boundary
+  next.setUTCDate(next.getUTCDate() + 1);
+  next.setUTCHours(0, 0, 30, 0); // 00:00:30, clear of the boundary
   return {
-    key: `${SESSION_CLEANUP}:${hourBucket(next)}`,
+    key: `${SESSION_CLEANUP}:${dayBucket(next)}`,
     delayMs: Math.max(0, next.getTime() - date.getTime()),
   };
 }
@@ -43,7 +51,7 @@ function nextHour(date = new Date()): { key: string; delayMs: number } {
  * number of times, on any number of instances — the key makes it one row.
  */
 export async function scheduleSessionCleanup(queue: JobQueue): Promise<void> {
-  const { key, delayMs } = nextHour();
+  const { key, delayMs } = nextDay();
   await queue.enqueue({
     kind: SESSION_CLEANUP,
     idempotencyKey: key,

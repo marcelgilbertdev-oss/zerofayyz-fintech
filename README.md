@@ -187,7 +187,7 @@ TypeScript throughout, ESM, Node 20+.
   it, retries back off to a cap and then dead-letter, and enqueue is idempotent through a
   UNIQUE key. The guarantee is stated as at-least-once, because exactly-once does not survive
   a process dying between the work and the acknowledgement. Depth, dead jobs and the recurring
-  schedule are visible on `/admin/jobs`; the first consumer is hourly session-retention
+  schedule are visible on `/admin/jobs`; the first consumer is daily session-retention
   cleanup. See [ADR 0015](docs/decisions/0015-put-the-job-queue-in-postgresql.md)
 - A container image that has actually served traffic — multi-stage, production dependencies
   only, unprivileged, health-checked against `/ready`, and started in CI on every push

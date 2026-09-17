@@ -12,7 +12,7 @@
  * at full speed. After an empty poll it asks the queue when the next job is
  * due and sleeps until then, capped at idleMs. An enqueue made in this process
  * wakes it at once, so a quiet queue costs one query when a job comes due and
- * one safety poll an hour — not a query every thirty seconds.
+ * one safety poll every six hours — not a query every thirty seconds.
  *
  * Why the change (2026-09-13, ADR 20). The old loop slept a fixed 30 seconds.
  * Neon suspends its compute after five minutes without activity and bills the
@@ -20,7 +20,13 @@
  * free tier's monthly allowance was 81% gone by the 13th. The safety poll is
  * hourly rather than every few minutes for the same reason: each poll wakes the
  * database for at least five minutes, so a fifteen-minute poll would still keep
- * it awake a third of the day. The hourly session-cleanup job wakes it anyway.
+ * it awake a third of the day.
+ *
+ * Six hours, not one (2026-09-17, ADR 22). ADR 20 set the cap at an hour on the
+ * grounds that the hourly cleanup job woke the database anyway. The cleanup is
+ * now daily, so an hourly cap would have become the thing waking it. The cap
+ * only ever matters for a job inserted by something other than this process,
+ * and nothing does that; six hours keeps that failure mode measured in hours.
  */
 import type { FastifyBaseLogger } from "fastify";
 
@@ -46,7 +52,7 @@ export type Worker = {
 
 export function startWorker(options: WorkerOptions): Worker {
   const { queue, handlers, log } = options;
-  const idleMs = options.idleMs ?? 60 * 60_000;
+  const idleMs = options.idleMs ?? 6 * 60 * 60_000;
   const workerId = options.workerId ?? `api-${process.pid}`;
 
   let running = true;

@@ -89,7 +89,7 @@ the other user's rows absent. A second lane deliberately bypasses RLS for system
 cap and then dead-letter, and enqueue is idempotent through a UNIQUE key. The guarantee is
 at-least-once and is stated that way, because exactly-once does not survive a worker dying
 between the work and the acknowledgement. Operator surface: `/admin/jobs`. First consumer: an
-hourly session-retention cleanup that re-chains itself (ADR 15).
+daily session-retention cleanup that re-chains itself (ADR 15; hourly until ADR 22).
 
 **Passwordless sign-in by magic link.** The database stores only a SHA-256 of the token;
 single use is one atomic UPDATE (`used_at IS NULL` in the WHERE), so two clicks racing produce
