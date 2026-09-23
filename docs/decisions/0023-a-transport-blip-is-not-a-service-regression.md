@@ -88,3 +88,50 @@ This is the second time on this platform that a check has been wrong about the
 thing it was watching rather than about the code — after ADR 19, where a
 keep-alive made a request the provider refused and counted it as activity. Both
 are the same shape: **the check's claim was narrower than its assertion.**
+
+### What was missing, the same day
+
+The decision above was shipped and then read back against the behaviour the
+founder expected from it. He described it as: *"it prevents false alarms, and
+then if it has a problem it'll alert us because of the retries."* The first half
+was true. The second was not.
+
+As first shipped, this record produced a better **log** and no new **alarm**.
+Three cases exist, and only two of them were handled:
+
+| | Outcome as first shipped |
+|---|---|
+| One blip | retried, run passes, `retries 1` printed — correct |
+| A real failure (both attempts fail) | run fails, email sent — correct |
+| **A path quietly degrading** — retries climbing 0 → 5 → 20 over days, each still succeeding | **run passes, nothing says so** |
+
+The third case is the one this test now exists to catch, and it was the one left
+open. A retry count printed in a *passing* job's log is a number nobody reads;
+"watch the trend" is not a control, it is a hope. The same mistake the record
+above diagnoses — an assertion narrower than its claim — had been made one level
+up, in the claim that retries would surface a degrading path.
+
+**Decision:** a retry *rate* above `MAX_RETRY_RATE` (5% of requests, overridable)
+fails the run on its own, with a breach worded as a **path** fault rather than a
+service error:
+
+```
+health: retry rate 100.0% exceeds 5.0% — requests are succeeding only on retry,
+so the path to the service is degrading even though the service is answering
+```
+
+The wording is load-bearing. Every request in that breach *succeeded*; reading
+"retry rate 12%" as "the service is failing" would send the next person hunting
+in the wrong half of the system. Five percent of 120 requests is six — far above
+the single blip that prompted this record, far below a path worth ignoring.
+
+**Proven by isolating the third case**, which neither the happy path nor the
+earlier always-404 control could demonstrate: a local server that drops the first
+attempt of every request and answers the second. Serialised, it reports
+`errors 0, retries 12` on every endpoint, breaches **only** the retry rate, and
+exits 1 — the service fine, the path not, and the two told apart. The always-404
+control is kept, but it is now understood to prove something weaker: it trips
+both thresholds at once and so cannot show that the ceiling discriminates.
+
+Consequence: one blip still cannot fail a run, and a path that needs a retry on
+more than one request in twenty now fails one — loudly, and in the right words.

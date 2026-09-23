@@ -19,7 +19,9 @@
  * saw it and Sentry recorded nothing, because it died in transport. Retrying
  * separates "the service is failing requests" from "the public internet dropped
  * one", and keeps the zero-error claim meaning the first. Retries are reported,
- * so a rising retry count stays visible instead of being smoothed away.
+ * so a rising retry count stays visible instead of being smoothed away — and a
+ * retry RATE above MAX_RETRY_RATE fails the run on its own, because a number in
+ * a passing job's log is a number nobody reads.
  */
 
 const TARGET = process.env.TARGET ?? "https://zerofayyz-fintech-api.onrender.com";
@@ -27,15 +29,22 @@ const CONCURRENCY = Number.parseInt(process.env.CONCURRENCY ?? "10", 10);
 const REQUESTS = Number.parseInt(process.env.REQUESTS ?? "120", 10);
 const WARMUP_MS = Number.parseInt(process.env.WARMUP_MS ?? "90000", 10);
 const RETRY_DELAY_MS = Number.parseInt(process.env.RETRY_DELAY_MS ?? "250", 10);
+/**
+ * The retry ceiling. Retrying stops ONE blip failing the run; without a ceiling
+ * it would also hide a path that is quietly dropping requests every day, because
+ * a passing job's log is a log nobody reads. 5% of 120 requests is 6: far above
+ * the single blip that prompted ADR 23, far below a path worth ignoring.
+ */
+const MAX_RETRY_RATE = Number.parseFloat(process.env.MAX_RETRY_RATE ?? "0.05");
 
 /**
  * Thresholds are per-endpoint because they do different work: /health runs one
  * trivial query, /metrics runs two aggregates over a generated date series.
  */
 const SCENARIOS = [
-  { name: "health", path: "/api/v1/health", p95Ms: 1500, maxErrorRate: 0 },
-  { name: "metrics", path: "/api/v1/metrics", p95Ms: 2000, maxErrorRate: 0 },
-  { name: "transactions", path: "/api/v1/transactions", p95Ms: 2000, maxErrorRate: 0 },
+  { name: "health", path: "/api/v1/health", p95Ms: 1500, maxErrorRate: 0, maxRetryRate: MAX_RETRY_RATE },
+  { name: "metrics", path: "/api/v1/metrics", p95Ms: 2000, maxErrorRate: 0, maxRetryRate: MAX_RETRY_RATE },
+  { name: "transactions", path: "/api/v1/transactions", p95Ms: 2000, maxErrorRate: 0, maxRetryRate: MAX_RETRY_RATE },
 ];
 
 function percentile(sorted, p) {
@@ -143,7 +152,12 @@ async function runScenario(scenario) {
     p99: Math.round(percentile(sorted, 99)),
     max: Math.round(sorted.at(-1) ?? 0),
     rps: Math.round((latencies.length / wallMs) * 1000 * 10) / 10,
-    thresholds: { p95Ms: scenario.p95Ms, maxErrorRate: scenario.maxErrorRate },
+    retryRate: retries / Math.max(1, latencies.length),
+    thresholds: {
+      p95Ms: scenario.p95Ms,
+      maxErrorRate: scenario.maxErrorRate,
+      maxRetryRate: scenario.maxRetryRate,
+    },
   };
 }
 
@@ -181,6 +195,17 @@ for (const result of results) {
   if (result.p95 > result.thresholds.p95Ms) {
     failures.push(`${result.name}: p95 ${result.p95}ms exceeds ${result.thresholds.p95Ms}ms`);
   }
+  // Deliberately phrased as the path degrading rather than as an error: every
+  // one of these requests SUCCEEDED on its second attempt. Reading "12% retried"
+  // as "the service is failing" would send the next person hunting in the wrong
+  // half of the system.
+  if (result.retryRate > result.thresholds.maxRetryRate) {
+    failures.push(
+      `${result.name}: retry rate ${(result.retryRate * 100).toFixed(1)}% exceeds ` +
+        `${(result.thresholds.maxRetryRate * 100).toFixed(1)}% — requests are succeeding only ` +
+        `on retry, so the path to the service is degrading even though the service is answering`,
+    );
+  }
 }
 
 console.log();
@@ -196,7 +221,8 @@ const retried = results.reduce((n, r) => n + r.retries, 0);
 if (retried > 0) {
   console.log(
     `  note: ${retried} request(s) failed once and succeeded on retry — counted as` +
-      ` successes, not errors (ADR 23). A number that climbs run over run is the signal.\n`,
+      ` successes, not errors (ADR 23). Under the ${(MAX_RETRY_RATE * 100).toFixed(0)}%` +
+      ` ceiling this passes; above it the run fails as a degrading path.\n`,
   );
 }
 
