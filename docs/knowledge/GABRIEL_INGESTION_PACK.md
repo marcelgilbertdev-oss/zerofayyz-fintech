@@ -228,6 +228,19 @@ cannot reach the state at all, say so in the quality document and take the measu
 production with its date attached, rather than writing a test that would pass whatever the real
 figure did.
 
+### A check can be wrong about the path to the thing rather than about the thing
+A daily load test failed on one request in 360 with every latency threshold met, and the error
+tracker had recorded nothing — which placed the failure outside the application entirely: the
+request died in transport and never arrived. The assertion `maxErrorRate: 0` was true of the
+service and false of the public internet in front of it, and a gate that counts cannot tell those
+apart (ADR 23). **Rule:** before loosening a threshold that is crying wolf, ask whether the
+threshold is wrong or whether it is measuring a different thing than it claims. Where the answer is
+the second, retry the operation once and count only a repeated failure — then *report the retries*
+in their own column, because a rising retry count is the real signal and a test that silently
+swallows blips cannot produce it. Keep the strict threshold: loosening it to a percentage buys the
+same quiet at the price of passing a run with a genuine error in it. And prove the change with a
+negative control that forces the failure, never by watching the happy path stay green.
+
 ### Recurring work runs as rarely as its own retention allows
 After ADR 20 the database still burned ~1 CU-h/day and was projected to exhaust its 100-hour
 allowance on the 29th. Half of it was a session-cleanup job re-chaining itself every hour to run
@@ -436,7 +449,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Subject | Path |
 | --- | --- |
 | Architecture | `docs/architecture/SYSTEM_OVERVIEW.md` |
-| Decisions (22) | `docs/decisions/` |
+| Decisions (23) | `docs/decisions/` |
 | Test doctrine | `docs/QUALITY_STRATEGY.md` |
 | Charter, with every defect found | `docs/runbooks/MANUAL_ACCEPTANCE_TEST.md` |
 | Container | `docs/runbooks/CONTAINER.md` |

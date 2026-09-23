@@ -23,7 +23,7 @@ cannot see.
 | End-to-end | 70 | Built servers in a real browser | Rendering, hydration, sign-in, role separation, both locales, WCAG AA |
 | Visual regression | 6 | Chrome surfaces, in the renderer the baselines were recorded in | Layout breaking silently: the sign-in page, the sidebar, the phone drawer, and a header that once pushed the document wider than the viewport |
 | **BDD (Gherkin)** | **13 scenarios** | The whole stack, seeded and booted | Whether the platform's *business rules* still hold — stated in language a non-engineer can dispute |
-| Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load |
+| Load | 3 scenarios | The deployed API under concurrency | Latency regressions, errors under load — each request retried once, so a transport blip is not counted as a service error (ADR 23) |
 | Vue client unit | 45 | jsdom, fetch mocked at the network seam | Contract validation, store state, sign-in and audit-trail flow, partial failure, rendered output |
 | Svelte client unit | 34 | jsdom, fetch mocked at the network seam | The same behavioural contract as the Vue suite — if they disagree, a client has drifted |
 | Go reconciler | 12 | Event sequences the checker re-derives state from | Whether independently derived payment state agrees with the payments table, and whether a disagreement is reported rather than swallowed |
@@ -31,6 +31,23 @@ cannot see.
 | Production smoke | 30 | The deployed system, from outside, no credentials | That what *shipped* runs — including checks that only the newest build can satisfy |
 
 Total wall-clock for all local suites: under thirty seconds.
+
+### A gate can be wrong about the path to the thing, not the thing
+
+The daily load test failed on 2026-09-23 with one error in 360 requests and every
+latency threshold met. Sentry recorded nothing, which places that failure outside
+the application: `/health` answers 200 even with the database unreachable, so a
+non-OK response from it means the request never arrived.
+
+`maxErrorRate: 0` was asserting something the service can promise and the network
+between GitHub's runner and Render cannot. Requests are now retried once before
+counting, retries are reported in their own column, and the threshold stays at
+zero — the number was right, and what was wrong was counting a transport failure
+as a service error.
+
+The fix is proven by a **negative control**, not by the suite going green: pointed
+at a path that always 404s, the test reports `errors 10, retries 10` and exits 1.
+A change to a gate that is only ever watched passing has not been tested.
 
 ### Every suite runs against a database in its easy state
 
