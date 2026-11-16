@@ -228,6 +228,20 @@ cannot reach the state at all, say so in the quality document and take the measu
 production with its date attached, rather than writing a test that would pass whatever the real
 figure did.
 
+### A watcher can have an expiry date, and finishing the work is what starts the clock
+GitHub disables a scheduled workflow after 60 days of repository inactivity. One of this
+platform's scheduled workflows carries the keep-alive that stops a free database being paused, so
+the chain was: nobody commits (because the thing is finished and working) → schedules disabled →
+keep-alive stops → database paused → a live consumer goes dark, with no notice at any step
+(ADR 24). **Rule:** enumerate what your automation depends on being *true of the repository*, not
+just of the code — scheduled runs, free tiers, tokens, certificates and trials all expire on
+calendars nobody holds. Then put the countdown on a screen next to the numbers already read
+regularly, rather than trusting the provider's warning email, which for this one arrives 45 days
+into a 60-day clock and is titled after a test job. And note which way the trigger points: every
+inactivity rule fires precisely when a project has stopped needing attention, so quiet is not
+evidence that nothing is wrong. Do NOT solve it with a job that commits to its own repository —
+it works, and it makes "is this repo active?" unanswerable forever.
+
 ### A check can be wrong about the path to the thing rather than about the thing
 A daily load test failed on one request in 360 with every latency threshold met, and the error
 tracker had recorded nothing — which placed the failure outside the application entirely: the
@@ -449,7 +463,7 @@ while permitting what CSP exists to stop — the nonce work is deferred honestly
 | Subject | Path |
 | --- | --- |
 | Architecture | `docs/architecture/SYSTEM_OVERVIEW.md` |
-| Decisions (23) | `docs/decisions/` |
+| Decisions (24) | `docs/decisions/` |
 | Test doctrine | `docs/QUALITY_STRATEGY.md` |
 | Charter, with every defect found | `docs/runbooks/MANUAL_ACCEPTANCE_TEST.md` |
 | Container | `docs/runbooks/CONTAINER.md` |

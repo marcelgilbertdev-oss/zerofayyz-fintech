@@ -316,6 +316,11 @@ happened**. That is the actual product.
   connection pool is budgeted for the wake rather than the warm case, and retries a
   connection once, so that visitor waits instead of meeting an error
   ([ADR 21](decisions/0021-a-connection-timeout-must-cover-a-cold-start.md)).
+- **The scheduled jobs expire if nobody commits.** GitHub disables a scheduled
+  workflow after 60 days of repository inactivity, and one of these workflows
+  carries the Supabase keep-alive — so a finished, working, untouched project
+  quietly loses the thing that keeps its database awake
+  ([ADR 24](decisions/0024-a-dormant-repository-silently-disables-its-own-watchers.md)).
 - Metrics are scoped to a **single currency**, because summing across currencies is
   meaningless and pretending otherwise would be worse than the limitation.
 
